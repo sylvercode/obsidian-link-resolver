@@ -1,0 +1,159 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://obsidian-link-resolver/contracts/result.schema.json",
+    "title": "ResolutionTarget",
+    "description": "Primary machine-mode result record emitted on stdout. Compact single-line JSON. No non-deterministic fields.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "status"
+    ],
+    "properties": {
+        "status": {
+            "type": "string",
+            "enum": [
+                "resolved",
+                "unresolved",
+                "sub_target_not_found",
+                "ambiguous",
+                "error"
+            ],
+            "description": "Resolution outcome. Maps 1:1 to exit codes (see cli.md)."
+        },
+        "target_path": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Resolved target file path. Present for resolved and sub_target_not_found."
+        },
+        "target_line": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1,
+            "description": "1-based line where the target begins; null when the link has no heading/block or for attachments."
+        },
+        "is_embed": {
+            "type": "boolean",
+            "description": "Whether the link is an embed (![[...]]). Informational; does not change the target."
+        },
+        "alias": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Display/alias text from the link; informational only, never affects resolution."
+        },
+        "candidates": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Candidate target paths; present only for status 'ambiguous'."
+        },
+        "reason": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Actionable reason for any non-'resolved' outcome."
+        },
+        "emplacement": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+                "heading_stack",
+                "section"
+            ],
+            "description": "Structured emplacement; present only when --emplacement is requested and target lands inside a note.",
+            "properties": {
+                "heading_stack": {
+                    "type": "array",
+                    "description": "Containing headings, outermost to innermost; empty when the target has no containing headings.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "text",
+                            "level",
+                            "begin",
+                            "end"
+                        ],
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "level": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 6
+                            },
+                            "begin": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "end": {
+                                "type": "integer",
+                                "minimum": 1
+                            }
+                        }
+                    }
+                },
+                "section": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "begin",
+                        "end"
+                    ],
+                    "properties": {
+                        "begin": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "end": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "status": {
+                        "const": "ambiguous"
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "candidates"
+                ]
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "status": {
+                        "const": "sub_target_not_found"
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "target_path",
+                    "reason"
+                ]
+            }
+        }
+    ]
+}
