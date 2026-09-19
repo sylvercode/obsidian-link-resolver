@@ -1,14 +1,10 @@
 <!--
 Sync Impact Report
-Version change: [UNSET] -> 1.0.0
-Modified principles:
-- [PRINCIPLE_1_NAME] -> I. Performance & Agent Efficiency (added)
-- [PRINCIPLE_2_NAME] -> II. CLI Interface & Consistent Output (added)
-- [PRINCIPLE_3_NAME] -> III. Test-First (NON-NEGOTIABLE) (added)
-- [PRINCIPLE_4_NAME] -> IV. Integration Testing (added)
-- [PRINCIPLE_5_NAME] -> V. Observability, Versioning & Simplicity (added)
-Added sections:
-- Performance & Output Constraints
+Version change: 1.0.0 -> 1.1.0
+Modified principles: none renamed
+Added principles:
+- VI. Interoperability & Cross-Technology Integration (added)
+Added sections: none
 Removed sections: none
 Follow-up TODOs: none
 -->
@@ -32,6 +28,9 @@ Integration tests MUST cover real-world invocation patterns (file inputs, path r
 ### V. Observability, Versioning & Simplicity
 Prefer clear, minimal telemetry: structured logs to stderr with optional verbosity flags; avoid noisy defaults. Follow semantic versioning (MAJOR.MINOR.PATCH). Keep public CLI surface small and stable; prefer adding flags over changing defaults. Rationale: observability aids debugging; semantic versioning communicates breaking changes; simplicity reduces accidental token-cost growth.
 
+### VI. Interoperability & Cross-Technology Integration
+The project MUST be designed for interoperability so it can be consumed by, or integrated with, other technology stacks regardless of the implementation language. Whatever language is chosen for a component (e.g., Rust), the design MUST preserve a clear path to interact with or be embedded in other ecosystems, at minimum .NET libraries and Node.js projects. To satisfy this, components MUST expose stable, language-agnostic integration surfaces — such as the machine-friendly CLI protocol (see Principle II), a C-compatible ABI / FFI boundary, or a documented data contract (JSON schema) — rather than assuming a single-language, in-process consumer. New features MUST NOT introduce hard dependencies that preclude .NET or Node.js integration without a documented justification and migration path. Rationale: guaranteeing cross-technology integration keeps the tool reusable across diverse agent and application environments and prevents lock-in that would force costly rewrites when embedding the tool elsewhere.
+
 ## Performance & Output Constraints
 - Target: fast cold-start times and minimal per-invocation overhead. Measure and document common-case latency in CI for regressions.
 - Output: Machine mode (--format=json) MUST emit compact, single-line JSON with predictable field names and types. DO NOT include non-deterministic fields (timestamps) in primary result objects unless explicitly namespaced (e.g., metadata.timestamp).
@@ -49,4 +48,4 @@ Amendments to this constitution require a documented proposal in the repository,
 - PATCH for clarifications, wording, or non-semantic refinements.
 Compliance: PRs that touch CLI behavior must reference this constitution and include tests demonstrating no regressions.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-17 | **Last Amended**: 2026-09-17
+**Version**: 1.1.0 | **Ratified**: 2026-09-17 | **Last Amended**: 2026-09-19
