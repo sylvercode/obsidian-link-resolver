@@ -16,6 +16,10 @@
 - Q: Should note-name and heading matching be case-insensitive, case-sensitive, or case-insensitive with a case-sensitive tie-breaker? → A: Case-insensitive for both note names and heading/block text (match Obsidian default).
 - Q: What vault size should the resolver be designed and performance-tested against as its "representative vault"? → A: Medium — up to ~5,000 notes.
 
+### Session 2026-09-19
+
+- Q: Which language-agnostic integration surface(s) must the resolver guarantee for cross-technology consumption (at minimum .NET and Node.js)? → A: CLI machine-mode protocol + documented versioned JSON schema data contract + a C-compatible ABI/FFI boundary for in-process embedding (chosen to support many consecutive calls without per-call process spawn).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Resolve a link to its target file and location (Priority: P1)
@@ -113,6 +117,9 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **FR-018**: The system MUST emit primary results on standard output and diagnostics/errors on standard error.
 - **FR-019**: The system MUST report a clear, actionable reason for every non-resolved outcome (e.g., which note, heading, or block was not found, or why the vault could not be determined).
 - **FR-020**: The system MUST return line references that are stable and unambiguous with respect to a defined convention (documented as 1-based line numbers).
+- **FR-021**: The system MUST expose stable, language-agnostic integration surfaces so it can be consumed from other technology stacks (at minimum .NET and Node.js) regardless of implementation language: (a) the deterministic machine-mode CLI protocol (stdout results + documented exit statuses), (b) a documented, versioned JSON schema data contract for the result record, and (c) a C-compatible ABI/FFI boundary that allows the resolver to be embedded in-process by a host application.
+- **FR-021a**: The in-process (FFI/ABI) integration surface MUST support many consecutive resolutions within a single host process without incurring a separate process spawn per call, and MAY reuse a loaded vault index across consecutive resolutions in the same host process.
+- **FR-021b**: The system MUST NOT introduce hard dependencies that preclude .NET or Node.js integration through the surfaces in FR-021 without a documented justification and migration path.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -132,6 +139,7 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **SC-004**: A caller can request and receive the structured emplacement (heading stack with begin/end line ranges) for any resolvable target that lands inside a note, and the ranges exactly match the note's heading structure for 100% of a defined test corpus.
 - **SC-005**: A typical single link resolution (warm run) against a representative vault (up to ~5,000 notes) completes within a ≤100 ms acceptance threshold, and common-case latency is measured and tracked in CI to prevent regressions.
 - **SC-006**: An integrator can wrap the CLI in an MCP server or skill and parse its machine-mode output with no custom text scraping, relying only on the documented fields and exit statuses.
+- **SC-007**: An integrator can consume the resolver from both a .NET and a Node.js host — via the documented JSON schema contract and/or the C-compatible ABI/FFI boundary — and execute many consecutive resolutions within a single host process without a separate process spawn per call, relying only on the documented integration surfaces.
 
 ## Assumptions
 
@@ -145,3 +153,4 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **Encoding**: Notes are UTF-8 encoded markdown; other encodings are out of scope for the first version.
 - **Single link per invocation**: Each invocation resolves one link in the context of one file; batch resolution is out of scope for the first version.
 - **MCP/skill wrappers**: The CLI is the primary deliverable; MCP servers and skills are wrappers built on top of it and are out of scope for this specification.
+- **Interoperability**: The implementation language is unconstrained provided the integration surfaces in FR-021 are preserved. Because many consecutive calls are expected, an in-process C-compatible ABI/FFI boundary is required in addition to the CLI protocol and JSON schema contract, so host applications (at minimum .NET and Node.js) can avoid per-call process spawn and may reuse a loaded vault index. Ready-made per-language binding packages are not required for the first version, but the ABI/FFI and data contract MUST make such bindings feasible without changes to core behavior.
