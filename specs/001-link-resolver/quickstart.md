@@ -1,7 +1,8 @@
 # Quickstart & Validation: Obsidian Link Resolver CLI
 
 This guide proves the feature works end-to-end. It references the contracts in
-[contracts/cli.md](contracts/cli.md) and [contracts/result.schema.json](contracts/result.schema.json)
+[contracts/cli.md](contracts/cli.md), [contracts/ffi.md](contracts/ffi.md), and
+[contracts/result.schema.json](contracts/result.schema.json)
 and the entities in [data-model.md](data-model.md) rather than duplicating them.
 
 ## Prerequisites
@@ -13,7 +14,9 @@ and the entities in [data-model.md](data-model.md) rather than duplicating them.
 
 ```bash
 cargo build --release
-# binary at target/release/obsidian-link-resolver
+# CLI binary at         target/release/obsidian-link-resolver
+# C-ABI shared library at target/release/libobsidian_link_resolver.{so,dylib} (obsidian_link_resolver.dll on Windows)
+# Generated C header at   include/obsidian_link_resolver.h (via cbindgen)
 ```
 
 ## Fixture vault
@@ -81,10 +84,43 @@ cargo bench            # criterion warm-run benchmark on a ~5,000-note vault
 # assert reported warm-run median ≤ 100 ms; CI fails on regression
 ```
 
+## In-process embedding check (SC-007, FR-021 / FR-021a)
+
+Validates the C ABI/FFI boundary: open one session, run many consecutive
+resolutions reusing the loaded vault index (no per-call process spawn), and
+confirm the returned JSON matches the CLI output. See [contracts/ffi.md](contracts/ffi.md).
+
+```c
+// Minimal C host (illustrative); links against the cdylib and include/obsidian_link_resolver.h
+#include "obsidian_link_resolver.h"
+#include <stdio.h>
+int main(void) {
+    int32_t st = 0;
+    OlrSession* s = olr_session_open("tests/fixtures/vault", &st);
+    for (int i = 0; i < 1000; i++) {                     // many calls, one process, one index
+        char* json = olr_resolve(s, "[[Project Plan#Milestones]]",
+                                 "tests/fixtures/vault/notes/a.md", 0, &st);
+        // json validates against result.schema.json; st == 0 (resolved)
+        olr_string_free(json);
+    }
+    olr_session_close(s);
+    return 0;
+}
+```
+
+- The returned JSON string is byte-for-byte identical to the CLI `--format json`
+  output for the same inputs, and `out_status` mirrors the CLI exit code.
+- The same four functions are callable from .NET (P/Invoke) and Node.js
+  (N-API/FFI); ready-made bindings are out of scope for v1 (see ffi.md).
+
 ## Automated equivalents
 
 - Contract tests (`tests/contract/`) assert the stdout JSON validates against
   `result.schema.json` and that exit codes match the table above.
+- FFI contract tests (`tests/ffi/`) load the `cdylib` and drive `olr_session_open`
+  / `olr_resolve` / `olr_string_free` / `olr_session_close`, asserting the
+  returned JSON validates against `result.schema.json`, matches CLI output, and
+  that one session serves many consecutive resolutions (SC-007).
 - Integration tests (`tests/integration/`) run scenarios 1–16 over the fixture
   vault.
 - The `criterion` bench (`benches/resolve.rs`) enforces the latency budget.

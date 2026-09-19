@@ -110,3 +110,21 @@ Positional context of a target within its note (FR-008, FR-009).
 - For a note with no headings, `heading_stack` is empty and `section` spans the whole file (spec US2 AS2).
 - A resolved heading's section spans from its heading line up to (but excluding) the next heading of equal or higher level (spec US2 AS3; FR-009).
 - Attachments have `target_line = null` and no `emplacement` (FR-014).
+
+## Entity: ResolverSession (FFI/ABI boundary handle)
+
+An opaque, in-process handle used by host applications embedding the resolver
+through the C-compatible ABI/FFI boundary (FR-021, FR-021a). Not part of the JSON
+result record; it models the state carried across consecutive in-process calls.
+See the C-ABI signatures in [contracts/ffi.md](contracts/ffi.md).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `vault` | Vault | Vault index loaded once and reused across resolutions (FR-021a) |
+| `handle` | opaque pointer | Passed back to the host as `*mut OlrSession`; never dereferenced by callers |
+
+**Lifecycle / rules**:
+- Opened once per vault root (`olr_session_open`), reused for many consecutive `olr_resolve` calls without per-call process spawn (FR-021a, SC-007).
+- Each `olr_resolve` takes a link string, a context-file path, and an emplacement flag, and returns the same compact JSON `ResolutionTarget` record (as a UTF-8 string) that the CLI emits in `--format json` (single source of truth: [contracts/result.schema.json](contracts/result.schema.json)); the numeric outcome mirrors the CLI exit-status contract.
+- Result strings are owned by the library and released by the host via `olr_string_free`; the session is released via `olr_session_close`. No non-deterministic fields cross the boundary (FR-016).
+- The handle is thread-compatible but not required to be thread-safe for v1; hosts serialize calls per session unless documented otherwise.
