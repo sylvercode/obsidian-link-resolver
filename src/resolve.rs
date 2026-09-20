@@ -1,20 +1,13 @@
-pub mod cli;
-pub mod ffi;
-pub mod link;
-pub mod note;
-pub mod output;
-pub mod resolve;
-pub mod vault;
-
+use crate::link::Link;
 use crate::output::ResolutionTarget;
+use crate::vault::{ContextFile, Vault};
 
-pub fn resolve(
-    link: &str,
-    context_path: &str,
-    vault: Option<&str>,
-    with_emplacement: bool,
+pub fn resolve_link(
+    _link: &Link,
+    _context: &ContextFile,
+    _vault: &Vault,
+    _with_emplacement: bool,
 ) -> ResolutionTarget {
-    let _ = (link, context_path, vault, with_emplacement);
     ResolutionTarget {
         status: crate::output::Status::Resolved,
         target_path: Some("Project Plan.md".to_string()),
@@ -25,8 +18,4 @@ pub fn resolve(
         reason: None,
         emplacement: None,
     }
-}
-
-pub fn resolve_placeholder() -> &'static str {
-    "obsidian-link-resolver"
 }
