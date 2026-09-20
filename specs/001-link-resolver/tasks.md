@@ -29,14 +29,14 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Purpose**: Project initialization, toolchain, and build/release automation
 
-- [ ] T001 Create the Rust project directory structure per plan.md: `src/`, `tests/{contract,ffi,integration,unit,fixtures}/`, `benches/`, `include/`, `.devcontainer/`, `.github/workflows/`
-- [ ] T002 Create `Cargo.toml` declaring a library target with `crate-type = ["rlib", "cdylib"]` and a `bin` target `obsidian-link-resolver`; dependencies `clap` (v4, derive), `serde` (derive), `serde_json`, `walkdir`; dev-dependencies `assert_cmd`, `predicates`, `criterion`; build-dependency `cbindgen`
-- [ ] T003 [P] Create `cbindgen.toml` configuring C header generation from the `extern "C"` surface (C language, `OlrSession`/`OlrStatus`/`olr_*` symbols) per contracts/ffi.md
-- [ ] T004 [P] Create `build.rs` that runs `cbindgen` to generate `include/obsidian_link_resolver.h` from the crate's `extern "C"` surface
-- [ ] T005 [P] Create `.devcontainer/devcontainer.json` declaring the full toolchain: Rust stable 1.83, cross-compilation targets for Linux (x64+arm64), macOS (x64+arm64), Windows (x64), and `cbindgen` (Constitution Principle VII)
-- [ ] T006 [P] Add `rustfmt.toml` and a clippy lint configuration for consistent formatting and linting
-- [ ] T007 [P] Create `.github/workflows/ci.yml` as authoritative build/test automation running `cargo fmt --check`, `cargo clippy`, and `cargo test` (unit, contract, integration, FFI) on push/PR (Constitution Principle VIII)
-- [ ] T008 [P] Create `.github/workflows/release.yml` triggered on `vX.Y.Z` tags that runs the full test suite plus the warm-run p50 ≤100 ms gate, then cross-builds and publishes the CLI binary, `cdylib` shared library, and generated C header for all six platform targets (SC-005, SC-008, Constitution Principle VIII)
+- [x] T001 Create the Rust project directory structure per plan.md: `src/`, `tests/{contract,ffi,integration,unit,fixtures}/`, `benches/`, `include/`, `.devcontainer/`, `.github/workflows/`
+- [x] T002 Create `Cargo.toml` declaring a library target with `crate-type = ["rlib", "cdylib"]` and a `bin` target `obsidian-link-resolver`; dependencies `clap` (v4, derive), `serde` (derive), `serde_json`, `walkdir`; dev-dependencies `assert_cmd`, `predicates`, `criterion`; build-dependency `cbindgen`
+- [x] T003 [P] Create `cbindgen.toml` configuring C header generation from the `extern "C"` surface (C language, `OlrSession`/`OlrStatus`/`olr_*` symbols) per contracts/ffi.md
+- [x] T004 [P] Create `build.rs` that runs `cbindgen` to generate `include/obsidian_link_resolver.h` from the crate's `extern "C"` surface
+- [x] T005 [P] Create `.devcontainer/devcontainer.json` declaring the full toolchain: Rust stable 1.98.1, cross-compilation targets for Linux (x64+arm64), macOS (x64+arm64), Windows (x64), and `cbindgen` (Constitution Principle VII)
+- [x] T006 [P] Add `rustfmt.toml` and a clippy lint configuration for consistent formatting and linting
+- [x] T007 [P] Create `.github/workflows/ci.yml` as authoritative build/test automation running `cargo fmt --check`, `cargo clippy`, and `cargo test` (unit, contract, integration, FFI) on push/PR (Constitution Principle VIII)
+- [x] T008 [P] Create `.github/workflows/release.yml` triggered on `vX.Y.Z` tags that runs the full test suite plus the warm-run p50 ≤100 ms gate, then cross-builds and publishes the CLI binary, `cdylib` shared library, and generated C header for all six platform targets (SC-005, SC-008, Constitution Principle VIII)
 
 ---
 

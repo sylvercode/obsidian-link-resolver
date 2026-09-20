@@ -73,13 +73,13 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
 
 ## Decision 10: Reproducible development environment (devcontainer)
 
-- **Decision**: Keep a complete `.devcontainer/devcontainer.json` that declares the full toolchain required to build, test, and release: Rust stable 1.83, the cross-compilation targets for the released platforms, and `cbindgen` for header generation. Any change that adds a dependency, tool, or version requirement updates the devcontainer in the same change, and CI/release runners mirror this toolchain.
+- **Decision**: Keep a complete `.devcontainer/devcontainer.json` that declares the full toolchain required to build, test, and release: Rust stable 1.98.1, the cross-compilation targets for the released platforms, and `cbindgen` for header generation. Any change that adds a dependency, tool, or version requirement updates the devcontainer in the same change, and CI/release runners mirror this toolchain.
 - **Rationale**: Constitution Principle VII requires the devcontainer to always reflect the full toolchain so a fresh container yields a working environment without manual setup, and Principle VIII requires CI/release to stay in sync with it — guaranteeing local, CI, and release build parity.
 - **Alternatives considered**: Documenting setup steps in the README instead of the devcontainer — rejected; Principle VII mandates the devcontainer be the complete, authoritative environment definition.
 
 | Technical Context item | Resolution |
 |------------------------|-----------|
-| Language/Version | Rust 1.83 stable (Decision 1) |
+| Language/Version | Rust 1.98.1 stable (Decision 1) |
 | Primary Dependencies | clap, serde/serde_json, walkdir; dev: assert_cmd, predicates, criterion (Decisions 1,2,5,7) |
 | Markdown parsing | In-crate line scanner (Decision 2) |
 | Vault detection | Explicit → `.obsidian` ancestor walk → fail (Decision 3) |

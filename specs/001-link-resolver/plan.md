@@ -14,7 +14,7 @@ A read-only command-line tool that takes an Obsidian link string plus the path o
 
 ## Technical Context
 
-**Language/Version**: Rust 1.83 (stable, 2021 edition)
+**Language/Version**: Rust 1.98.1 (stable, 2021 edition)
 
 **Primary Dependencies**:
 - `clap` (v4, derive) — argument/flag parsing with a small, stable CLI surface
@@ -39,7 +39,7 @@ A read-only command-line tool that takes an Obsidian link string plus the path o
 
 **Scale/Scope**: Designed and performance-tested against vaults of up to ~5,000 notes; larger vaults still function but are outside the guaranteed latency budget for v1.
 
-**Build & Release Environment**: A complete `.devcontainer/devcontainer.json` declares the full Rust toolchain (stable 1.83, cross-compilation targets, `cbindgen`) so a fresh container builds, tests, and runs the project without manual setup (constitution Principle VII). A GitHub Actions workflow is the authoritative build/test automation; a `vX.Y.Z` tag triggers a test-gated release pipeline that runs the full suite (including the ≤100 ms warm-run p50 gate) before cross-compiling and publishing the artifacts in Target Platform above (constitution Principle VIII, SC-008). CI/release configuration stays in sync with the devcontainer toolchain.
+**Build & Release Environment**: A complete `.devcontainer/devcontainer.json` declares the full Rust toolchain (stable 1.98.1, cross-compilation targets, `cbindgen`) so a fresh container builds, tests, and runs the project without manual setup (constitution Principle VII). A GitHub Actions workflow is the authoritative build/test automation; a `vX.Y.Z` tag triggers a test-gated release pipeline that runs the full suite (including the ≤100 ms warm-run p50 gate) before cross-compiling and publishing the artifacts in Target Platform above (constitution Principle VIII, SC-008). CI/release configuration stays in sync with the devcontainer toolchain.
 
 ## Constitution Check
 
@@ -53,7 +53,7 @@ A read-only command-line tool that takes an Obsidian link string plus the path o
 | IV. Integration Testing | Real invocation patterns, exit codes, stdout shape, error forms | `assert_cmd` integration tests over a fixture vault covering every link form and every outcome/exit code. ✅ |
 | V. Observability, Versioning & Simplicity | stderr structured logs w/ verbosity flag, semver, small stable CLI surface | `-v/--verbose` diagnostics to stderr only; small flag set; semver from v0.1.0; prefer adding flags over changing defaults. ✅ |
 | VI. Interoperability & Cross-Technology Integration | Language-agnostic surfaces (CLI protocol, C-compatible ABI/FFI, documented JSON schema data contract); no hard deps precluding .NET/Node.js | Three surfaces delivered: machine-mode CLI protocol, `cdylib` C ABI/FFI (opaque session handle, `cbindgen` header) for in-process embedding with vault-index reuse, and versioned JSON schema contract shared by CLI and FFI. No dependency precludes .NET (P/Invoke) or Node.js (N-API/ffi) consumption. Contract fixed in [contracts/ffi.md](contracts/ffi.md). ✅ |
-| VII. Reproducible Development Environment | `.devcontainer/devcontainer.json` complete and reflects full toolchain; new deps update it in the same change | Devcontainer declares the full Rust toolchain (stable 1.83, cross-compilation targets for the released platforms, `cbindgen`) so a fresh container builds/tests/runs without manual setup; any new dependency is added there in the same change. ✅ |
+| VII. Reproducible Development Environment | `.devcontainer/devcontainer.json` complete and reflects full toolchain; new deps update it in the same change | Devcontainer declares the full Rust toolchain (stable 1.98.1, cross-compilation targets for the released platforms, `cbindgen`) so a fresh container builds/tests/runs without manual setup; any new dependency is added there in the same change. ✅ |
 | VIII. Continuous Integration & Release Gating | GitHub Actions as authoritative CI; `vX.Y.Z` tag runs full test suite as a gate before publishing artifacts; CI stays in sync with devcontainer | GitHub Actions CI runs unit/contract/integration/perf tests; a `vX.Y.Z` tag triggers a test-gated release pipeline that runs the full suite (including the ≤100 ms warm-run p50 gate, SC-005) and only then cross-compiles and publishes the CLI binaries + `cdylib` for all supported platforms (SC-008). CI/release toolchain mirrors the devcontainer. ✅ |
 
 **Performance & Output Constraints**: compact single-line JSON, no timestamps in the primary record, short field names — satisfied by the contract in [contracts/](contracts/).
@@ -84,7 +84,7 @@ Cargo.toml               # Crate manifest (lib with crate-types rlib+cdylib, plu
 cbindgen.toml            # cbindgen config for generating the C header from the FFI surface
 build.rs                 # Generates include/obsidian_link_resolver.h via cbindgen
 .devcontainer/
-└── devcontainer.json    # Complete toolchain: Rust 1.83, cross targets, cbindgen (Principle VII)
+└── devcontainer.json    # Complete toolchain: Rust 1.98.1, cross targets, cbindgen (Principle VII)
 .github/
 └── workflows/
     ├── ci.yml           # Authoritative build/test automation on push/PR (Principle VIII)

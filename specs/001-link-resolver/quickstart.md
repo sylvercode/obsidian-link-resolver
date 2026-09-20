@@ -7,11 +7,11 @@ and the entities in [data-model.md](data-model.md) rather than duplicating them.
 
 ## Prerequisites
 
-- Rust toolchain 1.83+ (`rustup`, `cargo`).
+- Rust toolchain 1.98.1+ (`rustup`, `cargo`).
 - A checkout of this repository.
 
 > Tip: opening the repo in the provided dev container (`.devcontainer/devcontainer.json`)
-> gives the complete toolchain (Rust 1.83, cross-compilation targets, `cbindgen`)
+> gives the complete toolchain (Rust 1.98.1, cross-compilation targets, `cbindgen`)
 > with no manual setup, matching the CI/release environment (constitution Principles VII & VIII).
 
 ## Build
