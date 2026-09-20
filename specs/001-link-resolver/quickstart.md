@@ -10,6 +10,10 @@ and the entities in [data-model.md](data-model.md) rather than duplicating them.
 - Rust toolchain 1.83+ (`rustup`, `cargo`).
 - A checkout of this repository.
 
+> Tip: opening the repo in the provided dev container (`.devcontainer/devcontainer.json`)
+> gives the complete toolchain (Rust 1.83, cross-compilation targets, `cbindgen`)
+> with no manual setup, matching the CI/release environment (constitution Principles VII & VIII).
+
 ## Build
 
 ```bash
@@ -81,7 +85,21 @@ target/release/obsidian-link-resolver '[[Project Plan]]' \
 
 ```bash
 cargo bench            # criterion warm-run benchmark on a ~5,000-note vault
-# assert reported warm-run median ≤ 100 ms; CI fails on regression
+# assert reported warm-run median ≤ 100 ms; CI fails on regression.
+# This p50 is a blocking release gate: a vX.Y.Z release fails if warm-run p50 > 100 ms.
+```
+
+## Release pipeline check (SC-008, Principle VIII)
+
+```bash
+# A vX.Y.Z tag triggers .github/workflows/release.yml, which runs the FULL test
+# suite (incl. the ≤100 ms warm-run p50 gate) and only then cross-builds and
+# publishes, for each of Linux (x64+arm64), macOS (x64+arm64), Windows (x64):
+#   - the CLI binary
+#   - the C-compatible shared library (.so/.dylib/.dll)
+#   - the generated C header (include/obsidian_link_resolver.h)
+git tag v0.1.0 && git push origin v0.1.0
+# Expected: release artifacts appear ONLY after the test gate passes.
 ```
 
 ## In-process embedding check (SC-007, FR-021 / FR-021a)

@@ -47,7 +47,7 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
 ## Decision 7: Testing & performance tooling
 
 - **Decision**: `cargo test` for unit/integration; `assert_cmd` + `predicates` for CLI contract tests; `criterion` for a warm-run latency benchmark wired into CI as a regression gate; a fixture vault under `tests/fixtures/` covering every documented link form.
-- **Rationale**: Satisfies constitution Principles III & IV (test-first, integration, performance regression) and SC-001/SC-004/SC-005/SC-006.
+- **Rationale**: Satisfies constitution Principles III & IV (test-first, integration, performance regression) and SC-001/SC-004/SC-005/SC-006. The `criterion` warm-run p50 is also the blocking release gate (Decision 9): a p50 above ≤100 ms fails the `vX.Y.Z` pipeline (SC-005).
 - **Alternatives considered**: Manual timing scripts — rejected; `criterion` gives statistically sound, CI-trackable measurements.
 
 ## Decision 8: Cross-technology interoperability surfaces (CLI + JSON schema + C ABI/FFI)
@@ -61,6 +61,22 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
   - **Language-neutral RPC (gRPC/named pipes)**: Adds a runtime dependency and startup cost that conflict with Principle I and complicate embedding. Rejected for v1.
   - **WebAssembly (Wasm/WASI) module**: Attractive for Node.js and browser/edge hosts because a single portable `.wasm` avoids per-platform native builds and node-gyp/N-API toolchains, and it can be layered on the same library core. Not adopted as the v1 in-process boundary because (a) it does not satisfy FR-021's explicit C-compatible ABI/FFI requirement and is awkward for in-process .NET embedding, which would need a hosted Wasm runtime (e.g. Wasmtime) versus a simple P/Invoke against the `cdylib`; (b) the resolver's core job is reading arbitrary vault directories and context files from the local filesystem, which under Wasm requires WASI with explicitly pre-opened/granted directories and has less mature, more constrained FS support in Node; and (c) the extra JS↔Wasm boundary plus WASI FS shims add overhead against the ≤100 ms warm budget (Principle I). Recorded as a candidate *additive* Node/browser distribution surface for a later version, built on the same core, not a replacement for the C ABI/FFI boundary that also serves .NET.
 
+## Decision 9: CI & test-gated release pipeline (GitHub Actions)
+
+- **Decision**: Maintain a GitHub Actions CI workflow (`.github/workflows/ci.yml`) as the authoritative build/test automation (unit, contract, integration, and the `criterion` warm-run benchmark). A separate release workflow (`.github/workflows/release.yml`) triggers on `vX.Y.Z` tags and runs the full test suite as a gate — including a warm-run p50 ≤100 ms check — before cross-compiling and publishing artifacts. The gate failing (any test, or a p50 above ≤100 ms) blocks artifact publication (constitution Principle VIII, FR/SC: SC-005, SC-008).
+- **Rationale**: Constitution Principle VIII requires GitHub Actions as the authoritative CI and a reproducible, test-gated release; the spec's 2026-09-19 clarifications make the ≤100 ms warm-run p50 a blocking gate and require prebuilt CLI binaries plus the C-compatible shared library for Linux (x64+arm64), macOS (x64+arm64), and Windows (x64). Rust's stable cross-compilation (`cargo`, `rustup target add`, plus `cross`/matrix runners for arm64) produces all six targets from CI.
+- **Release artifacts (SC-008)**: for each supported target, the release publishes the CLI binary and the `cdylib` shared library (`.so`/`.dylib`/`.dll`) plus the generated C header, so integrators obtain both the CLI and the in-process embedding surface without building from source.
+- **Alternatives considered**:
+  - **Publishing artifacts without the p50 gate** — rejected; SC-005/Principle VIII require the latency budget to block the release.
+  - **Single-platform release, build-from-source elsewhere** — rejected; SC-008 requires prebuilt binaries and the shared library for all six platform targets.
+  - **A third-party CI (e.g. self-hosted only)** — rejected; Principle VIII names GitHub Actions as the authoritative source.
+
+## Decision 10: Reproducible development environment (devcontainer)
+
+- **Decision**: Keep a complete `.devcontainer/devcontainer.json` that declares the full toolchain required to build, test, and release: Rust stable 1.83, the cross-compilation targets for the released platforms, and `cbindgen` for header generation. Any change that adds a dependency, tool, or version requirement updates the devcontainer in the same change, and CI/release runners mirror this toolchain.
+- **Rationale**: Constitution Principle VII requires the devcontainer to always reflect the full toolchain so a fresh container yields a working environment without manual setup, and Principle VIII requires CI/release to stay in sync with it — guaranteeing local, CI, and release build parity.
+- **Alternatives considered**: Documenting setup steps in the README instead of the devcontainer — rejected; Principle VII mandates the devcontainer be the complete, authoritative environment definition.
+
 | Technical Context item | Resolution |
 |------------------------|-----------|
 | Language/Version | Rust 1.83 stable (Decision 1) |
@@ -72,3 +88,5 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
 | Exit codes | 0/2/3/4 outcomes, 1 usage/error (Decision 6) |
 | Testing/perf | cargo test, assert_cmd, criterion, fixture vault (Decision 7) |
 | Interoperability surfaces | CLI protocol + JSON schema + C ABI/FFI via cdylib + cbindgen (Decision 8) |
+| CI & release gating | GitHub Actions CI + `vX.Y.Z` test-gated release (incl. ≤100 ms p50) publishing 6-platform artifacts (Decision 9) |
+| Dev environment | Complete devcontainer mirroring the CI/release toolchain (Decision 10) |
