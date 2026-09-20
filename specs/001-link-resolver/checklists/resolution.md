@@ -12,23 +12,23 @@
 
 - [x] CHK001 Are requirements defined for every Obsidian link form enumerated in FR-002 (plain, aliased, heading, nested heading, block, same-file, embed)? [Completeness, Spec §FR-002]
 - [x] CHK002 Are markdown-style link resolution requirements complete for all in-vault target kinds (heading, block, attachment)? [Completeness, Spec §FR-003]
-- [ ] CHK003 Is the note-name resolution rule (shortest-path / vault-wide matching) fully specified, including its tie-breaking behavior? [Completeness, Spec §FR-005] — FINDING [open]: research Decision 4 defines the fallback to `ambiguous`, but the shortest-path metric itself is only referenced to Obsidian, not defined as a concrete, self-contained rule.
+- [x] CHK003 Is the note-name resolution rule (shortest-path / vault-wide matching) fully specified, including its tie-breaking behavior? [Completeness, Spec §FR-005] — FINDING [resolved]: FR-005 now defines a self-contained rule (case-insensitive basename match; path-qualified names match the exact vault-relative path) with explicit tie-breaking — two or more matches yield `ambiguous` with no silent selection.
 - [x] CHK004 Are requirements for non-markdown attachment targets complete, including the explicit absence of a target line and heading stack? [Completeness, Spec §FR-014]
-- [ ] CHK005 Are duplicate-heading selection requirements documented with a concrete, deterministic rule rather than a reference to external behavior? [Gap, Spec §FR-002] — FINDING [open]: duplicate-heading selection defers to "Obsidian's resolution behavior" with no concrete deterministic rule stated.
+- [x] CHK005 Are duplicate-heading selection requirements documented with a concrete, deterministic rule rather than a reference to external behavior? [Gap, Spec §FR-002] — FINDING [resolved]: FR-002a specifies selecting the first duplicate heading in document order and reporting the chosen line.
 - [x] CHK006 Are requirements defined for reporting which duplicate heading was chosen when a note contains repeated heading text? [Completeness, Spec §Edge Cases]
 
 ## Requirement Clarity
 
-- [ ] CHK007 Is "consistent with Obsidian's link resolution behavior" quantified with a concrete, testable rule instead of an external reference? [Ambiguity, Spec §FR-005] — FINDING [open]: FR-005 still references Obsidian behavior; the resolution rule is not quantified as a self-contained testable definition.
+- [x] CHK007 Is "consistent with Obsidian's link resolution behavior" quantified with a concrete, testable rule instead of an external reference? [Ambiguity, Spec §FR-005] — FINDING [resolved]: FR-005 now states a self-contained, testable matching rule; the Obsidian reference is retained only as a parenthetical note, not as the normative definition.
 - [x] CHK008 Is the case-insensitive matching rule's whitespace handling precisely defined (surrounding-trim vs internal whitespace)? [Clarity, Spec §FR-005b]
-- [ ] CHK009 Is the nested heading path (`#Parent#Child`) disambiguation rule specified when multiple matching parents or children exist? [Clarity, Spec §FR-002] — FINDING [open]: disambiguation when multiple matching parents/children exist is unspecified.
+- [x] CHK009 Is the nested heading path (`#Parent#Child`) disambiguation rule specified when multiple matching parents or children exist? [Clarity, Spec §FR-002] — FINDING [resolved]: FR-002b specifies left-to-right resolution choosing the first match at each level in document order, with sub-target-not-found when no child matches inside the selected parent's section.
 - [x] CHK010 Is path-qualified note resolution (relative to vault root) clearly distinguished from bare shortest-path resolution? [Clarity, Spec §FR-005a]
 - [x] CHK011 Is "structured emplacement" defined with measurable begin/end semantics for boundary cases (final section, end of file)? [Clarity, Spec §FR-008]
 - [x] CHK012 Is the heading-section end rule unambiguous when heading levels are skipped (e.g., `#` directly followed by `###`)? [Ambiguity, Spec §FR-009]
 
 ## Requirement Consistency
 
-- [ ] CHK013 Are the four outcome statuses in FR-010 consistent with the outcome set referenced by the exit-status and success criteria? [Consistency, Spec §FR-010, §SC-002] — FINDING [open]: FR-017 prose enumerates only success/unresolved/ambiguous/error (omits sub_target_not_found) and FR-010 omits error; contracts/cli.md reconciles all five, but the FR text should be aligned.
+- [x] CHK013 Are the four outcome statuses in FR-010 consistent with the outcome set referenced by the exit-status and success criteria? [Consistency, Spec §FR-010, §SC-002] — FINDING [resolved]: FR-010 now enumerates all five outcomes (adds `error`) and declares them the complete mutually-exclusive set; FR-017 now enumerates the same five (adds `sub-target-not-found`), aligning the FR text with contracts/cli.md.
 - [x] CHK014 Do the case-insensitivity requirements align with the duplicate-heading selection behavior described in the edge cases? [Consistency, Spec §FR-005b]
 - [x] CHK015 Is same-file link handling consistent between the wikilink list (FR-002) and the self-reference edge cases? [Consistency, Spec §FR-002]
 - [x] CHK016 Are alias/embed attributes consistently described as informational and non-influencing on the target across all sections? [Consistency, Spec §FR-012, §FR-013]
@@ -43,8 +43,8 @@
 ## Edge Case Coverage
 
 - [x] CHK021 Are requirements defined for the "context file outside a vault" case (no explicit root and no `.obsidian` ancestor)? [Edge Case, Spec §FR-004a]
-- [ ] CHK022 Is behavior specified for a path-qualified note name that does not exist at the given path but exists elsewhere in the vault? [Gap, Spec §FR-005a] — FINDING [open]: behavior when a path-qualified note is absent at the given path but present elsewhere is unspecified (fall back vs unresolved).
-- [ ] CHK023 Is behavior specified for a block id that is missing, appears multiple times, or is malformed? [Gap, Spec §FR-002] — FINDING [open]: missing block id is covered (sub_target_not_found), but duplicate/malformed block ids are unspecified.
+- [x] CHK022 Is behavior specified for a path-qualified note name that does not exist at the given path but exists elsewhere in the vault? [Gap, Spec §FR-005a] — FINDING [resolved]: FR-005a now specifies reporting unresolved with no fall-back to a bare-name match elsewhere.
+- [x] CHK023 Is behavior specified for a block id that is missing, appears multiple times, or is malformed? [Gap, Spec §FR-002] — FINDING [resolved]: FR-002c specifies selecting the first matching line for duplicate block ids and reporting missing or malformed block references as sub-target-not-found.
 - [x] CHK024 Are requirements defined for links combining alias and sub-target (e.g., `[[Note#Heading|Alias]]`)? [Gap, Spec §FR-002, §FR-012]
 
 ## Acceptance Criteria Quality
