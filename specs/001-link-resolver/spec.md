@@ -19,6 +19,8 @@
 ### Session 2026-09-19
 
 - Q: Which language-agnostic integration surface(s) must the resolver guarantee for cross-technology consumption (at minimum .NET and Node.js)? → A: CLI machine-mode protocol + documented versioned JSON schema data contract + a C-compatible ABI/FFI boundary for in-process embedding (chosen to support many consecutive calls without per-call process spawn).
+- Q: When a `vX.Y.Z` tag triggers the test-gated release pipeline, which distribution artifacts must it produce? → A: Prebuilt native CLI binaries plus the C-compatible shared library (FFI/ABI) for Linux (x64+arm64), macOS (x64+arm64), and Windows (x64).
+- Q: Should the ≤100 ms warm-run performance budget be part of the blocking release test gate? → A: Yes — a warm-run p50 above ≤100 ms fails the `vX.Y.Z` release pipeline and blocks artifact publication.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -137,9 +139,10 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **SC-002**: For any input, the caller can determine the outcome (resolved, unresolved, sub-target-not-found, ambiguous, error) solely from the exit status, without parsing output text, in 100% of cases.
 - **SC-003**: Running the resolver twice on identical inputs in machine mode yields identical primary result records in 100% of cases.
 - **SC-004**: A caller can request and receive the structured emplacement (heading stack with begin/end line ranges) for any resolvable target that lands inside a note, and the ranges exactly match the note's heading structure for 100% of a defined test corpus.
-- **SC-005**: A typical single link resolution (warm run) against a representative vault (up to ~5,000 notes) completes within a ≤100 ms acceptance threshold, and common-case latency is measured and tracked in CI to prevent regressions.
+- **SC-005**: A typical single link resolution (warm run) against a representative vault (up to ~5,000 notes) completes within a ≤100 ms acceptance threshold, and common-case latency is measured and tracked in CI to prevent regressions. This budget is a blocking release gate: a warm-run p50 above ≤100 ms fails the `vX.Y.Z` release pipeline and prevents artifact publication.
 - **SC-006**: An integrator can wrap the CLI in an MCP server or skill and parse its machine-mode output with no custom text scraping, relying only on the documented fields and exit statuses.
 - **SC-007**: An integrator can consume the resolver from both a .NET and a Node.js host — via the documented JSON schema contract and/or the C-compatible ABI/FFI boundary — and execute many consecutive resolutions within a single host process without a separate process spawn per call, relying only on the documented integration surfaces.
+- **SC-008**: Each `vX.Y.Z` tagged release produces, only after the full test suite passes, prebuilt native CLI binaries and the C-compatible shared library (FFI/ABI) for Linux (x64 and arm64), macOS (x64 and arm64), and Windows (x64), so integrators can obtain both the CLI and the in-process embedding surface for every supported platform without building from source.
 
 ## Assumptions
 
