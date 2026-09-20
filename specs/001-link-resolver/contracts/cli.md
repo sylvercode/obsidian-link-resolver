@@ -49,6 +49,10 @@ parsing stdout.
   [result.schema.json](result.schema.json).
 - No timestamps or other non-deterministic fields in the primary record
   (FR-016, SC-003) — identical inputs produce byte-for-byte identical stdout.
+- `target_path` and every `candidates` entry are **vault-relative** paths with
+  forward-slash (`/`) separators, never absolute filesystem paths (FR-006).
+- For `ambiguous`, `candidates` is sorted ascending by vault-relative path using
+  ordinal (byte-wise) comparison, so the list order is deterministic (FR-011).
 - Line numbers are 1-based (FR-020).
 
 ### Examples

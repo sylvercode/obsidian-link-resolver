@@ -27,6 +27,12 @@
 - Q: For a nested heading path `#Parent#Child`, how are multiple matching parents or children disambiguated? → A: Resolve left-to-right, choosing the first match at each level in document order; if no child matches inside the selected parent's section, report sub-target-not-found.
 - Q: What is the complete outcome set referenced by both the outcome and exit-status requirements? → A: Exactly five mutually exclusive outcomes — resolved, unresolved, sub-target-not-found, ambiguous, and error.
 
+### Session 2026-09-20
+
+- Q: In what order must the ambiguous `candidates` list be sorted so identical inputs always produce byte-for-byte identical output? → A: Sort by vault-relative path, ascending, using ordinal (byte-wise) comparison.
+- Q: Should `target_path` and `candidates` be vault-relative or absolute paths? → A: Vault-relative paths, forward-slash (`/`) normalized separators.
+- Q: For a non-markdown attachment target, should the result include an empty-heading-stack emplacement object or omit it entirely? → A: Omit the emplacement object entirely (null/absent) for attachments.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Resolve a link to its target file and location (Priority: P1)
@@ -87,7 +93,7 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **Aliased link**: A link like `[[Project Plan|Plan]]` is resolved by its target (`Project Plan`), and the alias display text does not change the target.
 - **Embed link**: An embed such as `![[Note#Section]]` resolves to the same target as the equivalent non-embed link; the embed nature is reported but does not alter target resolution.
 - **Markdown-style link**: A standard markdown link (e.g., `[text](Some%20Note.md#Heading)`) that points within the vault is resolved to the same kind of target as the equivalent wikilink.
-- **Non-markdown target**: A link/embed to an attachment (image, PDF, etc.) resolves to the attachment file path with no heading/block line and no heading stack.
+- **Non-markdown target**: A link/embed to an attachment (image, PDF, etc.) resolves to the attachment file path with no heading/block line and no emplacement object (null/absent).
 - **Duplicate headings**: A note contains two headings with the same text; the resolver selects the first occurrence in document order and reports which one (by line) was chosen (FR-002a).
 - **Duplicate or malformed block id**: A note carries the same block id on multiple lines, or a link references a syntactically malformed block token; the resolver targets the first matching line in document order, and treats a malformed or absent block reference as sub-target-not-found (FR-002c).
 - **Nested heading path**: A link like `[[Note#Parent#Child]]` targets the `Child` heading nested under `Parent`; when multiple parents or children match, the first at each level in document order is chosen, and a child that is absent within the selected parent's section yields sub-target-not-found (FR-002b).
@@ -113,15 +119,15 @@ An automated caller (an AI agent, an MCP server, or a skill wrapper) invokes the
 - **FR-005**: The system MUST resolve a note name to a target file using the following deterministic rule (which matches Obsidian's default "shortest path when possible" behavior): the note-name portion of the link is matched, case-insensitively (FR-005b), against the basename (filename without the `.md` extension) of every markdown note in the vault. A bare note name (no folder prefix) matches every note whose basename equals the name; a path-qualified name (FR-005a) matches only the note at that exact vault-relative path. Exactly one match resolves to that note; zero matches yields unresolved; two or more matches yields ambiguous with the full candidate list and no silent selection (FR-010, FR-011).
 - **FR-005a**: The system MUST support path-qualified note names, where a link includes a folder path (relative to the vault root) before the note name (e.g., `[[folder/subfolder/Note]]`), and MUST resolve to the note located at that path relative to the vault root. When no note exists at that exact vault-relative path, the system MUST report unresolved and MUST NOT fall back to matching the bare note name elsewhere in the vault.
 - **FR-005b**: The system MUST match note names, folder path segments, and heading/block reference text case-insensitively, consistent with Obsidian's default link resolution behavior.
-- **FR-006**: For a resolved target, the system MUST return the target file path and, when the link points to a heading or block, the line where that target begins.
+- **FR-006**: For a resolved target, the system MUST return the target file path and, when the link points to a heading or block, the line where that target begins. The target file path and every candidate path MUST be expressed as a vault-relative path with forward-slash (`/`) separators (never an absolute filesystem path), so results remain portable and byte-for-byte deterministic across machines (FR-016, SC-003).
 - **FR-007**: When the link has no heading or block component, the system MUST return the target file with the beginning of the file as the target location.
 - **FR-008**: The system MUST, on request, return the structured emplacement of the target: the ordered stack of containing headings (outermost to innermost) and, for each, the begin and end line of its section.
 - **FR-009**: The system MUST compute each heading section's end as the line immediately before the next heading of equal or higher level (or end of file if none follows).
 - **FR-010**: The system MUST distinguish and report the following outcomes: resolved, unresolved (target note not found), sub-target-not-found (note found but heading/block missing), ambiguous (multiple candidate targets), and error (usage error, vault could not be determined, or I/O failure). These five outcomes are the complete, mutually exclusive outcome set referenced by the exit-status contract (FR-017) and success criteria (SC-002).
-- **FR-011**: For an ambiguous outcome, the system MUST list the candidate targets rather than silently selecting one.
+- **FR-011**: For an ambiguous outcome, the system MUST list the candidate targets rather than silently selecting one. The candidate list MUST be sorted by vault-relative path in ascending order using ordinal (byte-wise) comparison, so that identical inputs yield byte-for-byte identical candidate output (FR-016, SC-003).
 - **FR-012**: The system MUST preserve the alias/display text of a link as informational output without letting it influence target resolution.
 - **FR-013**: The system MUST identify whether a link is an embed and report that attribute without changing the resolved target.
-- **FR-014**: The system MUST resolve links to non-markdown attachments to the attachment's file path, with no heading/block line and an empty heading stack.
+- **FR-014**: The system MUST resolve links to non-markdown attachments to the attachment's file path, with no heading/block line and no emplacement object (the emplacement is null/absent, not an empty-stack object).
 - **FR-015**: The system MUST provide a deterministic, compact machine-readable output mode with stable field names for programmatic callers, and a human-readable mode for interactive use.
 - **FR-016**: The system MUST exclude non-deterministic values (such as timestamps) from the primary result record so identical inputs produce identical result output.
 - **FR-017**: The system MUST communicate outcome via a distinct, documented exit status so callers can branch on all five outcomes — resolved (success), unresolved, sub-target-not-found, ambiguous, and error — without parsing text.

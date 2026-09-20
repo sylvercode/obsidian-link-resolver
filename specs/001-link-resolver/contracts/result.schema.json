@@ -25,7 +25,7 @@
                 "string",
                 "null"
             ],
-            "description": "Resolved target file path. Present for resolved and sub_target_not_found."
+            "description": "Resolved target file path, expressed as a vault-relative path with forward-slash (/) separators (never absolute). Present for resolved and sub_target_not_found."
         },
         "target_line": {
             "type": [
@@ -51,7 +51,7 @@
             "items": {
                 "type": "string"
             },
-            "description": "Candidate target paths; present only for status 'ambiguous'."
+            "description": "Candidate target paths (vault-relative, forward-slash separated); present only for status 'ambiguous'. Sorted ascending by vault-relative path using ordinal (byte-wise) comparison for byte-for-byte deterministic output."
         },
         "reason": {
             "type": [

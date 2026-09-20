@@ -59,7 +59,7 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 ## Phase 3: User Story 1 - Resolve a link to its target file and location (Priority: P1) 🎯 MVP
 
-**Goal**: Turn an Obsidian link string plus its context file path into a concrete target: the target file path and, for heading/block links, the 1-based line where the target begins. Distinguish resolved / unresolved / sub-target-not-found / ambiguous outcomes via exit codes.
+**Goal**: Turn an Obsidian link string plus its context file path into a concrete target: the target file path and, for heading/block links, the 1-based line where the target begins. Distinguish resolved / unresolved / sub-target-not-found / ambiguous / error outcomes via exit codes.
 
 **Independent Test**: Against the fixture vault, provide a context file path and a link string; assert the returned `target_path` and `target_line` match the known location, and that unresolved/sub-target/ambiguous inputs yield the correct status and exit code.
 
@@ -75,12 +75,12 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 - [ ] T020 [US1] Implement Obsidian link parsing in `src/link.rs`: parse wikilink `[[...]]` and markdown `[text](target)` styles, detect embed `![[...]]` / `![](...)`, split alias on `|`, extract optional `folder_path`, `note_name`, `heading_path` (split on `#`, may be nested), `block_id` (`^id`); trim whitespace around each segment; enforce that `heading_path` non-empty and `block_id` are mutually exclusive and that a self-reference (absent `note_name`) carries a heading path or block id (data-model.md parse rules; FR-002, FR-003)
 - [ ] T021 [US1] Implement vault root detection in `src/vault.rs`: use explicit caller root when given, else walk up from the context file's directory to the nearest ancestor containing an `.obsidian` directory, else return the `error` outcome "vault could not be determined" (FR-004, FR-004a)
-- [ ] T022 [US1] Implement vault enumeration in `src/vault.rs`: a single `walkdir` pass that records paths only (no body reads), populating `NoteIndexEntry { rel_path, name, is_markdown }` where `name` is the `.md` file stem for notes or the full filename for attachments (research Decision 4; performance constraint)
-- [ ] T023 [US1] Implement name resolution in `src/vault.rs`: match the note-name portion case-insensitively against each note's basename; a path-qualified name matches only the exact vault-relative path with no bare-name fallback; exactly one match → resolved, zero → `unresolved`, two or more → `ambiguous` with the full candidate list and no silent selection (FR-005, FR-005a, FR-005b, FR-010, FR-011)
+- [ ] T022 [US1] Implement vault enumeration in `src/vault.rs`: a single `walkdir` pass that records paths only (no body reads), populating `NoteIndexEntry { rel_path, name, is_markdown }` where `rel_path` is a vault-relative, forward-slash-normalized path and `name` is the `.md` file stem for notes or the full filename for attachments; results MUST NOT depend on filesystem enumeration order (candidates are sorted downstream) (research Decision 4; performance constraint; FR-006, FR-016, SC-003; addresses analysis U1/U2)
+- [ ] T023 [US1] Implement name resolution in `src/vault.rs`: match the note-name portion case-insensitively against each note's basename; a path-qualified name matches only the exact vault-relative path with no bare-name fallback; exactly one match → resolved, zero → `unresolved`, two or more → `ambiguous` with the full candidate list — each a vault-relative, forward-slash path — sorted ascending by vault-relative path using ordinal (byte-wise) comparison and with no silent selection (FR-005, FR-005a, FR-005b, FR-006, FR-010, FR-011, FR-016, SC-003; addresses analysis U1/U2)
 - [ ] T024 [US1] Implement the note line scanner in `src/note.rs`: scan a single note for ATX headings (`#`..`######`) and trailing block ids (`^id`), tracking fenced-code-block state so `#`/`^id`-looking lines inside code fences are ignored (research Decision 2)
 - [ ] T025 [US1] Implement heading/block target-line lookup in `src/note.rs`: for a heading reference select the first matching heading in document order and report the chosen line (FR-002a); for a nested path resolve left-to-right, first parent then first deeper-level child within that parent's section (FR-002b); for a block id select the first matching line (FR-002c); a missing or malformed sub-target yields `sub_target_not_found`
 - [ ] T026 [US1] Implement the core resolve pipeline in `src/resolve.rs`: combine parsed `Link` + `ContextFile` + `Vault` into a `ResolutionTarget`; handle same-file `[[#...]]` references against the context file, non-markdown attachments (`target_line = null`, no emplacement, FR-014), embed echo (FR-013), and alias echo (FR-012); no heading/block → `target_line = null` with beginning-of-file target (FR-006, FR-007)
-- [ ] T027 [US1] Implement compact single-line JSON serialization of `ResolutionTarget` in `src/output.rs` (fixed field order, omit/null inapplicable fields, trailing newline) per contracts/cli.md and contracts/result.schema.json
+- [ ] T027 [US1] Implement compact single-line JSON serialization of `ResolutionTarget` in `src/output.rs` (fixed field order, omit/null inapplicable fields, trailing newline), emitting `target_path` and every `candidates` entry as vault-relative, forward-slash-normalized paths (never absolute) per contracts/cli.md and contracts/result.schema.json (FR-006; addresses analysis U2)
 - [ ] T028 [US1] Implement clap argument parsing in `src/cli.rs`: positional `<LINK>` (required), `--context <FILE>` (required), `--vault <DIR>` (optional, default auto-detect), `--format <json|human>` (default `json`), `-v/--verbose` (repeatable, stderr only), plus `-h/--help` and `-V/--version` (contracts/cli.md Options)
 - [ ] T029 [US1] Implement the CLI entrypoint in `src/main.rs`: parse args, call `lib::resolve`, emit the primary result on stdout and diagnostics on stderr (FR-018), and map the outcome `status` to the process exit code via `src/output.rs` (FR-017)
 
@@ -138,11 +138,12 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Purpose**: Performance gate, documentation, and final validation across all stories
 
-- [ ] T044 [P] Implement the `criterion` warm-run latency benchmark in `benches/resolve.rs` against a ~5,000-note vault, asserting warm-run p50 ≤100 ms as the CI regression/release gate (SC-005)
-- [ ] T045 [P] Write `README.md` usage documentation covering the CLI invocation, exit-code contract, and the three integration surfaces (CLI protocol, JSON schema, C ABI/FFI)
-- [ ] T046 Run the quickstart.md validation scenarios 1–16 end-to-end against the fixture vault and confirm each `status` and exit code match the expected table
-- [ ] T047 [P] Run `cargo fmt --check` and `cargo clippy -- -D warnings` and resolve any findings
-- [ ] T048 Review path handling for read-only operation and no traversal outside the resolved vault root (security hardening; Assumptions: read-only operation)
+- [ ] T044 [P] Generate a synthetic ~5,000-note benchmark vault under `tests/fixtures/bench-vault/` (including an `.obsidian/` directory) via a reproducible helper script/module, providing the representative-vault corpus for the warm-run latency gate (SC-005; addresses analysis G1; consumed by T045 and the release gate in T008)
+- [ ] T045 [P] Implement the `criterion` warm-run latency benchmark in `benches/resolve.rs` against the ~5,000-note benchmark vault from T044, asserting warm-run p50 ≤100 ms as the CI regression/release gate (SC-005)
+- [ ] T046 [P] Write `README.md` usage documentation covering the CLI invocation, exit-code contract, and the three integration surfaces (CLI protocol, JSON schema, C ABI/FFI)
+- [ ] T047 Run the quickstart.md validation scenarios 1–16 end-to-end against the fixture vault and confirm each `status` and exit code match the expected table
+- [ ] T048 [P] Run `cargo fmt --check` and `cargo clippy -- -D warnings` and resolve any findings
+- [ ] T049 Review path handling for read-only operation and no traversal outside the resolved vault root (security hardening; Assumptions: read-only operation)
 
 ---
 
@@ -224,3 +225,6 @@ Task: "Unit tests for vault detection + name resolution in tests/unit/name_resol
 - Each user story is independently completable and testable
 - Verify tests fail before implementing (Constitution Principle III)
 - Commit after each task or logical group
+- Analysis follow-ups applied: candidate ordering + deterministic enumeration (U1) in T022/T023, vault-relative path serialization (U2) in T023/T027, and the ~5,000-note benchmark-vault fixture (G1) as T044.
+- FR-021b (no hard dependency precluding .NET/Node.js integration) is enforced by design and reviewed during T041–T043; the FFI contract test (T038) exercises the C-ABI surface both hosts rely on (analysis G2, satisfied-by).
+- SC-006 (wrapping the CLI in an MCP server/skill) is satisfied by the deterministic machine-mode contract and schema validation in T036/T037 (analysis G3, satisfied-by).

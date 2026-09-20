@@ -64,11 +64,11 @@ The output of resolving a `Link` in a `ContextFile`.
 | Field | Type | Notes |
 |-------|------|-------|
 | `status` | enum `resolved` \| `unresolved` \| `sub_target_not_found` \| `ambiguous` \| `error` | Outcome (FR-010) |
-| `target_path` | string? | Resolved file path; present for `resolved` and `sub_target_not_found` |
+| `target_path` | string? | Resolved file path, expressed as a **vault-relative** path with forward-slash (`/`) separators (never absolute); present for `resolved` and `sub_target_not_found` (FR-006) |
 | `target_line` | int? | 1-based line where target begins; null when link has no heading/block or for attachments (FR-006, FR-007, FR-014, FR-020) |
 | `is_embed` | bool | Echoed from the link (FR-013) |
 | `alias` | string? | Echoed display text, informational (FR-012) |
-| `candidates` | string[]? | Candidate paths for `ambiguous` (FR-011) |
+| `candidates` | string[]? | Candidate vault-relative paths for `ambiguous`, sorted ascending by vault-relative path using ordinal (byte-wise) comparison for byte-for-byte determinism (FR-011, FR-016, SC-003) |
 | `reason` | string? | Actionable reason for any non-`resolved` outcome (FR-019) |
 | `emplacement` | StructuredEmplacement? | Present only when requested and target lands inside a note (FR-008) |
 
@@ -79,7 +79,7 @@ The output of resolving a `Link` in a `ContextFile`.
 - Note (and sub-target, if any) found → `resolved` (exit 0).
 - Bad input / vault undetermined / I/O → `error` (exit 1).
 
-**Determinism**: No timestamps or other non-deterministic fields appear in this record (FR-016, SC-003).
+**Determinism**: No timestamps or other non-deterministic fields appear in this record; `target_path`/`candidates` are vault-relative forward-slash paths and the `candidates` list is ordinally sorted, so identical inputs yield byte-for-byte identical output (FR-006, FR-011, FR-016, SC-003).
 
 ## Entity: StructuredEmplacement
 
