@@ -29,6 +29,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Purpose**: Project initialization, toolchain, and build/release automation
 
+**Documentation Gate (Principle IX)**: Config files (`Cargo.toml`, `cbindgen.toml`, `build.rs`, `rustfmt.toml`) are not Rust symbols; no Rustdoc required. However, `.github/workflows/` YAML files MUST include inline comments explaining each major step. Verify all comments are present before phase completion.
+
 - [x] T001 Create the Rust project directory structure per plan.md: `src/`, `tests/{contract,ffi,integration,unit,fixtures}/`, `benches/`, `include/`, `.devcontainer/`, `.github/workflows/`
 - [x] T002 Create `Cargo.toml` declaring a library target with `crate-type = ["rlib", "cdylib"]` and a `bin` target `obsidian-link-resolver`; dependencies `clap` (v4, derive), `serde` (derive), `serde_json`, `walkdir`; dev-dependencies `assert_cmd`, `predicates`, `criterion`; build-dependency `cbindgen`
 - [x] T003 [P] Create `cbindgen.toml` configuring C header generation from the `extern "C"` surface (C language, `OlrSession`/`OlrStatus`/`olr_*` symbols) per contracts/ffi.md
@@ -46,12 +48,14 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T009 Create `src/lib.rs` with module declarations (`cli`, `ffi`, `link`, `vault`, `note`, `resolve`, `output`) and the public `resolve` entry-point signature (Link string + context path + vault option + emplacement flag → `ResolutionTarget`) reused by CLI, FFI, and tests
-- [ ] T010 [P] Define the `Link` entity in `src/link.rs`: fields `raw: String`, `style: LinkStyle` (enum `Wikilink | Markdown`), `is_embed: bool`, `folder_path: Option<String>`, `note_name: Option<String>`, `heading_path: Vec<String>`, `block_id: Option<String>`, `alias: Option<String>` (data-model.md Entity: Link)
-- [ ] T011 [P] Define the `Vault`, `NoteIndexEntry`, and `ContextFile` entities in `src/vault.rs`: `Vault { root: String, source: VaultSource(explicit|detected), entries: Vec<NoteIndexEntry> }`, `NoteIndexEntry { rel_path: String, name: String, is_markdown: bool }`, `ContextFile { path: String }` (data-model.md Entities: Vault, NoteIndexEntry, ContextFile)
-- [ ] T012 [P] Define the `ResolutionTarget` result struct and `Status` enum in `src/output.rs` with serde attributes matching contracts/result.schema.json: `status` enum exactly `resolved | unresolved | sub_target_not_found | ambiguous | error` (five mutually exclusive outcomes, FR-010); optional fields `target_path: Option<String>`, `target_line: Option<u32>` (1-based, minimum 1), `is_embed: bool`, `alias: Option<String>`, `candidates: Option<Vec<String>>`, `reason: Option<String>`; fixed field order, inapplicable fields omitted/null
-- [ ] T013 Implement the exit-code mapping in `src/output.rs`: `resolved→0`, `error→1`, `unresolved→2`, `sub_target_not_found→3`, `ambiguous→4` (contracts/cli.md exit-status contract, FR-017)
-- [ ] T014 [P] Create the fixture vault under `tests/fixtures/vault/` with a `.obsidian/` directory and notes + one attachment covering every documented link form: plain, aliased, heading, nested heading (`Design#API#Auth`), block id (`^abc123`), same-file, embed, markdown-style, path-qualified (`folder/sub/Note`), duplicate headings, and `assets/diagram.png` (quickstart.md Fixture vault; SC-001, SC-004)
+- [x] T009 Create `src/lib.rs` with module declarations (`cli`, `ffi`, `link`, `vault`, `note`, `resolve`, `output`) and the public `resolve` entry-point signature (Link string + context path + vault option + emplacement flag → `ResolutionTarget`) reused by CLI, FFI, and tests
+- [x] T010 [P] Define the `Link` entity in `src/link.rs`: fields `raw: String`, `style: LinkStyle` (enum `Wikilink | Markdown`), `is_embed: bool`, `folder_path: Option<String>`, `note_name: Option<String>`, `heading_path: Vec<String>`, `block_id: Option<String>`, `alias: Option<String>` (data-model.md Entity: Link)
+- [x] T011 [P] Define the `Vault`, `NoteIndexEntry`, and `ContextFile` entities in `src/vault.rs`: `Vault { root: String, source: VaultSource(explicit|detected), entries: Vec<NoteIndexEntry> }`, `NoteIndexEntry { rel_path: String, name: String, is_markdown: bool }`, `ContextFile { path: String }` (data-model.md Entities: Vault, NoteIndexEntry, ContextFile)
+- [x] T012 [P] Define the `ResolutionTarget` result struct and `Status` enum in `src/output.rs` with serde attributes matching contracts/result.schema.json: `status` enum exactly `resolved | unresolved | sub_target_not_found | ambiguous | error` (five mutually exclusive outcomes, FR-010); optional fields `target_path: Option<String>`, `target_line: Option<u32>` (1-based, minimum 1), `is_embed: bool`, `alias: Option<String>`, `candidates: Option<Vec<String>>`, `reason: Option<String>`; fixed field order, inapplicable fields omitted/null
+- [x] T013 Implement the exit-code mapping in `src/output.rs`: `resolved→0`, `error→1`, `unresolved→2`, `sub_target_not_found→3`, `ambiguous→4` (contracts/cli.md exit-status contract, FR-017)
+- [x] T014 [P] Create the fixture vault under `tests/fixtures/vault/` with a `.obsidian/` directory and notes + one attachment covering every documented link form: plain, aliased, heading, nested heading (`Design#API#Auth`), block id (`^abc123`), same-file, embed, markdown-style, path-qualified (`folder/sub/Note`), duplicate headings, and `assets/diagram.png` (quickstart.md Fixture vault; SC-001, SC-004)
+
+**Documentation Gate (Principle IX)**: All domain types and entities in `src/lib.rs`, `src/link.rs`, `src/vault.rs`, `src/output.rs` MUST include Rustdoc comments (`///` for types and fields) explaining purpose, constraints, and field semantics. The public `resolve` entry point in `src/lib.rs` MUST include a `///` doc comment with purpose, parameters, return value, and error conditions. Verify with `cargo doc --open` and ensure no missing-docs warnings before phase completion.
 
 **Checkpoint**: Domain types, library skeleton, exit-code contract, and fixture vault are ready — user story implementation can now begin
 
@@ -71,6 +75,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 - [ ] T018 [P] [US1] Unit tests for link parsing (wikilink/markdown styles, embed flag, alias split on `|`, folder prefix, `#` heading path, `^` block id, self-reference, whitespace trimming, and the rule that a link cannot target both a heading and a block id) in `tests/unit/link_parse.rs`; include a case where heading/block reference text differs only by case and still matches (FR-005b)
 - [ ] T019 [P] [US1] Unit tests for vault detection and name resolution (explicit root; `.obsidian` ancestor walk; vault-undetermined error; bare vs path-qualified match; case-insensitive; zero→unresolved, one→resolved, ≥two→ambiguous with candidates) in `tests/unit/name_resolution.rs`
 
+**Documentation Gate (Principle IX)**: All functions and public types in `src/link.rs`, `src/vault.rs`, `src/note.rs`, `src/resolve.rs` MUST include Rustdoc comments (`///` for functions and types) explaining purpose, parameters, return values, and error/edge cases. The key public functions are `vault::detect_root`, `vault::enumerate_vault`, `vault::resolve_name`, `note::scan_note`, `note::find_target_line`, `resolve::resolve_link`. Verify with `cargo doc --open` and `cargo clippy -- -W missing-docs` before advancing to User Story 2.
+
 ### Implementation for User Story 1
 
 - [ ] T020 [US1] Implement Obsidian link parsing in `src/link.rs`: parse wikilink `[[...]]` and markdown `[text](target)` styles, detect embed `![[...]]` / `![](...)`, split alias on `|`, extract optional `folder_path`, `note_name`, `heading_path` (split on `#`, may be nested), `block_id` (`^id`); trim whitespace around each segment; enforce that `heading_path` non-empty and `block_id` are mutually exclusive and that a self-reference (absent `note_name`) carries a heading path or block id (data-model.md parse rules; FR-002, FR-003)
@@ -86,6 +92,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Checkpoint**: User Story 1 is fully functional — the CLI resolves any documented link form to a file+line target with correct outcomes and exit codes (MVP).
 
+**Documentation Gate (Principle IX)**: All symbols created in US1 (link parsing, vault detection, name resolution, note scanning, target lookup, core resolve pipeline, CLI argument parsing, main entrypoint) MUST have Rustdoc comments. Verify with `cargo doc --all` and ensure no missing-docs warnings before advancing to US2.
+
 ---
 
 ## Phase 4: User Story 2 - Return the structured emplacement of the target (Priority: P2)
@@ -99,6 +107,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 - [ ] T030 [P] [US2] Integration test for emplacement scenarios 8 (nested `Design#API#Auth` stack) and 9 (no-heading note → empty stack + whole-file section) in `tests/integration/us2_emplacement.rs` (US2 AS1, AS2)
 - [ ] T031 [P] [US2] Unit tests for section-range computation: a heading's `end` is the line immediately before the next heading of equal or higher level, or EOF if none follows (FR-009); a no-heading note yields the whole-file range (US2 AS2, AS3) in `tests/unit/emplacement.rs`
 
+**Documentation Gate (Principle IX)**: All new types and functions added in US2 (`StructuredEmplacement`, `HeadingRef`, `LineRange`, heading-stack and section-range computation functions) MUST include Rustdoc comments explaining structure, field semantics, and computation logic. Verify with `cargo doc --all` before advancing to US3.
+
 ### Implementation for User Story 2
 
 - [ ] T032 [P] [US2] Define `StructuredEmplacement`, `HeadingRef`, and `LineRange` types with serde in `src/output.rs`: `HeadingRef { text: String, level: u8 (1–6), begin: u32, end: u32 }`, `LineRange { begin: u32, end: u32 }` (all 1-based), `StructuredEmplacement { heading_stack: Vec<HeadingRef>, section: LineRange }`; add optional `emplacement: Option<StructuredEmplacement>` to `ResolutionTarget` per contracts/result.schema.json
@@ -107,6 +117,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 - [ ] T035 [US2] Add the `--emplacement` flag in `src/cli.rs`, thread it through `lib::resolve`, and include the emplacement object in the JSON output in `src/output.rs` (contracts/cli.md; FR-008)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — targets can be resolved with or without structured emplacement.
+
+**Documentation Gate (Principle IX)**: All emplacement-related symbols MUST have Rustdoc comments. Verify with `cargo doc --all` and ensure no missing-docs warnings before advancing to US3.
 
 ---
 
@@ -122,6 +134,8 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 - [ ] T037 [P] [US3] Contract test asserting `ambiguous` lists `candidates` and exits 4, and that emitted stdout validates against `contracts/result.schema.json`, in `tests/contract/machine_output.rs` (US3 AS1, AS2; FR-011, FR-015)
 - [ ] T038 [P] [US3] FFI contract test in `tests/ffi/session.rs`: load the `cdylib`, call `olr_session_open` once, run many consecutive `olr_resolve` calls reusing the loaded vault index, free each string via `olr_string_free`, close via `olr_session_close`, and assert each returned JSON is byte-for-byte identical to the CLI `--format json` output and `out_status` mirrors the exit code (SC-007, FR-021a)
 
+**Documentation Gate (Principle IX)**: All FFI symbols and related types in `src/ffi.rs` (opaque `OlrSession`, all `extern "C"` functions, `ResolverSession`) MUST have Rustdoc comments explaining purpose, C-ABI semantics, memory ownership (caller/callee), UTF-8 assumptions, and error handling. The generated `include/obsidian_link_resolver.h` MUST be reviewed to ensure C function signatures and docstrings are clear. Verify with `cargo doc --all` before advancing to Polish.
+
 ### Implementation for User Story 3
 
 - [ ] T039 [US3] Harden deterministic serialization in `src/output.rs`: guarantee fixed struct field order and exclude timestamps or any other non-deterministic values from the primary record so identical inputs produce identical output (FR-016, SC-003)
@@ -132,17 +146,23 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Checkpoint**: All three user stories are independently functional — resolution, structured emplacement, deterministic machine/human output, and the in-process FFI embedding surface.
 
+**Documentation Gate (Principle IX)**: All FFI and output-related symbols MUST have Rustdoc comments. Verify with `cargo doc --all` and ensure no missing-docs warnings before Polish phase.
+
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 **Purpose**: Performance gate, documentation, and final validation across all stories
 
+**Documentation Gate (Principle IX)**: Final verification phase. Run `cargo doc --all` and fix any remaining missing-docs warnings. Run `cargo clippy -- -W missing-docs` and resolve all findings. Generate and review the full API documentation to ensure all public symbols have clear, complete Rustdoc comments with purpose, constraints, parameters, return values, and examples where helpful. This is a BLOCKING gate before release.
+
 - [ ] T044 [P] Generate a synthetic ~5,000-note benchmark vault under `tests/fixtures/bench-vault/` (including an `.obsidian/` directory) via a reproducible helper script/module, providing the representative-vault corpus for the warm-run latency gate (SC-005; addresses analysis G1; consumed by T045 and the release gate in T008)
 - [ ] T045 [P] Implement the `criterion` warm-run latency benchmark in `benches/resolve.rs` against the ~5,000-note benchmark vault from T044, asserting warm-run p50 ≤100 ms as the CI regression/release gate (SC-005)
 - [ ] T046 [P] Write `README.md` usage documentation covering the CLI invocation, exit-code contract, and the three integration surfaces (CLI protocol, JSON schema, C ABI/FFI)
+- [ ] T046a [P] Run `cargo doc --all --no-deps` and review the generated HTML documentation; ensure all public types, functions, and modules are documented and rendered correctly
 - [ ] T047 Run the quickstart.md validation scenarios 1–16 end-to-end against the fixture vault and confirm each `status` and exit code match the expected table
 - [ ] T048 [P] Run `cargo fmt --check` and `cargo clippy -- -D warnings` and resolve any findings
+- [ ] T048a [P] Run `cargo clippy -- -W missing-docs` and resolve any missing documentation warnings across all modules
 - [ ] T049 Review path handling for read-only operation and no traversal outside the resolved vault root (security hardening; Assumptions: read-only operation)
 
 ---
