@@ -85,6 +85,9 @@ target/release/obsidian-link-resolver '[[Project Plan]]' \
 
 ```bash
 cargo bench            # criterion warm-run benchmark on a ~5,000-note vault
+# warm run = steady-state samples after one unmeasured priming resolution in the
+# same long-lived process; exclude process startup, vault discovery, and the
+# priming iteration from the reported timing.
 # assert reported warm-run median ≤ 100 ms; CI fails on regression.
 # This p50 is a blocking release gate: a vX.Y.Z release fails if warm-run p50 > 100 ms.
 ```

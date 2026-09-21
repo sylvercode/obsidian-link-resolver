@@ -48,6 +48,8 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
 
 - **Decision**: `cargo test` for unit/integration; `assert_cmd` + `predicates` for CLI contract tests; `criterion` for a warm-run latency benchmark wired into CI as a regression gate; a fixture vault under `tests/fixtures/` covering every documented link form.
 - **Rationale**: Satisfies constitution Principles III & IV (test-first, integration, performance regression) and SC-001/SC-004/SC-005/SC-006. The `criterion` warm-run p50 is also the blocking release gate (Decision 9): a p50 above ≤100 ms fails the `vX.Y.Z` pipeline (SC-005).
+
+- **Warm-run definition**: The benchmark measures steady-state repeated resolutions in one long-lived process after one unmeasured priming resolution. The priming call may populate vault/index and filesystem caches; its time, process startup, vault discovery, and any first-call initialization are excluded from the reported timing.
 - **Alternatives considered**: Manual timing scripts — rejected; `criterion` gives statistically sound, CI-trackable measurements.
 
 ## Decision 8: Cross-technology interoperability surfaces (CLI + JSON schema + C ABI/FFI)
