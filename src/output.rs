@@ -48,8 +48,9 @@ pub struct LineRange {
 /// A reference to a heading and its section range within a note.
 ///
 /// Represents one heading in the structured emplacement hierarchy.
-/// The heading's section spans from its line to the line before the next heading
-/// of equal or higher level, or to EOF if no such heading follows.
+/// The heading's section spans from `begin` through `end`, inclusive, where `end` is the
+/// last line belonging to that heading's section before the next heading of equal or higher
+/// level, or the final line of the file if no such heading follows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeadingRef {
     /// The text content of the heading (without the `#` prefix).
@@ -58,7 +59,7 @@ pub struct HeadingRef {
     pub level: u8,
     /// The 1-based line number where this heading appears in the note.
     pub begin: u32,
-    /// The 1-based line number of the first line after this heading's section.
+    /// The 1-based line number where this heading's section ends, inclusive.
     /// For a heading at EOF, this equals the file's total line count.
     pub end: u32,
 }
