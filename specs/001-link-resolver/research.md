@@ -2,6 +2,14 @@
 
 All Technical Context items were resolved before planning; no `NEEDS CLARIFICATION` markers remain. This document records the decisions, rationale, and alternatives.
 
+## Decision 0: Reference taxonomy — align the model with OR1–OR14
+
+- **Decision**: Use the naming and semantics from [obsidian-reference.md](obsidian-reference.md) as the canonical vocabulary for design and implementation: `note` vs `attachment` (OR1–OR5), `wikilink` vs `markdown` syntax (OR6, OR7, OR8, OR9, OR10, OR11, OR12), and `display text` / `embed` metadata (OR13, OR14).
+- **Rationale**: The latest spec revisions explicitly expanded the requirements to cover OR1–OR14, so the model names and the code structure should reflect the same vocabulary as Obsidian itself instead of a generic internal label set.
+- **Alternatives considered**:
+  - **Keep the older generic model names**: simpler to write but less faithful to the official behavior and the newly clarified requirements. Rejected because the new spec requires explicit coverage of the OR naming and semantics.
+  - **Invent a second vocabulary layer**: maintain both domain terms and OR labels. Rejected as unnecessary complexity.
+
 ## Decision 1: Implementation language — Rust
 
 - **Decision**: Implement the CLI as a native binary in Rust (stable, 2021 edition).

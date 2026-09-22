@@ -98,6 +98,20 @@ A display text can be specied to a link. This impact only rendering and have no 
 - **Wikilink:** This is specified in the _second part_ after a `|`.
 - **Markdown:** This is the _left parth_.
 
-### **OR14** Empeded link
+### **OR14** Embeded link
 
-The link can start with an exclamation mark (`!`) (before the `[[` in wikilink of the `[` in markdown) to indicate that the link is empeded. This only impact rendering.
+The link can start with an exclamation mark (`!`) (before the `[[` in wikilink of the `[` in markdown) to indicate that the link is embeded. This only impact rendering.
+
+## **OR15** Structured blocks annatomy
+
+To help identify the limits of a Structured block here they are
+
+**Quoat and Callout:** lines that beggin with `>`. Attention, they may be resursive (quoat in a quoat). _Callout_ only have the first line with the type in `[!...] Optional custom title`
+
+**Table:** first line starts and ends with `|`; fallowed by another taht starts and ends with `|` filed with those charater `-`, ` `, `|` and `:`; fallowed witn lines that  start and end with `|`.
+
+**List:** start with `-`, `*`, `+`, _Number fallowed with `.` or `)`_. 
+
+**Code:** first and last line with tripple `
+
+**Math:** first and last line with `$$`

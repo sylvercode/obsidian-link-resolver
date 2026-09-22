@@ -27,7 +27,7 @@ cargo build --release
 
 A sample vault lives under `tests/fixtures/vault/` and contains, at minimum, a
 `.obsidian/` directory plus notes and an attachment that cover every documented
-link form (plain, aliased, heading, nested heading, block, same-file, embed,
+link form (plain, display-text, heading, nested heading, block, same-file, embed,
 markdown-style, path-qualified, duplicate headings, and an attachment). It is the
 corpus behind SC-001 and SC-004.
 
@@ -49,7 +49,7 @@ result `status` and exit code (see the exit-status contract in
 | 7 | Ambiguous name (Edge) | `... '[[Dup]]' --context notes/a.md` | `ambiguous` + `candidates` | 4 |
 | 8 | Nested emplacement (US2 AS1) | `... '[[Design#API#Auth]]' --context notes/a.md --emplacement` | `resolved` + heading stack `Design,API,Auth` | 0 |
 | 9 | No-heading emplacement (US2 AS2) | `... '[[Flat]]' --context notes/a.md --emplacement` | `resolved`, empty stack, whole-file section | 0 |
-| 10 | Aliased link (Edge) | `... '[[Project Plan\|Plan]]' --context notes/a.md` | `resolved`, `alias` echoed | 0 |
+| 10 | Display-text link (Edge) | `... '[[Project Plan\|Plan]]' --context notes/a.md` | `resolved`, `display_text` echoed | 0 |
 | 11 | Embed (Edge) | `... '![[Note#Section]]' --context notes/a.md` | `resolved`, `is_embed` true | 0 |
 | 12 | Markdown-style link (US1 / FR-003) | `... '[t](Some%20Note.md#Heading)' --context notes/a.md` | `resolved` | 0 |
 | 13 | Attachment (Edge / FR-014) | `... '![[diagram.png]]' --context notes/a.md` | `resolved`, `target_line` null, no emplacement | 0 |

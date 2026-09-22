@@ -30,7 +30,7 @@ All 21 base functional requirements plus sub-requirements map to at least one ta
 | FR-006 / FR-007 (target path + line) | Yes | T025, T026 | See U2 (path relativity) |
 | FR-008 / FR-009 (emplacement, section end) | Yes | T031, T033, T035 | |
 | FR-010 / FR-011 / FR-017 (5 outcomes, exit codes) | Yes | T012, T013, T029 | |
-| FR-012..FR-014 (alias, embed, attachment) | Yes | T026 | See I1 |
+| FR-012..FR-014 (display text, embed, attachment) | Yes | T026 | See I1 |
 | FR-015 / FR-016 (machine+human, determinism) | Yes | T027, T039, T040, T036 | See U1 |
 | FR-018 / FR-019 / FR-020 (streams, reason, 1-based) | Yes | T016, T029, T012 | |
 | FR-021 / FR-021a (integration surfaces, FFI session) | Yes | T038, T041, T042 | |

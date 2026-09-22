@@ -4,6 +4,16 @@ Derived from the Key Entities in [spec.md](spec.md). These are conceptual domain
 entities that map to Rust types in `src/`; field names shown in `snake_case`
 match the intended JSON output where relevant (see [contracts/result.schema.json](contracts/result.schema.json)).
 
+## Reference terminology map
+
+The implementation follows the Obsidian rule names defined in [obsidian-reference.md](obsidian-reference.md):
+
+- `note` and `attachment` map to OR1–OR5 (supported file kinds and invalid names)
+- `wikilink` and `markdown` map to OR6–OR12 (syntax, targets, headings, blocks, self-links)
+- `display text` and `embed` map to OR13–OR14
+
+This keeps the model vocabulary aligned with the official reference while still using the narrower internal names needed for code and JSON serialization.
+
 ## Entity: Link (parsed Obsidian link)
 
 The reference being resolved, produced by `link.rs` from the raw input string.
@@ -17,7 +27,7 @@ The reference being resolved, produced by `link.rs` from the raw input string.
 | `note_name` | string? | Target note name; absent for self-references `[[#...]]` (FR-002) |
 | `heading_path` | string[] | Ordered heading segments (e.g. `Parent`, `Child`); empty if none (FR-002) |
 | `block_id` | string? | Block id without leading `^`; mutually exclusive with `heading_path` |
-| `alias` | string? | Display text after `\|`; informational only, never affects target (FR-012) |
+| `display_text` | string? | Display text after `\|`; informational only, never affects target (FR-012) |
 
 **Validation / parse rules**:
 - Exactly one of {`heading_path` non-empty, `block_id` present, neither} may hold; a link cannot target both a heading and a block id.
@@ -65,9 +75,10 @@ The output of resolving a `Link` in a `ContextFile`.
 |-------|------|-------|
 | `status` | enum `resolved` \| `unresolved` \| `sub_target_not_found` \| `ambiguous` \| `error` | Outcome (FR-010) |
 | `target_path` | string? | Resolved file path, expressed as a **vault-relative** path with forward-slash (`/`) separators (never absolute); present for `resolved` and `sub_target_not_found` (FR-006) |
-| `target_line` | int? | 1-based line where target begins; null when link has no heading/block or for attachments (FR-006, FR-007, FR-014, FR-020) |
+| `target_line` | int? | Convenience start-line value, 1-based; for block/heading targets it is the `begin` of the target range; null when the link has no heading/block or for attachments (FR-006, FR-007, FR-014, FR-020) |
+| `target_range` | LineRange? | Target interval for heading and block targets. For a single-line target, `begin == end`; for attachments and bare file links, it is null/absent (FR-006, FR-007, FR-014) |
 | `is_embed` | bool | Echoed from the link (FR-013) |
-| `alias` | string? | Echoed display text, informational (FR-012) |
+| `display_text` | string? | Echoed display text, informational (FR-012) |
 | `candidates` | string[]? | Candidate vault-relative paths for `ambiguous`, sorted ascending by vault-relative path using ordinal (byte-wise) comparison for byte-for-byte determinism (FR-011, FR-016, SC-003) |
 | `reason` | string? | Actionable reason for any non-`resolved` outcome (FR-019) |
 | `emplacement` | StructuredEmplacement? | Present only when requested and target lands inside a note (FR-008) |
