@@ -200,7 +200,7 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 - **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories
 - **User Stories (Phase 3, 3.1, 4, 5)**: All depend on Foundational completion
   - US1 (P1) has no dependency on other stories
-  - Phase 3.1 extends US1 to updated OR1-OR15 and `target_range` semantics before US2
+  - Phase 3.1 extends US1 to updated OR1-OR15 and `target_range` semantics before US2 and is a mandatory re-baselining gate for the post-724676f requirement delta
   - US2 (P2) builds on Phase 3.1 structured-block scanning and resolve primitives
   - US3 (P3) builds on US1/US2 output+resolve contracts and FFI reuse
 - **Polish (Phase 6)**: Depends on all targeted user stories being complete
@@ -274,6 +274,6 @@ Task: "Unit tests for vault detection + name resolution in tests/unit/name_resol
 - Verify tests fail before implementing (Constitution Principle III)
 - Commit after each task or logical group
 - Analysis follow-ups applied: candidate ordering + deterministic enumeration (U1) in T022/T023, vault-relative path serialization (U2) in T023/T027, and the ~5,000-note benchmark-vault fixture (G1) as T051.
-- Phase 3.1 (T030–T036) captures post-724676f requirement deltas: OR1-OR15 explicit coverage, supported-target filtering, and `target_range` semantics.
+- Phase 3.1 (T030–T036) captures the post-724676f requirement delta: OR1-OR15 explicit coverage, supported-target filtering, and canonical `target_range` semantics for heading/block/structured-block targets.
 - FR-021b (no hard dependency precluding .NET/Node.js integration) is enforced by design and reviewed during T048–T050; the FFI contract test (T045) exercises the C-ABI surface both hosts rely on (analysis G2, satisfied-by).
 - SC-006 (wrapping the CLI in an MCP server/skill) is satisfied by deterministic machine-mode contract + schema validation in T043/T044 (analysis G3, satisfied-by).
