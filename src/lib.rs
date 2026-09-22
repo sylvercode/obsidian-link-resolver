@@ -49,6 +49,9 @@ pub mod resolve;
 pub mod vault;
 
 use crate::output::ResolutionTarget;
+use crate::link::parse_link;
+use crate::resolve::resolve_link;
+use crate::vault::{detect_root, ContextFile};
 
 /// Resolve an Obsidian link to its target file and location within a vault.
 ///
@@ -85,17 +88,43 @@ pub fn resolve(
     vault: Option<&str>,
     with_emplacement: bool,
 ) -> ResolutionTarget {
-    let _ = (link, context_path, vault, with_emplacement);
-    ResolutionTarget {
-        status: crate::output::Status::Resolved,
-        target_path: Some("Project Plan.md".to_string()),
-        target_line: Some(1),
-        is_embed: false,
-        alias: None,
-        candidates: None,
-        reason: None,
-        emplacement: None,
-    }
+    let parsed = match parse_link(link) {
+        Ok(link) => link,
+        Err(error) => {
+            return ResolutionTarget {
+                status: crate::output::Status::Error,
+                target_path: None,
+                target_line: None,
+                is_embed: false,
+                alias: None,
+                candidates: None,
+                reason: Some(error.to_string()),
+                emplacement: None,
+            };
+        }
+    };
+
+    let vault = match detect_root(context_path, vault) {
+        Ok(vault) => vault,
+        Err(reason) => {
+            return ResolutionTarget {
+                status: crate::output::Status::Error,
+                target_path: None,
+                target_line: None,
+                is_embed: parsed.is_embed,
+                alias: parsed.alias.clone(),
+                candidates: None,
+                reason: Some(reason),
+                emplacement: None,
+            };
+        }
+    };
+
+    let context = ContextFile {
+        path: context_path.to_string(),
+    };
+
+    resolve_link(&parsed, &context, &vault, with_emplacement)
 }
 
 pub fn resolve_placeholder() -> &'static str {

@@ -5,6 +5,10 @@
 //! to identify target files.
 
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Component, Path};
+
+use walkdir::WalkDir;
 
 /// Indicates how the vault root was determined.
 ///
@@ -74,4 +78,165 @@ pub struct Vault {
     pub source: VaultSource,
     /// Complete enumerated index of all markdown notes and attachments in the vault.
     pub entries: Vec<NoteIndexEntry>,
+}
+
+/// Errors that can occur while resolving note names inside a vault.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NameResolutionError {
+    /// No matching note or attachment was found.
+    Unresolved { reason: String },
+    /// More than one candidate matched the requested name.
+    Ambiguous { candidates: Vec<String>, reason: String },
+}
+
+/// Detect the vault root, enumerate its entries, and build a [`Vault`].
+pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Vault, String> {
+    let context_abs = fs::canonicalize(context_path).map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
+    let (root_path, source) = if let Some(explicit_root) = explicit_root.filter(|value| !value.trim().is_empty()) {
+        (
+            fs::canonicalize(explicit_root).map_err(|error| format!("failed to read vault root '{explicit_root}': {error}"))?,
+            VaultSource::Explicit,
+        )
+    } else {
+        let mut current = context_abs.parent().map(Path::to_path_buf).ok_or_else(|| {
+            format!("vault could not be determined from context path '{context_path}'")
+        })?;
+        loop {
+            if current.join(".obsidian").is_dir() {
+                break (current, VaultSource::Detected);
+            }
+            if !current.pop() {
+                return Err(format!("vault could not be determined from context path '{context_path}'"));
+            }
+        }
+    };
+
+    let entries = enumerate_vault(root_path.to_string_lossy().as_ref())?;
+    Ok(Vault {
+        root: root_path.to_string_lossy().into_owned(),
+        source,
+        entries,
+    })
+}
+
+/// Enumerate note and attachment paths in a vault without reading file bodies.
+pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
+    let root_path = Path::new(root);
+    if !root_path.is_dir() {
+        return Err(format!("vault root '{root}' is not a directory"));
+    }
+
+    let mut entries = Vec::new();
+    for entry in WalkDir::new(root_path).into_iter().filter_map(Result::ok) {
+        let path = entry.path();
+        if path == root_path || path.components().any(|component| matches!(component, Component::Normal(part) if part == ".obsidian")) {
+            continue;
+        }
+        if !path.is_file() {
+            continue;
+        }
+
+        let rel_path = path
+            .strip_prefix(root_path)
+            .map_err(|error| format!("failed to relativize path '{}': {error}", path.display()))?;
+        let rel_path = normalize_path(rel_path);
+        let file_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| format!("path is not valid UTF-8: {}", path.display()))?;
+        let is_markdown = path.extension().and_then(|value| value.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+        let name = if is_markdown {
+            path.file_stem()
+                .and_then(|value| value.to_str())
+                .ok_or_else(|| format!("path is not valid UTF-8: {}", path.display()))?
+                .to_string()
+        } else {
+            file_name.to_string()
+        };
+
+        entries.push(NoteIndexEntry {
+            rel_path,
+            name,
+            is_markdown,
+        });
+    }
+
+    Ok(entries)
+}
+
+/// Resolve a note name against the vault index.
+pub fn resolve_name(
+    vault: &Vault,
+    note_name: &str,
+    folder_path: Option<&str>,
+) -> Result<NoteIndexEntry, NameResolutionError> {
+    let note_name = note_name.trim();
+    let path_query = folder_path
+        .map(|folder| folder.trim())
+        .filter(|folder| !folder.is_empty())
+        .map(|folder| format!("{folder}/{note_name}"));
+    let note_name_is_path = folder_path.is_some()
+        || note_name.contains('/')
+        || note_name.to_ascii_lowercase().ends_with(".md");
+
+    let mut matches: Vec<NoteIndexEntry> = vault
+        .entries
+        .iter()
+        .filter(|entry| {
+            if let Some(path_query) = &path_query {
+                path_matches(entry, path_query)
+            } else if note_name_is_path {
+                path_matches(entry, note_name)
+            } else {
+                entry.name.eq_ignore_ascii_case(note_name)
+            }
+        })
+        .cloned()
+        .collect();
+
+    if matches.is_empty() {
+        let reason = if path_query.is_some() {
+            format!("path-qualified note '{note_name}' not found in vault")
+        } else {
+            format!("note '{note_name}' not found in vault")
+        };
+        return Err(NameResolutionError::Unresolved { reason });
+    }
+
+    if matches.len() > 1 {
+        matches.sort_by(|left, right| left.rel_path.cmp(&right.rel_path));
+        let candidates = matches.into_iter().map(|entry| entry.rel_path).collect();
+        return Err(NameResolutionError::Ambiguous {
+            candidates,
+            reason: format!("note '{note_name}' matches multiple notes"),
+        });
+    }
+
+    Ok(matches.remove(0))
+}
+
+fn path_matches(entry: &NoteIndexEntry, path_query: &str) -> bool {
+    if entry.rel_path.eq_ignore_ascii_case(path_query) {
+        return true;
+    }
+
+    if entry.is_markdown {
+        let mut query_with_extension = path_query.to_string();
+        if !query_with_extension.to_ascii_lowercase().ends_with(".md") {
+            query_with_extension.push_str(".md");
+        }
+        entry.rel_path.eq_ignore_ascii_case(&query_with_extension)
+    } else {
+        false
+    }
+}
+
+fn normalize_path(path: &Path) -> String {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(part) => Some(part.to_string_lossy().into_owned()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/")
 }

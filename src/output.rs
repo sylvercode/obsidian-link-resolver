@@ -107,17 +107,14 @@ pub struct ResolutionTarget {
     pub status: Status,
     /// The vault-relative, forward-slash-normalized path to the target file.
     /// Present for `Resolved` and `SubTargetNotFound`; `None` for other outcomes.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_path: Option<String>,
     /// The 1-based line number of the target (for heading, block, or same-file references).
     /// `None` indicates the whole file is the target (no specific line).
     /// Always `None` for non-markdown attachments.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_line: Option<u32>,
     /// `true` if the original link was an embed (e.g., `![[...]]`), affecting display behavior.
     pub is_embed: bool,
     /// The alias text if the original link included one (e.g., `"Custom Text"` from `[[Note|Custom Text]]`).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
     /// For `Ambiguous` outcomes, the sorted list of conflicting vault-relative paths.
     /// Sorted by path using ordinal (byte-wise) comparison for determinism.
@@ -125,12 +122,37 @@ pub struct ResolutionTarget {
     pub candidates: Option<Vec<String>>,
     /// A human-readable reason for non-success outcomes.
     /// Present for `Unresolved`, `SubTargetNotFound`, `Ambiguous`, and `Error`.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// The structured heading stack and section range, if requested and the target is inside a note.
     /// `None` for attachments or when not requested.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub emplacement: Option<StructuredEmplacement>,
+}
+
+impl ResolutionTarget {
+    /// Serialize the result as compact machine-readable JSON.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
+    }
+
+    /// Render a human-readable summary of the result.
+    pub fn to_human_string(&self) -> String {
+        match self.status {
+            Status::Resolved => format!(
+                "resolved: {}{}",
+                self.target_path.as_deref().unwrap_or("<unknown>"),
+                self.target_line
+                    .map(|line| format!(":{line}"))
+                    .unwrap_or_default()
+            ),
+            Status::Unresolved => format!("unresolved: {}", self.reason.as_deref().unwrap_or("target not found")),
+            Status::SubTargetNotFound => format!(
+                "sub_target_not_found: {}",
+                self.reason.as_deref().unwrap_or("sub-target not found")
+            ),
+            Status::Ambiguous => format!("ambiguous: {}", self.reason.as_deref().unwrap_or("multiple matches")),
+            Status::Error => format!("error: {}", self.reason.as_deref().unwrap_or("resolution failed")),
+        }
+    }
 }
 
 impl ResolutionTarget {
