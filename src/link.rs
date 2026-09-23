@@ -6,6 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::vault::is_supported_linkable_name;
+
 /// Error returned when parsing an Obsidian link fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkParseError {
@@ -37,7 +39,7 @@ pub enum LinkStyle {
 /// A parsed Obsidian link in canonical form.
 ///
 /// An instance of `Link` represents a fully parsed Obsidian link, breaking down the raw text
-/// into its semantic components: optional folder path, note name, heading path, block reference, and alias.
+/// into its semantic components: optional folder path, note name, heading path, and block reference.
 /// The structure is independent of the input link style; both wikilinks and markdown-style links
 /// parse into the same `Link` entity.
 ///
@@ -50,8 +52,6 @@ pub enum LinkStyle {
 /// - `note_name`: Optional target note name; `None` means a same-file reference (e.g., `[[#Heading]]`)
 /// - `heading_path`: Ordered list of heading names from the link (e.g., `["Milestones", "Q4"]` from `[[#Milestones#Q4]]`)
 /// - `block_id`: Optional block reference (e.g., `"abc123"` from `[[Note#^abc123]]`)
-/// - `alias`: Optional custom display text (e.g., `"Custom Text"` from `[[Note|Custom Text]]`)
-///
 /// # Constraints
 ///
 /// - A link cannot reference both a heading and a block ID simultaneously (they are mutually exclusive)
@@ -75,8 +75,8 @@ pub struct Link {
     /// Optional block reference ID (e.g., `"abc123"` from `[[Note#^abc123]]`).
     /// Mutually exclusive with `heading_path` being non-empty.
     pub block_id: Option<String>,
-    /// Optional alias or custom display text (e.g., `"Custom Text"` from `[[Note|Custom Text]]`).
-    pub alias: Option<String>,
+    /// Optional display text read from a wikilink display text or markdown label.
+    pub display_text: Option<String>,
 }
 
 impl Link {
@@ -106,7 +106,7 @@ impl Link {
             note_name: None,
             heading_path: Vec::new(),
             block_id: None,
-            alias: None,
+            display_text: None,
         }
     }
 }
@@ -120,21 +120,33 @@ pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
         });
     }
 
-    if let Some(inner) = trimmed.strip_prefix("![[").and_then(|value| value.strip_suffix("]]")) {
+    if let Some(inner) = trimmed
+        .strip_prefix("![[")
+        .and_then(|value| value.strip_suffix("]]"))
+    {
         return parse_wikilink(raw, inner, true);
     }
 
-    if let Some(inner) = trimmed.strip_prefix("[[").and_then(|value| value.strip_suffix("]]")) {
+    if let Some(inner) = trimmed
+        .strip_prefix("[[")
+        .and_then(|value| value.strip_suffix("]]"))
+    {
         return parse_wikilink(raw, inner, false);
     }
 
     if let Some((prefix, is_embed)) = trimmed.strip_prefix("!").map(|value| (value, true)) {
-        if let Some(inner) = prefix.strip_prefix('[').and_then(|value| value.strip_suffix(')')) {
+        if let Some(inner) = prefix
+            .strip_prefix('[')
+            .and_then(|value| value.strip_suffix(')'))
+        {
             return parse_markdown(raw, inner, is_embed);
         }
     }
 
-    if let Some(inner) = trimmed.strip_prefix('[').and_then(|value| value.strip_suffix(')')) {
+    if let Some(inner) = trimmed
+        .strip_prefix('[')
+        .and_then(|value| value.strip_suffix(')'))
+    {
         return parse_markdown(raw, inner, false);
     }
 
@@ -146,7 +158,11 @@ pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
 fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let mut parts = inner.splitn(2, '|');
     let target = parts.next().unwrap_or_default().trim();
-    let alias = parts.next().map(str::trim).filter(|value| !value.is_empty()).map(str::to_string);
+    let display_text = parts
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
     let (folder_path, note_name, heading_path, block_id) = parse_target(target)?;
 
     Ok(Link {
@@ -157,7 +173,7 @@ fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
         note_name,
         heading_path,
         block_id,
-        alias,
+        display_text,
     })
 }
 
@@ -170,6 +186,7 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     let decoded = percent_decode(target.trim());
     let (folder_path, note_name, heading_path, block_id) = parse_target(&decoded)?;
 
+    let display_text = (!display.is_empty()).then(|| display.to_string());
     Ok(Link {
         raw: raw.to_string(),
         style: LinkStyle::Markdown,
@@ -178,11 +195,13 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
         note_name,
         heading_path,
         block_id,
-        alias: (!display.is_empty()).then(|| display.to_string()),
+        display_text,
     })
 }
 
-fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<String>, Option<String>), LinkParseError> {
+fn parse_target(
+    target: &str,
+) -> Result<(Option<String>, Option<String>, Vec<String>, Option<String>), LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
         return Err(LinkParseError {
@@ -198,7 +217,8 @@ fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<Str
         (Some(target), None)
     };
 
-    let (folder_path, note_name) = match note_part.map(str::trim).filter(|value| !value.is_empty()) {
+    let (folder_path, note_name) = match note_part.map(str::trim).filter(|value| !value.is_empty())
+    {
         Some(note_part) => {
             if let Some((folder, note)) = note_part.rsplit_once('/') {
                 let folder = folder.trim();
@@ -208,11 +228,21 @@ fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<Str
                         message: format!("missing note name in link target: {target}"),
                     });
                 }
+                if !is_supported_linkable_name(note) {
+                    return Err(LinkParseError {
+                        message: format!("invalid note name in link target: {target}"),
+                    });
+                }
                 (
                     (!folder.is_empty()).then(|| folder.to_string()),
                     Some(note.to_string()),
                 )
             } else {
+                if !is_supported_linkable_name(note_part) {
+                    return Err(LinkParseError {
+                        message: format!("invalid note name in link target: {target}"),
+                    });
+                }
                 (None, Some(note_part.to_string()))
             }
         }
@@ -222,7 +252,10 @@ fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<Str
     let mut heading_path = Vec::new();
     let mut block_id = None;
 
-    if let Some(subtarget) = subtarget_part.map(str::trim).filter(|value| !value.is_empty()) {
+    if let Some(subtarget) = subtarget_part
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         let segments: Vec<&str> = subtarget.split('#').collect();
         for (index, segment) in segments.iter().enumerate() {
             let segment = segment.trim();
@@ -234,7 +267,9 @@ fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<Str
             if let Some(block) = segment.strip_prefix('^') {
                 if index != segments.len() - 1 || !heading_path.is_empty() {
                     return Err(LinkParseError {
-                        message: format!("a link cannot target both a heading and a block id: {target}"),
+                        message: format!(
+                            "a link cannot target both a heading and a block id: {target}"
+                        ),
                     });
                 }
                 if block.trim().is_empty() {
@@ -246,7 +281,9 @@ fn parse_target(target: &str) -> Result<(Option<String>, Option<String>, Vec<Str
             } else {
                 if block_id.is_some() {
                     return Err(LinkParseError {
-                        message: format!("a link cannot target both a heading and a block id: {target}"),
+                        message: format!(
+                            "a link cannot target both a heading and a block id: {target}"
+                        ),
                     });
                 }
                 heading_path.push(segment.to_string());

@@ -12,7 +12,7 @@ fn foundational_types_match_phase2_contracts() {
         note_name: Some("Project Plan".to_string()),
         heading_path: vec!["Milestones".to_string()],
         block_id: None,
-        alias: None,
+        display_text: None,
     };
 
     assert_eq!(link.note_name.as_deref(), Some("Project Plan"));
@@ -38,8 +38,9 @@ fn foundational_types_match_phase2_contracts() {
         status: Status::Resolved,
         target_path: Some("Project Plan.md".to_string()),
         target_line: Some(12),
+        target_range: None,
         is_embed: false,
-        alias: None,
+        display_text: None,
         candidates: None,
         reason: None,
         emplacement: None,

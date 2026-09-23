@@ -43,6 +43,26 @@ fn resolves_primary_link_forms_to_single_line_json() {
             target_line.map(Value::from).unwrap_or(Value::Null)
         );
         assert_eq!(json["is_embed"], false);
-        assert_eq!(json["alias"], Value::Null);
+        assert_eq!(json["display_text"], Value::Null);
     }
+}
+
+#[test]
+fn returns_target_range_for_heading_and_block_targets() {
+    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let context = format!("{}/notes/a.md", fixture_root);
+
+    let (output, json) = run_resolver("[[Project Plan#Milestones]]", &context, &[]);
+    assert!(output.status.success());
+    assert_eq!(json["status"], "resolved");
+    assert_eq!(json["target_line"], 5);
+    assert_eq!(json["target_range"]["begin"], 5);
+    assert_eq!(json["target_range"]["end"], 11);
+
+    let (output, json) = run_resolver("[[Project Plan#^abc123]]", &context, &[]);
+    assert!(output.status.success());
+    assert_eq!(json["status"], "resolved");
+    assert_eq!(json["target_line"], 9);
+    assert_eq!(json["target_range"]["begin"], 9);
+    assert_eq!(json["target_range"]["end"], 9);
 }

@@ -70,7 +70,7 @@ use crate::vault::{detect_root, ContextFile};
 /// - `target_path`: Vault-relative, forward-slash-normalized path (present if resolved or unresolved with fallback path)
 /// - `target_line`: 1-based line number of the target (present for headings, blocks, and same-file references; `None` for whole-file targets)
 /// - `is_embed`: `true` if the original link was an embed (`![[...]]`)
-/// - `alias`: If the link contained an alias (e.g., `[[Note|Custom Text]]`), the alias text
+/// - `display_text`: If the link contained display text (e.g., `[[Note|Custom Text]]`), the label text
 /// - `candidates`: If status is `ambiguous`, a sorted list of conflicting vault-relative paths
 /// - `reason`: Human-readable error or disambiguation reason
 /// - `emplacement`: If requested and the target is inside a note, the ordered heading stack and section ranges
@@ -95,8 +95,9 @@ pub fn resolve(
                 status: crate::output::Status::Error,
                 target_path: None,
                 target_line: None,
+                target_range: None,
                 is_embed: false,
-                alias: None,
+                display_text: None,
                 candidates: None,
                 reason: Some(error.to_string()),
                 emplacement: None,
@@ -111,8 +112,9 @@ pub fn resolve(
                 status: crate::output::Status::Error,
                 target_path: None,
                 target_line: None,
+                target_range: None,
                 is_embed: parsed.is_embed,
-                alias: parsed.alias.clone(),
+                display_text: parsed.display_text.clone(),
                 candidates: None,
                 reason: Some(reason),
                 emplacement: None,

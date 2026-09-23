@@ -112,10 +112,14 @@ pub struct ResolutionTarget {
     /// `None` indicates the whole file is the target (no specific line).
     /// Always `None` for non-markdown attachments.
     pub target_line: Option<u32>,
+    /// The canonical target interval for heading/block/structured-block targets.
+    /// `None` for plain-file or attachment targets.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_range: Option<LineRange>,
     /// `true` if the original link was an embed (e.g., `![[...]]`), affecting display behavior.
     pub is_embed: bool,
-    /// The alias text if the original link included one (e.g., `"Custom Text"` from `[[Note|Custom Text]]`).
-    pub alias: Option<String>,
+    /// Text shown in the original markdown or wikilink label; informational only.
+    pub display_text: Option<String>,
     /// For `Ambiguous` outcomes, the sorted list of conflicting vault-relative paths.
     /// Sorted by path using ordinal (byte-wise) comparison for determinism.
     #[serde(skip_serializing_if = "Option::is_none")]

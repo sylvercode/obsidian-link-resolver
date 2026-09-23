@@ -53,7 +53,7 @@ fn resolves_documented_fixture_scenarios() {
 
     let aliased = resolve_case("[[Project Plan|Plan]]", "notes/a.md", None);
     assert_eq!(aliased.status, Status::Resolved);
-    assert_eq!(aliased.alias.as_deref(), Some("Plan"));
+    assert_eq!(aliased.display_text.as_deref(), Some("Plan"));
 
     let embedded = resolve_case("![[Project Plan#Milestones]]", "notes/a.md", None);
     assert_eq!(embedded.status, Status::Resolved);

@@ -4,7 +4,7 @@
 //! handling same-file references, heading/block lookups, and emplacement computation.
 
 use crate::link::Link;
-use crate::note::{find_target_line, TargetLookupError};
+use crate::note::{find_target_range, TargetLookupError};
 use crate::output::{ResolutionTarget, Status};
 use crate::vault::{resolve_name, ContextFile, NameResolutionError, Vault};
 use std::fs;
@@ -45,7 +45,6 @@ use std::path::Path;
 ///
 /// - **Same-file reference** (e.g., `[[#Heading]]`): Target is resolved against the context file itself
 /// - **Embed** (e.g., `![[Note]]`): The `is_embed` field is set to `true` in the result
-/// - **Alias** (e.g., `[[Note|Custom Text]]`): The `alias` field echoes the custom text
 /// - **Attachment** (non-markdown): `target_line` is `None` and `emplacement` is omitted
 /// - **Whole-file target** (no heading/block): `target_line` is `None` with the file as the target
 pub fn resolve_link(
@@ -59,15 +58,16 @@ pub fn resolve_link(
         match resolve_name(vault, note_name, link.folder_path.as_deref()) {
             Ok(entry) => entry,
             Err(NameResolutionError::Unresolved { reason }) => {
-                return error_like(Status::Unresolved, None, None, link, reason);
+                return error_like(Status::Unresolved, None, None, None, link, reason);
             }
             Err(NameResolutionError::Ambiguous { candidates, reason }) => {
                 return ResolutionTarget {
                     status: Status::Ambiguous,
                     target_path: None,
                     target_line: None,
+                    target_range: None,
                     is_embed: link.is_embed,
-                    alias: link.alias.clone(),
+                    display_text: link.display_text.clone(),
                     candidates: Some(candidates),
                     reason: Some(reason),
                     emplacement: None,
@@ -96,7 +96,7 @@ pub fn resolve_link(
     let target_path = Some(target_entry.rel_path.clone());
     let is_markdown = target_entry.is_markdown;
 
-    let target_line = if link.heading_path.is_empty() && link.block_id.is_none() {
+    let target_range = if link.heading_path.is_empty() && link.block_id.is_none() {
         None
     } else if is_markdown {
         let absolute_path = vault_path_join(&vault.root, &target_entry.rel_path);
@@ -107,8 +107,9 @@ pub fn resolve_link(
                     status: Status::Error,
                     target_path,
                     target_line: None,
+                    target_range: None,
                     is_embed: link.is_embed,
-                    alias: link.alias.clone(),
+                    display_text: link.display_text.clone(),
                     candidates: None,
                     reason: Some(format!("failed to read note '{}': {error}", absolute_path.display())),
                     emplacement: None,
@@ -116,15 +117,16 @@ pub fn resolve_link(
             }
         };
 
-        match find_target_line(&contents, link) {
-            Ok(line) => line,
+        match find_target_range(&contents, link) {
+            Ok(range) => range,
             Err(TargetLookupError::MissingTarget { reason }) => {
                 return ResolutionTarget {
                     status: Status::SubTargetNotFound,
                     target_path,
                     target_line: None,
+                    target_range: None,
                     is_embed: link.is_embed,
-                    alias: link.alias.clone(),
+                    display_text: link.display_text.clone(),
                     candidates: None,
                     reason: Some(reason),
                     emplacement: None,
@@ -135,8 +137,9 @@ pub fn resolve_link(
                     status: Status::Error,
                     target_path,
                     target_line: None,
+                    target_range: None,
                     is_embed: link.is_embed,
-                    alias: link.alias.clone(),
+                    display_text: link.display_text.clone(),
                     candidates: None,
                     reason: Some(reason),
                     emplacement: None,
@@ -146,14 +149,16 @@ pub fn resolve_link(
     } else {
         None
     };
+    let target_line = target_range.as_ref().map(|range| range.begin);
 
     if !is_markdown && (!link.heading_path.is_empty() || link.block_id.is_some()) {
         return ResolutionTarget {
             status: Status::SubTargetNotFound,
             target_path,
             target_line: None,
+            target_range: None,
             is_embed: link.is_embed,
-            alias: link.alias.clone(),
+            display_text: link.display_text.clone(),
             candidates: None,
             reason: Some("attachments do not contain headings or block ids".to_string()),
             emplacement: None,
@@ -164,8 +169,9 @@ pub fn resolve_link(
         status: Status::Resolved,
         target_path,
         target_line,
+        target_range,
         is_embed: link.is_embed,
-        alias: link.alias.clone(),
+        display_text: link.display_text.clone(),
         candidates: None,
         reason: None,
         emplacement: None,
@@ -176,6 +182,7 @@ fn error_like(
     status: Status,
     target_path: Option<String>,
     target_line: Option<u32>,
+    target_range: Option<crate::output::LineRange>,
     link: &Link,
     reason: String,
 ) -> ResolutionTarget {
@@ -183,8 +190,9 @@ fn error_like(
         status,
         target_path,
         target_line,
+        target_range,
         is_embed: link.is_embed,
-        alias: link.alias.clone(),
+        display_text: link.display_text.clone(),
         candidates: None,
         reason: Some(reason),
         emplacement: None,

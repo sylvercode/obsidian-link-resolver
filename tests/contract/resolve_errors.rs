@@ -49,3 +49,35 @@ fn reports_error_when_vault_cannot_be_determined() {
     assert_eq!(json["status"], "error");
     assert!(json["reason"].as_str().is_some_and(|reason| !reason.is_empty()));
 }
+
+#[test]
+fn ignores_unsupported_extensions_and_dot_prefixed_paths_when_enumerating_vaults() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    let temp_dir = std::env::temp_dir().join(format!("olr-vault-filter-{unique}"));
+    fs::create_dir_all(temp_dir.join(".obsidian")).expect("vault root should be creatable");
+    fs::create_dir_all(temp_dir.join(".hidden")).expect("dot-prefixed folder should be creatable");
+    fs::create_dir_all(temp_dir.join("nested")).expect("nested folder should be creatable");
+
+    fs::write(temp_dir.join("good.md"), "# Good\n").expect("valid note should be writable");
+    fs::write(temp_dir.join("nested/also-good.md"), "# Also\n").expect("nested valid note should be writable");
+    fs::write(temp_dir.join(".hidden/ignored.md"), "# Hidden\n").expect("dotfile note should be writable");
+    fs::write(temp_dir.join("nested/.nested-note.md"), "# Also hidden\n").expect("dotfile note should be writable");
+    fs::write(temp_dir.join("nested/bad*name.md"), "# Invalid\n").expect("invalid note should be writable");
+    fs::write(temp_dir.join("nested/unsupported.xyz"), "# Invalid ext\n").expect("unsupported extension should be writable");
+
+    let context = temp_dir.join("good.md");
+    let (output, json) = run_resolver("[[ignored]]", context.to_string_lossy().as_ref());
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(json["status"], "unresolved");
+
+    let (output, json) = run_resolver("[[good]]", context.to_string_lossy().as_ref());
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json["status"], "resolved");
+
+    let (output, json) = run_resolver("[[nested/also-good]]", context.to_string_lossy().as_ref());
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(json["status"], "resolved");
+}

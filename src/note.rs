@@ -6,6 +6,7 @@
 //! with proper handling of code fences so `#`-like syntax inside code blocks is ignored.
 
 use crate::link::Link;
+use crate::output::LineRange;
 
 /// A block reference extracted from a markdown note.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,6 +175,11 @@ pub fn scan_note(contents: &str) -> NoteScan {
 
 /// Find the target line for a parsed link within the supplied note contents.
 pub fn find_target_line(contents: &str, link: &Link) -> Result<Option<u32>, TargetLookupError> {
+    find_target_range(contents, link).map(|range| range.map(|value| value.begin))
+}
+
+/// Find the canonical target range for a parsed link within the supplied note contents.
+pub fn find_target_range(contents: &str, link: &Link) -> Result<Option<LineRange>, TargetLookupError> {
     if link.heading_path.is_empty() && link.block_id.is_none() {
         return Ok(None);
     }
@@ -184,7 +190,7 @@ pub fn find_target_line(contents: &str, link: &Link) -> Result<Option<u32>, Targ
             .block_ids
             .into_iter()
             .find(|block| block.id.eq_ignore_ascii_case(block_id.trim()))
-            .map(|block| Some(block.line))
+            .map(|block| Some(LineRange { begin: block.line, end: block.line }))
             .ok_or_else(|| TargetLookupError::MissingTarget {
                 reason: format!("block id '^{}' not found", block_id.trim()),
             });
@@ -222,7 +228,10 @@ pub fn find_target_line(contents: &str, link: &Link) -> Result<Option<u32>, Targ
     }
 
     current_index
-        .map(|index| Some(scan.headings[index].line))
+        .map(|index| Some(LineRange {
+            begin: scan.headings[index].line,
+            end: heading_sections[index].end,
+        }))
         .ok_or_else(|| TargetLookupError::MalformedReference {
             reason: "link did not contain a heading or block target".to_string(),
         })

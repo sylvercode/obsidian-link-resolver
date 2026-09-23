@@ -39,8 +39,29 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     let resolved = resolve_name(&vault, "project plan", None).expect("bare name should resolve");
     assert_eq!(resolved.rel_path, "Project Plan.md");
 
-    let path_qualified = resolve_name(&vault, "folder/sub/Note", None).expect("path-qualified name should resolve");
+    let path_qualified = resolve_name(&vault, "Note", Some("folder/sub")).expect("path-qualified name should resolve");
     assert_eq!(path_qualified.rel_path, "folder/sub/Note.md");
+}
+
+#[test]
+fn rejects_note_names_with_path_separators() {
+    let vault = Vault {
+        root: "/tmp/vault".to_string(),
+        source: VaultSource::Detected,
+        entries: vec![NoteIndexEntry {
+            rel_path: "folder/Note.md".to_string(),
+            name: "Note".to_string(),
+            is_markdown: true,
+        }],
+    };
+
+    let error = resolve_name(&vault, "folder/Note", None).expect_err("slash-bearing note names should be rejected");
+    match error {
+        NameResolutionError::Unresolved { reason } => {
+            assert!(reason.contains("not a supported linkable name"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]

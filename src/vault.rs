@@ -86,15 +86,22 @@ pub enum NameResolutionError {
     /// No matching note or attachment was found.
     Unresolved { reason: String },
     /// More than one candidate matched the requested name.
-    Ambiguous { candidates: Vec<String>, reason: String },
+    Ambiguous {
+        candidates: Vec<String>,
+        reason: String,
+    },
 }
 
 /// Detect the vault root, enumerate its entries, and build a [`Vault`].
 pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Vault, String> {
-    let context_abs = fs::canonicalize(context_path).map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
-    let (root_path, source) = if let Some(explicit_root) = explicit_root.filter(|value| !value.trim().is_empty()) {
+    let context_abs = fs::canonicalize(context_path)
+        .map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
+    let (root_path, source) = if let Some(explicit_root) =
+        explicit_root.filter(|value| !value.trim().is_empty())
+    {
         (
-            fs::canonicalize(explicit_root).map_err(|error| format!("failed to read vault root '{explicit_root}': {error}"))?,
+            fs::canonicalize(explicit_root)
+                .map_err(|error| format!("failed to read vault root '{explicit_root}': {error}"))?,
             VaultSource::Explicit,
         )
     } else {
@@ -106,7 +113,9 @@ pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Va
                 break (current, VaultSource::Detected);
             }
             if !current.pop() {
-                return Err(format!("vault could not be determined from context path '{context_path}'"));
+                return Err(format!(
+                    "vault could not be determined from context path '{context_path}'"
+                ));
             }
         }
     };
@@ -127,12 +136,20 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    for entry in WalkDir::new(root_path).into_iter().filter_map(Result::ok) {
+    let walker = WalkDir::new(root_path)
+        .into_iter()
+        .filter_entry(|entry| !is_hidden_dir(entry));
+    for entry in walker.filter_map(Result::ok) {
         let path = entry.path();
-        if path == root_path || path.components().any(|component| matches!(component, Component::Normal(part) if part == ".obsidian")) {
+        if path == root_path || !path.is_file() {
             continue;
         }
-        if !path.is_file() {
+
+        let file_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| format!("path is not valid UTF-8: {}", path.display()))?;
+        if !is_supported_linkable_name(file_name) {
             continue;
         }
 
@@ -140,11 +157,10 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
             .strip_prefix(root_path)
             .map_err(|error| format!("failed to relativize path '{}': {error}", path.display()))?;
         let rel_path = normalize_path(rel_path);
-        let file_name = path
-            .file_name()
+        let is_markdown = path
+            .extension()
             .and_then(|value| value.to_str())
-            .ok_or_else(|| format!("path is not valid UTF-8: {}", path.display()))?;
-        let is_markdown = path.extension().and_then(|value| value.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
         let name = if is_markdown {
             path.file_stem()
                 .and_then(|value| value.to_str())
@@ -171,13 +187,15 @@ pub fn resolve_name(
     folder_path: Option<&str>,
 ) -> Result<NoteIndexEntry, NameResolutionError> {
     let note_name = note_name.trim();
+    if !is_supported_linkable_name(note_name) {
+        return Err(NameResolutionError::Unresolved {
+            reason: format!("note '{note_name}' is not a supported linkable name"),
+        });
+    }
     let path_query = folder_path
         .map(|folder| folder.trim())
         .filter(|folder| !folder.is_empty())
         .map(|folder| format!("{folder}/{note_name}"));
-    let note_name_is_path = folder_path.is_some()
-        || note_name.contains('/')
-        || note_name.to_ascii_lowercase().ends_with(".md");
 
     let mut matches: Vec<NoteIndexEntry> = vault
         .entries
@@ -185,8 +203,10 @@ pub fn resolve_name(
         .filter(|entry| {
             if let Some(path_query) = &path_query {
                 path_matches(entry, path_query)
-            } else if note_name_is_path {
-                path_matches(entry, note_name)
+            } else if note_name.to_ascii_lowercase().ends_with(".md") {
+                entry
+                    .name
+                    .eq_ignore_ascii_case(note_name.trim_end_matches(".md"))
             } else {
                 entry.name.eq_ignore_ascii_case(note_name)
             }
@@ -239,4 +259,37 @@ fn normalize_path(path: &Path) -> String {
         })
         .collect::<Vec<_>>()
         .join("/")
+}
+
+fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|name| name.starts_with('.'))
+        .unwrap_or(false)
+}
+
+pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
+    if file_name.is_empty() || file_name.starts_with('.') {
+        return false;
+    }
+    if file_name.contains("..") {
+        return false;
+    }
+    const INVALID: &[char] = &[
+        '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
+    ];
+    if file_name.chars().any(|ch| INVALID.contains(&ch)) || file_name.contains("%%") {
+        return false;
+    }
+    let ext = Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let supported = [
+        "md", "base", "canvas", "avif", "bmp", "gif", "jpeg", "jpg", "png", "svg", "webp", "flac",
+        "m4a", "mp3", "ogg", "wav", "webm", "3gp", "mkv", "mov", "mp4", "ogv", "pdf",
+    ];
+    ext.is_empty() || supported.contains(&ext.as_str())
 }
