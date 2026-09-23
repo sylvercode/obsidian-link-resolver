@@ -35,7 +35,7 @@ use std::path::Path;
 /// # Returns
 ///
 /// A [`ResolutionTarget`] with one of five mutually exclusive outcome statuses:
-/// - `Resolved`: The link was successfully resolved; `target_path` and (optionally) `target_line` are set
+/// - `Resolved`: The link was successfully resolved; `target_path` and (optionally) `target_range` are set
 /// - `Unresolved`: The target note does not exist
 /// - `SubTargetNotFound`: The note exists but the referenced heading or block does not
 /// - `Ambiguous`: Multiple notes match the same name; `candidates` lists them sorted by path
@@ -45,8 +45,8 @@ use std::path::Path;
 ///
 /// - **Same-file reference** (e.g., `[[#Heading]]`): Target is resolved against the context file itself
 /// - **Embed** (e.g., `![[Note]]`): The `is_embed` field is set to `true` in the result
-/// - **Attachment** (non-markdown): `target_line` is `None` and `emplacement` is omitted
-/// - **Whole-file target** (no heading/block): `target_line` is `None` with the file as the target
+/// - **Attachment** (non-markdown): `target_range` is `None` and `emplacement` is omitted
+/// - **Whole-file target** (no heading/block): `target_range` is `None` with the file as the target
 pub fn resolve_link(
     link: &Link,
     context: &ContextFile,
@@ -58,13 +58,12 @@ pub fn resolve_link(
         match resolve_name(vault, note_name, link.folder_path.as_deref()) {
             Ok(entry) => entry,
             Err(NameResolutionError::Unresolved { reason }) => {
-                return error_like(Status::Unresolved, None, None, None, link, reason);
+                return error_like(Status::Unresolved, None, None, link, reason);
             }
             Err(NameResolutionError::Ambiguous { candidates, reason }) => {
                 return ResolutionTarget {
                     status: Status::Ambiguous,
                     target_path: None,
-                    target_line: None,
                     target_range: None,
                     is_embed: link.is_embed,
                     display_text: link.display_text.clone(),
@@ -106,7 +105,6 @@ pub fn resolve_link(
                 return ResolutionTarget {
                     status: Status::Error,
                     target_path,
-                    target_line: None,
                     target_range: None,
                     is_embed: link.is_embed,
                     display_text: link.display_text.clone(),
@@ -123,7 +121,6 @@ pub fn resolve_link(
                 return ResolutionTarget {
                     status: Status::SubTargetNotFound,
                     target_path,
-                    target_line: None,
                     target_range: None,
                     is_embed: link.is_embed,
                     display_text: link.display_text.clone(),
@@ -136,7 +133,6 @@ pub fn resolve_link(
                 return ResolutionTarget {
                     status: Status::Error,
                     target_path,
-                    target_line: None,
                     target_range: None,
                     is_embed: link.is_embed,
                     display_text: link.display_text.clone(),
@@ -149,13 +145,10 @@ pub fn resolve_link(
     } else {
         None
     };
-    let target_line = target_range.as_ref().map(|range| range.begin);
-
     if !is_markdown && (!link.heading_path.is_empty() || link.block_id.is_some()) {
         return ResolutionTarget {
             status: Status::SubTargetNotFound,
             target_path,
-            target_line: None,
             target_range: None,
             is_embed: link.is_embed,
             display_text: link.display_text.clone(),
@@ -168,7 +161,6 @@ pub fn resolve_link(
     ResolutionTarget {
         status: Status::Resolved,
         target_path,
-        target_line,
         target_range,
         is_embed: link.is_embed,
         display_text: link.display_text.clone(),
@@ -181,7 +173,6 @@ pub fn resolve_link(
 fn error_like(
     status: Status,
     target_path: Option<String>,
-    target_line: Option<u32>,
     target_range: Option<crate::output::LineRange>,
     link: &Link,
     reason: String,
@@ -189,7 +180,6 @@ fn error_like(
     ResolutionTarget {
         status,
         target_path,
-        target_line,
         target_range,
         is_embed: link.is_embed,
         display_text: link.display_text.clone(),

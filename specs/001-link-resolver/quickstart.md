@@ -40,9 +40,9 @@ result `status` and exit code (see the exit-status contract in
 
 | # | Scenario (spec ref) | Command (abbreviated) | Expected `status` | Exit |
 |---|---------------------|-----------------------|-------------------|------|
-| 1 | Plain note link (US1 AS1) | `... '[[Project Plan]]' --context notes/a.md` | `resolved`, `target_line` null | 0 |
-| 2 | Heading link (US1 AS2) | `... '[[Project Plan#Milestones]]' --context notes/a.md` | `resolved`, `target_line` at heading | 0 |
-| 3 | Block link (US1 AS3) | `... '[[Project Plan#^abc123]]' --context notes/a.md` | `resolved`, `target_line` at block | 0 |
+| 1 | Plain note link (US1 AS1) | `... '[[Project Plan]]' --context notes/a.md` | `resolved`, `target_range` null | 0 |
+| 2 | Heading link (US1 AS2) | `... '[[Project Plan#Milestones]]' --context notes/a.md` | `resolved`, `target_range` at heading | 0 |
+| 3 | Block link (US1 AS3) | `... '[[Project Plan#^abc123]]' --context notes/a.md` | `resolved`, `target_range` at block | 0 |
 | 4 | Same-file link (US1 AS4) | `... '[[#Overview]]' --context notes/a.md` | `resolved`, target = context file | 0 |
 | 5 | Broken link (US1 AS5) | `... '[[No Such Note]]' --context notes/a.md` | `unresolved` + reason | 2 |
 | 6 | Sub-target missing (Edge) | `... '[[Project Plan#Nope]]' --context notes/a.md` | `sub_target_not_found` + `target_path` | 3 |
@@ -52,7 +52,7 @@ result `status` and exit code (see the exit-status contract in
 | 10 | Display-text link (Edge) | `... '[[Project Plan\|Plan]]' --context notes/a.md` | `resolved`, `display_text` echoed | 0 |
 | 11 | Embed (Edge) | `... '![[Note#Section]]' --context notes/a.md` | `resolved`, `is_embed` true | 0 |
 | 12 | Markdown-style link (US1 / FR-003) | `... '[t](Some%20Note.md#Heading)' --context notes/a.md` | `resolved` | 0 |
-| 13 | Attachment (Edge / FR-014) | `... '![[diagram.png]]' --context notes/a.md` | `resolved`, `target_line` null, no emplacement | 0 |
+| 13 | Attachment (Edge / FR-014) | `... '![[diagram.png]]' --context notes/a.md` | `resolved`, `target_range` null, no emplacement | 0 |
 | 14 | Path-qualified (Edge / FR-005a) | `... '[[folder/sub/Note#H]]' --context notes/a.md` | `resolved` to that path | 0 |
 | 15 | Vault undetermined (US1 / FR-004a) | `... '[[X]]' --context /tmp/outside.md` | `error` + reason | 1 |
 | 16 | Explicit vault root (Edge) | `... '[[X]]' --context notes/a.md --vault tests/fixtures/vault` | uses root as-is | 0 |

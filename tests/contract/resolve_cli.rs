@@ -18,13 +18,13 @@ fn resolves_primary_link_forms_to_single_line_json() {
     let context = format!("{}/notes/a.md", fixture_root);
 
     let cases = [
-        ("[[Project Plan]]", "Project Plan.md", None),
-        ("[[Project Plan#Milestones]]", "Project Plan.md", Some(5)),
-        ("[[Project Plan#^abc123]]", "Project Plan.md", Some(9)),
-        ("[[#Overview]]", "notes/a.md", Some(1)),
+        ("[[Project Plan]]", "Project Plan.md", Value::Null),
+        ("[[Project Plan#Milestones]]", "Project Plan.md", serde_json::json!({"begin": 5, "end": 11})),
+        ("[[Project Plan#^abc123]]", "Project Plan.md", serde_json::json!({"begin": 9, "end": 9})),
+        ("[[#Overview]]", "notes/a.md", serde_json::json!({"begin": 1, "end": 6})),
     ];
 
-    for (link, target_path, target_line) in cases {
+    for (link, target_path, target_range) in cases {
         let (output, json) = run_resolver(link, &context, &[]);
         assert!(output.status.success(), "{link} should succeed");
 
@@ -38,10 +38,7 @@ fn resolves_primary_link_forms_to_single_line_json() {
 
         assert_eq!(json["status"], "resolved");
         assert_eq!(json["target_path"], target_path);
-        assert_eq!(
-            json["target_line"],
-            target_line.map(Value::from).unwrap_or(Value::Null)
-        );
+        assert_eq!(json["target_range"], target_range);
         assert_eq!(json["is_embed"], false);
         assert_eq!(json["display_text"], Value::Null);
     }
@@ -55,14 +52,14 @@ fn returns_target_range_for_heading_and_block_targets() {
     let (output, json) = run_resolver("[[Project Plan#Milestones]]", &context, &[]);
     assert!(output.status.success());
     assert_eq!(json["status"], "resolved");
-    assert_eq!(json["target_line"], 5);
     assert_eq!(json["target_range"]["begin"], 5);
     assert_eq!(json["target_range"]["end"], 11);
+    assert_eq!(json["target_range"], serde_json::json!({"begin": 5, "end": 11}));
 
     let (output, json) = run_resolver("[[Project Plan#^abc123]]", &context, &[]);
     assert!(output.status.success());
     assert_eq!(json["status"], "resolved");
-    assert_eq!(json["target_line"], 9);
     assert_eq!(json["target_range"]["begin"], 9);
     assert_eq!(json["target_range"]["end"], 9);
+    assert_eq!(json["target_range"], serde_json::json!({"begin": 9, "end": 9}));
 }

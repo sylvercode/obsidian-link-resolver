@@ -48,8 +48,8 @@ pub mod output;
 pub mod resolve;
 pub mod vault;
 
-use crate::output::ResolutionTarget;
 use crate::link::parse_link;
+use crate::output::ResolutionTarget;
 use crate::resolve::resolve_link;
 use crate::vault::{detect_root, ContextFile};
 
@@ -68,7 +68,7 @@ use crate::vault::{detect_root, ContextFile};
 /// A [`ResolutionTarget`] containing:
 /// - `status`: Outcome code (resolved, unresolved, sub_target_not_found, ambiguous, or error)
 /// - `target_path`: Vault-relative, forward-slash-normalized path (present if resolved or unresolved with fallback path)
-/// - `target_line`: 1-based line number of the target (present for headings, blocks, and same-file references; `None` for whole-file targets)
+/// - `target_range`: target interval of the target (present for headings, blocks, and same-file references; `None` for whole-file targets)
 /// - `is_embed`: `true` if the original link was an embed (`![[...]]`)
 /// - `display_text`: If the link contained display text (e.g., `[[Note|Custom Text]]`), the label text
 /// - `candidates`: If status is `ambiguous`, a sorted list of conflicting vault-relative paths
@@ -94,7 +94,6 @@ pub fn resolve(
             return ResolutionTarget {
                 status: crate::output::Status::Error,
                 target_path: None,
-                target_line: None,
                 target_range: None,
                 is_embed: false,
                 display_text: None,
@@ -111,7 +110,6 @@ pub fn resolve(
             return ResolutionTarget {
                 status: crate::output::Status::Error,
                 target_path: None,
-                target_line: None,
                 target_range: None,
                 is_embed: parsed.is_embed,
                 display_text: parsed.display_text.clone(),

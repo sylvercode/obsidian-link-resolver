@@ -75,7 +75,6 @@ The output of resolving a `Link` in a `ContextFile`.
 |-------|------|-------|
 | `status` | enum `resolved` \| `unresolved` \| `sub_target_not_found` \| `ambiguous` \| `error` | Outcome (FR-010) |
 | `target_path` | string? | Resolved file path, expressed as a **vault-relative** path with forward-slash (`/`) separators (never absolute); present for `resolved` and `sub_target_not_found` (FR-006) |
-| `target_line` | int? | Convenience start-line value, 1-based; for block/heading targets it is the `begin` of the target range; null when the link has no heading/block or for attachments (FR-006, FR-007, FR-014, FR-020) |
 | `target_range` | LineRange? | Target interval for heading and block targets. For a single-line target, `begin == end`; for attachments and bare file links, it is null/absent (FR-006, FR-007, FR-014) |
 | `is_embed` | bool | Echoed from the link (FR-013) |
 | `display_text` | string? | Echoed display text, informational (FR-012) |
@@ -120,7 +119,7 @@ Positional context of a target within its note (FR-008, FR-009).
 **Rules**:
 - For a note with no headings, `heading_stack` is empty and `section` spans the whole file (spec US2 AS2).
 - A resolved heading's section spans from its heading line up to (but excluding) the next heading of equal or higher level (spec US2 AS3; FR-009).
-- Attachments have `target_line = null` and no `emplacement` (FR-014).
+- Attachments have `target_range = null` and no `emplacement` (FR-014).
 
 ## Entity: ResolverSession (FFI/ABI boundary handle)
 

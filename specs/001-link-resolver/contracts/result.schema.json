@@ -27,14 +27,6 @@
             ],
             "description": "Resolved target file path, expressed as a vault-relative path with forward-slash (/) separators (never absolute). Present for resolved and sub_target_not_found."
         },
-        "target_line": {
-            "type": [
-                "integer",
-                "null"
-            ],
-            "minimum": 1,
-            "description": "Convenience start-line value for the target. For heading/block targets, this is the begin value of target_range; null when the link has no heading/block or for attachments."
-        },
         "target_range": {
             "type": [
                 "object",

@@ -60,13 +60,13 @@ parsing stdout.
 Plain resolved link (`[[Project Plan]]`):
 
 ```json
-{"status":"resolved","target_path":"Project Plan.md","target_line":null,"is_embed":false}
+{"status":"resolved","target_path":"Project Plan.md","target_range":null,"is_embed":false}
 ```
 
 Heading link with emplacement requested (`[[Design#API]]` under `# Design`):
 
 ```json
-{"status":"resolved","target_path":"Design.md","target_line":12,"is_embed":false,"emplacement":{"heading_stack":[{"text":"Design","level":1,"begin":1,"end":40},{"text":"API","level":2,"begin":12,"end":25}],"section":{"begin":12,"end":25}}}
+{"status":"resolved","target_path":"Design.md","target_range":{"begin":12,"end":25},"is_embed":false,"emplacement":{"heading_stack":[{"text":"Design","level":1,"begin":1,"end":40},{"text":"API","level":2,"begin":12,"end":25}],"section":{"begin":12,"end":25}}}
 ```
 
 Ambiguous link:
@@ -90,7 +90,7 @@ Unresolved:
 Attachment (`![[diagram.png]]`):
 
 ```json
-{"status":"resolved","target_path":"assets/diagram.png","target_line":null,"is_embed":true}
+{"status":"resolved","target_path":"assets/diagram.png","target_range":null,"is_embed":true}
 ```
 
 ## Human-mode output (`--format human`)

@@ -1,7 +1,7 @@
 //! Resolution output types and exit-code mapping.
 //!
 //! This module defines the [`ResolutionTarget`] output record, which represents the result
-//! of resolving an Obsidian link. It includes the outcome status, the target file path and line,
+//! of resolving an Obsidian link. It includes the outcome status, the target file path and range,
 //! optional structured emplacement information, and machine-readable reasons for non-success outcomes.
 
 use serde::{Deserialize, Serialize};
@@ -88,7 +88,7 @@ pub struct StructuredEmplacement {
 ///
 /// This record encodes the complete outcome of a link resolution operation.
 /// The exact fields present depend on the outcome:
-/// - **Resolved**: `status`, `target_path`, `target_line` (or `None` for whole-file),
+/// - **Resolved**: `status`, `target_path`, `target_range` (or `None` for whole-file),
 ///   `is_embed`, and optionally `emplacement`
 /// - **Unresolved**: `status`, `reason`
 /// - **SubTargetNotFound**: `status`, `target_path`, `reason`
@@ -108,10 +108,6 @@ pub struct ResolutionTarget {
     /// The vault-relative, forward-slash-normalized path to the target file.
     /// Present for `Resolved` and `SubTargetNotFound`; `None` for other outcomes.
     pub target_path: Option<String>,
-    /// The 1-based line number of the target (for heading, block, or same-file references).
-    /// `None` indicates the whole file is the target (no specific line).
-    /// Always `None` for non-markdown attachments.
-    pub target_line: Option<u32>,
     /// The canonical target interval for heading/block/structured-block targets.
     /// `None` for plain-file or attachment targets.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,8 +140,9 @@ impl ResolutionTarget {
             Status::Resolved => format!(
                 "resolved: {}{}",
                 self.target_path.as_deref().unwrap_or("<unknown>"),
-                self.target_line
-                    .map(|line| format!(":{line}"))
+                self.target_range
+                    .as_ref()
+                    .map(|range| format!(":{}-{}", range.begin, range.end))
                     .unwrap_or_default()
             ),
             Status::Unresolved => format!("unresolved: {}", self.reason.as_deref().unwrap_or("target not found")),

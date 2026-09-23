@@ -37,7 +37,6 @@ fn foundational_types_match_phase2_contracts() {
     let result = ResolutionTarget {
         status: Status::Resolved,
         target_path: Some("Project Plan.md".to_string()),
-        target_line: Some(12),
         target_range: None,
         is_embed: false,
         display_text: None,
