@@ -99,11 +99,15 @@ pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Va
     let (root_path, source) = if let Some(explicit_root) =
         explicit_root.filter(|value| !value.trim().is_empty())
     {
-        (
-            fs::canonicalize(explicit_root)
-                .map_err(|error| format!("failed to read vault root '{explicit_root}': {error}"))?,
-            VaultSource::Explicit,
-        )
+        let root_path = fs::canonicalize(explicit_root)
+            .map_err(|error| format!("failed to read vault root '{explicit_root}': {error}"))?;
+        if !context_abs.starts_with(&root_path) {
+            return Err(format!(
+                "context path '{context_path}' is outside the explicit vault root '{}', refusing to resolve links",
+                root_path.display()
+            ));
+        }
+        (root_path, VaultSource::Explicit)
     } else {
         let mut current = context_abs.parent().map(Path::to_path_buf).ok_or_else(|| {
             format!("vault could not be determined from context path '{context_path}'")

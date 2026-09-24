@@ -15,7 +15,8 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     let fixture_root = fixture_root();
     let context = fixture_root.join("notes/a.md");
 
-    let detected = detect_root(context.to_string_lossy().as_ref(), None).expect("vault should detect");
+    let detected =
+        detect_root(context.to_string_lossy().as_ref(), None).expect("vault should detect");
     assert_eq!(detected.root, fixture_root.to_string_lossy());
     assert_eq!(detected.source, VaultSource::Detected);
 
@@ -27,8 +28,29 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     assert_eq!(explicit.root, fixture_root.to_string_lossy());
     assert_eq!(explicit.source, VaultSource::Explicit);
 
-    let entries = enumerate_vault(fixture_root.to_string_lossy().as_ref()).expect("vault should enumerate");
-    assert!(entries.iter().any(|entry| entry.rel_path == "Project Plan.md"));
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    let context_outside = std::env::temp_dir().join(format!("olr-outside-context-{unique}"));
+    fs::create_dir_all(&context_outside).expect("temp dir should be creatable");
+    let outside_file = context_outside.join("outside.md");
+    fs::write(&outside_file, "# Outside\n").expect("context file should be writable");
+    let outside_vault = fixture_root.join("notes");
+    assert!(
+        detect_root(
+            outside_file.to_string_lossy().as_ref(),
+            Some(outside_vault.to_string_lossy().as_ref())
+        )
+        .is_err(),
+        "explicit vault must reject context files outside the vault"
+    );
+
+    let entries =
+        enumerate_vault(fixture_root.to_string_lossy().as_ref()).expect("vault should enumerate");
+    assert!(entries
+        .iter()
+        .any(|entry| entry.rel_path == "Project Plan.md"));
 
     let vault = Vault {
         root: fixture_root.to_string_lossy().into_owned(),
@@ -39,7 +61,8 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     let resolved = resolve_name(&vault, "project plan", None).expect("bare name should resolve");
     assert_eq!(resolved.rel_path, "Project Plan.md");
 
-    let path_qualified = resolve_name(&vault, "Note", Some("folder/sub")).expect("path-qualified name should resolve");
+    let path_qualified = resolve_name(&vault, "Note", Some("folder/sub"))
+        .expect("path-qualified name should resolve");
     assert_eq!(path_qualified.rel_path, "folder/sub/Note.md");
 }
 
@@ -55,7 +78,8 @@ fn rejects_note_names_with_path_separators() {
         }],
     };
 
-    let error = resolve_name(&vault, "folder/Note", None).expect_err("slash-bearing note names should be rejected");
+    let error = resolve_name(&vault, "folder/Note", None)
+        .expect_err("slash-bearing note names should be rejected");
     match error {
         NameResolutionError::Unresolved { reason } => {
             assert!(reason.contains("not a supported linkable name"));
@@ -83,7 +107,8 @@ fn reports_ambiguous_and_vault_undetermined_cases() {
         ],
     };
 
-    let ambiguous = resolve_name(&vault, "Note", None).expect_err("duplicate names should be ambiguous");
+    let ambiguous =
+        resolve_name(&vault, "Note", None).expect_err("duplicate names should be ambiguous");
     match ambiguous {
         NameResolutionError::Ambiguous { candidates, .. } => {
             assert_eq!(candidates, vec!["a/Note.md", "b/Note.md"]);
