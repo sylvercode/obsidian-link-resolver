@@ -12,7 +12,8 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     assert!(link.block_id.is_none());
     assert_eq!(link.display_text.as_deref(), Some("Alias"));
 
-    let markdown = parse_link("[Display](Some%20Note.md#Heading)").expect("markdown link should parse");
+    let markdown =
+        parse_link("[Display](Some%20Note.md#Heading)").expect("markdown link should parse");
     assert_eq!(markdown.style, LinkStyle::Markdown);
     assert_eq!(markdown.display_text.as_deref(), Some("Display"));
     assert_eq!(markdown.note_name.as_deref(), Some("Some Note.md"));
@@ -30,7 +31,8 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     let same_file_block = parse_link("[[#^abc123]]").expect("same-file block link should parse");
     assert_eq!(same_file_block.block_id.as_deref(), Some("abc123"));
 
-    let case_insensitive = parse_link("[[project plan#milestones]]").expect("case-insensitive match should parse");
+    let case_insensitive =
+        parse_link("[[project plan#milestones]]").expect("case-insensitive match should parse");
     assert_eq!(case_insensitive.note_name.as_deref(), Some("project plan"));
     assert_eq!(case_insensitive.heading_path, vec!["milestones"]);
 

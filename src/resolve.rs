@@ -109,7 +109,10 @@ pub fn resolve_link(
                     is_embed: link.is_embed,
                     display_text: link.display_text.clone(),
                     candidates: None,
-                    reason: Some(format!("failed to read note '{}': {error}", absolute_path.display())),
+                    reason: Some(format!(
+                        "failed to read note '{}': {error}",
+                        absolute_path.display()
+                    )),
                     emplacement: None,
                 };
             }

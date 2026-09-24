@@ -15,22 +15,23 @@ fn run_resolver(link: &str, context: &str) -> (std::process::Output, Value) {
 
 #[test]
 fn reports_unresolved_and_sub_target_not_found_via_exit_codes() {
-    let fixture_root = format!(
-        "{}/tests/fixtures/vault",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let context = format!("{}/notes/a.md", fixture_root);
 
     let (output, json) = run_resolver("[[No Such Note]]", &context);
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(json["status"], "unresolved");
-    assert!(json["reason"].as_str().is_some_and(|reason| !reason.is_empty()));
+    assert!(json["reason"]
+        .as_str()
+        .is_some_and(|reason| !reason.is_empty()));
 
     let (output, json) = run_resolver("[[Project Plan#Nope]]", &context);
     assert_eq!(output.status.code(), Some(3));
     assert_eq!(json["status"], "sub_target_not_found");
     assert_eq!(json["target_path"], "Project Plan.md");
-    assert!(json["reason"].as_str().is_some_and(|reason| !reason.is_empty()));
+    assert!(json["reason"]
+        .as_str()
+        .is_some_and(|reason| !reason.is_empty()));
 }
 
 #[test]
@@ -47,7 +48,9 @@ fn reports_error_when_vault_cannot_be_determined() {
     let (output, json) = run_resolver("[[X]]", context.to_string_lossy().as_ref());
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(json["status"], "error");
-    assert!(json["reason"].as_str().is_some_and(|reason| !reason.is_empty()));
+    assert!(json["reason"]
+        .as_str()
+        .is_some_and(|reason| !reason.is_empty()));
 }
 
 #[test]
@@ -62,11 +65,16 @@ fn ignores_unsupported_extensions_and_dot_prefixed_paths_when_enumerating_vaults
     fs::create_dir_all(temp_dir.join("nested")).expect("nested folder should be creatable");
 
     fs::write(temp_dir.join("good.md"), "# Good\n").expect("valid note should be writable");
-    fs::write(temp_dir.join("nested/also-good.md"), "# Also\n").expect("nested valid note should be writable");
-    fs::write(temp_dir.join(".hidden/ignored.md"), "# Hidden\n").expect("dotfile note should be writable");
-    fs::write(temp_dir.join("nested/.nested-note.md"), "# Also hidden\n").expect("dotfile note should be writable");
-    fs::write(temp_dir.join("nested/bad*name.md"), "# Invalid\n").expect("invalid note should be writable");
-    fs::write(temp_dir.join("nested/unsupported.xyz"), "# Invalid ext\n").expect("unsupported extension should be writable");
+    fs::write(temp_dir.join("nested/also-good.md"), "# Also\n")
+        .expect("nested valid note should be writable");
+    fs::write(temp_dir.join(".hidden/ignored.md"), "# Hidden\n")
+        .expect("dotfile note should be writable");
+    fs::write(temp_dir.join("nested/.nested-note.md"), "# Also hidden\n")
+        .expect("dotfile note should be writable");
+    fs::write(temp_dir.join("nested/bad*name.md"), "# Invalid\n")
+        .expect("invalid note should be writable");
+    fs::write(temp_dir.join("nested/unsupported.xyz"), "# Invalid ext\n")
+        .expect("unsupported extension should be writable");
 
     let context = temp_dir.join("good.md");
     let (output, json) = run_resolver("[[ignored]]", context.to_string_lossy().as_ref());

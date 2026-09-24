@@ -179,7 +179,10 @@ pub fn find_target_line(contents: &str, link: &Link) -> Result<Option<u32>, Targ
 }
 
 /// Find the canonical target range for a parsed link within the supplied note contents.
-pub fn find_target_range(contents: &str, link: &Link) -> Result<Option<LineRange>, TargetLookupError> {
+pub fn find_target_range(
+    contents: &str,
+    link: &Link,
+) -> Result<Option<LineRange>, TargetLookupError> {
     if link.heading_path.is_empty() && link.block_id.is_none() {
         return Ok(None);
     }
@@ -190,7 +193,12 @@ pub fn find_target_range(contents: &str, link: &Link) -> Result<Option<LineRange
             .block_ids
             .into_iter()
             .find(|block| block.id.eq_ignore_ascii_case(block_id.trim()))
-            .map(|block| Some(LineRange { begin: block.line, end: block.line }))
+            .map(|block| {
+                Some(LineRange {
+                    begin: block.line,
+                    end: block.line,
+                })
+            })
             .ok_or_else(|| TargetLookupError::MissingTarget {
                 reason: format!("block id '^{}' not found", block_id.trim()),
             });
@@ -228,10 +236,12 @@ pub fn find_target_range(contents: &str, link: &Link) -> Result<Option<LineRange
     }
 
     current_index
-        .map(|index| Some(LineRange {
-            begin: scan.headings[index].line,
-            end: heading_sections[index].end,
-        }))
+        .map(|index| {
+            Some(LineRange {
+                begin: scan.headings[index].line,
+                end: heading_sections[index].end,
+            })
+        })
         .ok_or_else(|| TargetLookupError::MalformedReference {
             reason: "link did not contain a heading or block target".to_string(),
         })
@@ -239,7 +249,10 @@ pub fn find_target_range(contents: &str, link: &Link) -> Result<Option<LineRange
 
 fn parse_heading(line: &str) -> Option<(u8, String)> {
     let content = line.trim_start();
-    let level = content.chars().take_while(|character| *character == '#').count();
+    let level = content
+        .chars()
+        .take_while(|character| *character == '#')
+        .count();
     if !(1..=6).contains(&level) {
         return None;
     }

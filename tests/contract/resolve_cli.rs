@@ -19,9 +19,21 @@ fn resolves_primary_link_forms_to_single_line_json() {
 
     let cases = [
         ("[[Project Plan]]", "Project Plan.md", Value::Null),
-        ("[[Project Plan#Milestones]]", "Project Plan.md", serde_json::json!({"begin": 5, "end": 11})),
-        ("[[Project Plan#^abc123]]", "Project Plan.md", serde_json::json!({"begin": 9, "end": 9})),
-        ("[[#Overview]]", "notes/a.md", serde_json::json!({"begin": 1, "end": 6})),
+        (
+            "[[Project Plan#Milestones]]",
+            "Project Plan.md",
+            serde_json::json!({"begin": 5, "end": 11}),
+        ),
+        (
+            "[[Project Plan#^abc123]]",
+            "Project Plan.md",
+            serde_json::json!({"begin": 9, "end": 9}),
+        ),
+        (
+            "[[#Overview]]",
+            "notes/a.md",
+            serde_json::json!({"begin": 1, "end": 6}),
+        ),
     ];
 
     for (link, target_path, target_range) in cases {
@@ -54,12 +66,18 @@ fn returns_target_range_for_heading_and_block_targets() {
     assert_eq!(json["status"], "resolved");
     assert_eq!(json["target_range"]["begin"], 5);
     assert_eq!(json["target_range"]["end"], 11);
-    assert_eq!(json["target_range"], serde_json::json!({"begin": 5, "end": 11}));
+    assert_eq!(
+        json["target_range"],
+        serde_json::json!({"begin": 5, "end": 11})
+    );
 
     let (output, json) = run_resolver("[[Project Plan#^abc123]]", &context, &[]);
     assert!(output.status.success());
     assert_eq!(json["status"], "resolved");
     assert_eq!(json["target_range"]["begin"], 9);
     assert_eq!(json["target_range"]["end"], 9);
-    assert_eq!(json["target_range"], serde_json::json!({"begin": 9, "end": 9}));
+    assert_eq!(
+        json["target_range"],
+        serde_json::json!({"begin": 9, "end": 9})
+    );
 }

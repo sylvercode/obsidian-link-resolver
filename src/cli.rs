@@ -40,7 +40,11 @@ pub enum OutputFormat {
 /// - `-h, --help`: Display help and exit
 /// - `-V, --version`: Display version and exit
 #[derive(Debug, Clone, Parser)]
-#[command(name = "obsidian-link-resolver", version, about = "Resolve Obsidian links to target files and locations")]
+#[command(
+    name = "obsidian-link-resolver",
+    version,
+    about = "Resolve Obsidian links to target files and locations"
+)]
 pub struct CliArgs {
     /// The Obsidian link string to resolve (positional argument, required).
     #[arg(value_name = "LINK")]
