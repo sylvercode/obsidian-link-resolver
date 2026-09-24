@@ -140,9 +140,14 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    let walker = WalkDir::new(root_path)
-        .into_iter()
-        .filter_entry(|entry| !is_hidden_dir(entry));
+    let walker = WalkDir::new(root_path).into_iter().filter_entry(|entry| {
+        !is_hidden_dir(entry)
+            && entry
+                .file_name()
+                .to_str()
+                .map(is_supported_linkable_name)
+                .unwrap_or(false)
+    });
     for entry in walker.filter_map(Result::ok) {
         let path = entry.path();
         if path == root_path || !path.is_file() {

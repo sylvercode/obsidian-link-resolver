@@ -67,6 +67,25 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
 }
 
 #[test]
+fn skips_entries_in_invalid_directory_names() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    let root = std::env::temp_dir().join(format!("olr-invalid-dir-{unique}"));
+    let invalid_dir = root.join("bad*folder");
+    let valid_note = invalid_dir.join("good.md");
+    fs::create_dir_all(&invalid_dir).expect("invalid directory should be creatable");
+    fs::write(&valid_note, "# Hello\n").expect("file should be writable");
+
+    let entries = enumerate_vault(root.to_string_lossy().as_ref()).expect("vault should enumerate");
+    assert!(
+        entries.is_empty(),
+        "files under invalid directories should be ignored"
+    );
+}
+
+#[test]
 fn rejects_note_names_with_path_separators() {
     let vault = Vault {
         root: "/tmp/vault".to_string(),
