@@ -2,6 +2,14 @@
 
 All Technical Context items were resolved before planning; no `NEEDS CLARIFICATION` markers remain. This document records the decisions, rationale, and alternatives.
 
+## Decision 0: Reference taxonomy — align the model with OR1–OR14
+
+- **Decision**: Use the naming and semantics from [obsidian-reference.md](obsidian-reference.md) as the canonical vocabulary for design and implementation: `note` vs `attachment` (OR1–OR5), `wikilink` vs `markdown` syntax (OR6, OR7, OR8, OR9, OR10, OR11, OR12), and `display text` / `embed` metadata (OR13, OR14).
+- **Rationale**: The latest spec revisions explicitly expanded the requirements to cover OR1–OR14, so the model names and the code structure should reflect the same vocabulary as Obsidian itself instead of a generic internal label set.
+- **Alternatives considered**:
+  - **Keep the older generic model names**: simpler to write but less faithful to the official behavior and the newly clarified requirements. Rejected because the new spec requires explicit coverage of the OR naming and semantics.
+  - **Invent a second vocabulary layer**: maintain both domain terms and OR labels. Rejected as unnecessary complexity.
+
 ## Decision 1: Implementation language — Rust
 
 - **Decision**: Implement the CLI as a native binary in Rust (stable, 2021 edition).
@@ -48,6 +56,8 @@ All Technical Context items were resolved before planning; no `NEEDS CLARIFICATI
 
 - **Decision**: `cargo test` for unit/integration; `assert_cmd` + `predicates` for CLI contract tests; `criterion` for a warm-run latency benchmark wired into CI as a regression gate; a fixture vault under `tests/fixtures/` covering every documented link form.
 - **Rationale**: Satisfies constitution Principles III & IV (test-first, integration, performance regression) and SC-001/SC-004/SC-005/SC-006. The `criterion` warm-run p50 is also the blocking release gate (Decision 9): a p50 above ≤100 ms fails the `vX.Y.Z` pipeline (SC-005).
+
+- **Warm-run definition**: The benchmark measures steady-state repeated resolutions in one long-lived process after one unmeasured priming resolution. The priming call may populate vault/index and filesystem caches; its time, process startup, vault discovery, and any first-call initialization are excluded from the reported timing.
 - **Alternatives considered**: Manual timing scripts — rejected; `criterion` gives statistically sound, CI-trackable measurements.
 
 ## Decision 8: Cross-technology interoperability surfaces (CLI + JSON schema + C ABI/FFI)

@@ -10,7 +10,7 @@
 
 ## Requirement Completeness
 
-- [x] CHK001 Are requirements defined for every Obsidian link form enumerated in FR-002 (plain, aliased, heading, nested heading, block, same-file, embed)? [Completeness, Spec §FR-002]
+- [x] CHK001 Are requirements defined for every Obsidian link form enumerated in FR-002 (plain, display-text, heading, nested heading, block, same-file, embed)? [Completeness, Spec §FR-002]
 - [x] CHK002 Are markdown-style link resolution requirements complete for all in-vault target kinds (heading, block, attachment)? [Completeness, Spec §FR-003]
 - [x] CHK003 Is the note-name resolution rule (shortest-path / vault-wide matching) fully specified, including its tie-breaking behavior? [Completeness, Spec §FR-005] — FINDING [resolved]: FR-005 now defines a self-contained rule (case-insensitive basename match; path-qualified names match the exact vault-relative path) with explicit tie-breaking — two or more matches yield `ambiguous` with no silent selection.
 - [x] CHK004 Are requirements for non-markdown attachment targets complete, including the explicit absence of a target line and heading stack? [Completeness, Spec §FR-014]
@@ -31,7 +31,7 @@
 - [x] CHK013 Are the four outcome statuses in FR-010 consistent with the outcome set referenced by the exit-status and success criteria? [Consistency, Spec §FR-010, §SC-002] — FINDING [resolved]: FR-010 now enumerates all five outcomes (adds `error`) and declares them the complete mutually-exclusive set; FR-017 now enumerates the same five (adds `sub-target-not-found`), aligning the FR text with contracts/cli.md.
 - [x] CHK014 Do the case-insensitivity requirements align with the duplicate-heading selection behavior described in the edge cases? [Consistency, Spec §FR-005b]
 - [x] CHK015 Is same-file link handling consistent between the wikilink list (FR-002) and the self-reference edge cases? [Consistency, Spec §FR-002]
-- [x] CHK016 Are alias/embed attributes consistently described as informational and non-influencing on the target across all sections? [Consistency, Spec §FR-012, §FR-013]
+- [x] CHK016 Are display-text/embed attributes consistently described as informational and non-influencing on the target across all sections? [Consistency, Spec §FR-012, §FR-013]
 
 ## Scenario Coverage
 
@@ -45,7 +45,7 @@
 - [x] CHK021 Are requirements defined for the "context file outside a vault" case (no explicit root and no `.obsidian` ancestor)? [Edge Case, Spec §FR-004a]
 - [x] CHK022 Is behavior specified for a path-qualified note name that does not exist at the given path but exists elsewhere in the vault? [Gap, Spec §FR-005a] — FINDING [resolved]: FR-005a now specifies reporting unresolved with no fall-back to a bare-name match elsewhere.
 - [x] CHK023 Is behavior specified for a block id that is missing, appears multiple times, or is malformed? [Gap, Spec §FR-002] — FINDING [resolved]: FR-002c specifies selecting the first matching line for duplicate block ids and reporting missing or malformed block references as sub-target-not-found.
-- [x] CHK024 Are requirements defined for links combining alias and sub-target (e.g., `[[Note#Heading|Alias]]`)? [Gap, Spec §FR-002, §FR-012]
+- [x] CHK024 Are requirements defined for links combining display text and sub-target (e.g., `[[Note#Heading|Label]]`)? [Gap, Spec §FR-002, §FR-012]
 
 ## Acceptance Criteria Quality
 

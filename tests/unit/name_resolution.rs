@@ -1,0 +1,135 @@
+use obsidian_link_resolver::vault::{
+    detect_root, enumerate_vault, resolve_name, NameResolutionError, NoteIndexEntry, Vault,
+    VaultSource,
+};
+use std::fs;
+use std::path::PathBuf;
+use tempfile::TempDir;
+
+fn fixture_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
+}
+
+#[test]
+fn detects_vault_root_and_resolves_names_case_insensitively() {
+    let fixture_root = fixture_root();
+    let context = fixture_root.join("notes/a.md");
+
+    let detected =
+        detect_root(context.to_string_lossy().as_ref(), None).expect("vault should detect");
+    assert_eq!(detected.root, fixture_root.to_string_lossy());
+    assert_eq!(detected.source, VaultSource::Detected);
+
+    let explicit = detect_root(
+        context.to_string_lossy().as_ref(),
+        Some(fixture_root.to_string_lossy().as_ref()),
+    )
+    .expect("explicit vault should work");
+    assert_eq!(explicit.root, fixture_root.to_string_lossy());
+    assert_eq!(explicit.source, VaultSource::Explicit);
+
+    let context_outside = TempDir::new().expect("temp dir should be creatable");
+    let outside_file = context_outside.path().join("outside.md");
+    fs::write(&outside_file, "# Outside\n").expect("context file should be writable");
+    let outside_vault = fixture_root.join("notes");
+    assert!(
+        detect_root(
+            outside_file.to_string_lossy().as_ref(),
+            Some(outside_vault.to_string_lossy().as_ref())
+        )
+        .is_err(),
+        "explicit vault must reject context files outside the vault"
+    );
+
+    let entries =
+        enumerate_vault(fixture_root.to_string_lossy().as_ref()).expect("vault should enumerate");
+    assert!(entries
+        .iter()
+        .any(|entry| entry.rel_path == "Project Plan.md"));
+
+    let vault = Vault {
+        root: fixture_root.to_string_lossy().into_owned(),
+        source: VaultSource::Detected,
+        entries,
+    };
+
+    let resolved = resolve_name(&vault, "project plan", None).expect("bare name should resolve");
+    assert_eq!(resolved.rel_path, "Project Plan.md");
+
+    let path_qualified = resolve_name(&vault, "Note", Some("folder/sub"))
+        .expect("path-qualified name should resolve");
+    assert_eq!(path_qualified.rel_path, "folder/sub/Note.md");
+}
+
+#[test]
+fn skips_entries_in_invalid_directory_names() {
+    let root = TempDir::new().expect("temp dir should be creatable");
+    let invalid_dir = root.path().join("bad*folder");
+    let valid_note = invalid_dir.join("good.md");
+    fs::create_dir_all(&invalid_dir).expect("invalid directory should be creatable");
+    fs::write(&valid_note, "# Hello\n").expect("file should be writable");
+
+    let entries =
+        enumerate_vault(root.path().to_string_lossy().as_ref()).expect("vault should enumerate");
+    assert!(
+        entries.is_empty(),
+        "files under invalid directories should be ignored"
+    );
+}
+
+#[test]
+fn rejects_note_names_with_path_separators() {
+    let vault = Vault {
+        root: "/tmp/vault".to_string(),
+        source: VaultSource::Detected,
+        entries: vec![NoteIndexEntry {
+            rel_path: "folder/Note.md".to_string(),
+            name: "Note".to_string(),
+            is_markdown: true,
+        }],
+    };
+
+    let error = resolve_name(&vault, "folder/Note", None)
+        .expect_err("slash-bearing note names should be rejected");
+    match error {
+        NameResolutionError::Unresolved { reason } => {
+            assert!(reason.contains("not a supported linkable name"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[test]
+fn reports_ambiguous_and_vault_undetermined_cases() {
+    let vault = Vault {
+        root: "/tmp/vault".to_string(),
+        source: VaultSource::Detected,
+        entries: vec![
+            NoteIndexEntry {
+                rel_path: "b/Note.md".to_string(),
+                name: "Note".to_string(),
+                is_markdown: true,
+            },
+            NoteIndexEntry {
+                rel_path: "a/Note.md".to_string(),
+                name: "Note".to_string(),
+                is_markdown: true,
+            },
+        ],
+    };
+
+    let ambiguous =
+        resolve_name(&vault, "Note", None).expect_err("duplicate names should be ambiguous");
+    match ambiguous {
+        NameResolutionError::Ambiguous { candidates, .. } => {
+            assert_eq!(candidates, vec!["a/Note.md", "b/Note.md"]);
+        }
+        other => panic!("unexpected ambiguity error: {other:?}"),
+    }
+
+    let temp_dir = TempDir::new().expect("temp dir should be creatable");
+    let context = temp_dir.path().join("outside.md");
+    fs::write(&context, "# Outside\n").expect("context file should be writable");
+
+    assert!(detect_root(context.to_string_lossy().as_ref(), None).is_err());
+}

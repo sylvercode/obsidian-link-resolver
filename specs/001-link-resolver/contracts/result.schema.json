@@ -27,24 +27,38 @@
             ],
             "description": "Resolved target file path, expressed as a vault-relative path with forward-slash (/) separators (never absolute). Present for resolved and sub_target_not_found."
         },
-        "target_line": {
+        "target_range": {
             "type": [
-                "integer",
+                "object",
                 "null"
             ],
-            "minimum": 1,
-            "description": "1-based line where the target begins; null when the link has no heading/block or for attachments."
+            "additionalProperties": false,
+            "required": [
+                "begin",
+                "end"
+            ],
+            "description": "Resolved target interval for headings and blocks. For a single-line target, begin == end. Null when the target is a plain file or attachment with no heading/block selection.",
+            "properties": {
+                "begin": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "end": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
         },
         "is_embed": {
             "type": "boolean",
             "description": "Whether the link is an embed (![[...]]). Informational; does not change the target."
         },
-        "alias": {
+        "display_text": {
             "type": [
                 "string",
                 "null"
             ],
-            "description": "Display/alias text from the link; informational only, never affects resolution."
+            "description": "Display text from the link; informational only, never affects resolution."
         },
         "candidates": {
             "type": "array",

@@ -23,7 +23,7 @@
 - [x] CHK008 Are "stable field names" anchored to the versioned schema rather than left implicit? [Clarity, Spec §FR-021]
 - [x] CHK009 Is the stdout-versus-stderr separation unambiguous for all outcomes, including error conditions? [Clarity, Spec §FR-018] — NOTE: core stdout=results / stderr=diagnostics split is clear (FR-018, cli.md); consider stating explicitly whether usage/argument errors (exit 1) also emit a `{"status":"error"}` record on stdout.
 - [x] CHK010 Is byte-for-byte determinism scoped by explicitly identifying which fields are excluded (e.g., timestamps)? [Clarity, Spec §FR-016]
-- [ ] CHK011 Is a "warm run" defined distinctly from a cold run for the purpose of the latency gate? [Gap, Spec §SC-005] — FINDING [open]: "warm run" is used consistently (SC-005, plan.md, research.md, quickstart.md) but never explicitly defined (e.g., criterion steady-state after warmup vs OS-cache-warm vs FFI session reuse); define it so the blocking gate is unambiguous.
+- [x] CHK011 Is a "warm run" defined distinctly from a cold run for the purpose of the latency gate? [Gap, Spec §SC-005] — FINDING [resolved]: research.md and quickstart.md now define warm run as a steady-state measurement after one unmeasured priming resolution, excluding process startup, vault discovery, and first-call initialization.
 
 ## Requirement Consistency
 

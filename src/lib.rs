@@ -48,7 +48,10 @@ pub mod output;
 pub mod resolve;
 pub mod vault;
 
+use crate::link::parse_link;
 use crate::output::ResolutionTarget;
+use crate::resolve::resolve_link;
+use crate::vault::{detect_root, ContextFile};
 
 /// Resolve an Obsidian link to its target file and location within a vault.
 ///
@@ -65,9 +68,9 @@ use crate::output::ResolutionTarget;
 /// A [`ResolutionTarget`] containing:
 /// - `status`: Outcome code (resolved, unresolved, sub_target_not_found, ambiguous, or error)
 /// - `target_path`: Vault-relative, forward-slash-normalized path (present if resolved or unresolved with fallback path)
-/// - `target_line`: 1-based line number of the target (present for headings, blocks, and same-file references; `None` for whole-file targets)
+/// - `target_range`: target interval of the target (present for headings, blocks, and same-file references; `None` for whole-file targets)
 /// - `is_embed`: `true` if the original link was an embed (`![[...]]`)
-/// - `alias`: If the link contained an alias (e.g., `[[Note|Custom Text]]`), the alias text
+/// - `display_text`: If the link contained display text (e.g., `[[Note|Custom Text]]`), the label text
 /// - `candidates`: If status is `ambiguous`, a sorted list of conflicting vault-relative paths
 /// - `reason`: Human-readable error or disambiguation reason
 /// - `emplacement`: If requested and the target is inside a note, the ordered heading stack and section ranges
@@ -85,17 +88,43 @@ pub fn resolve(
     vault: Option<&str>,
     with_emplacement: bool,
 ) -> ResolutionTarget {
-    let _ = (link, context_path, vault, with_emplacement);
-    ResolutionTarget {
-        status: crate::output::Status::Resolved,
-        target_path: Some("Project Plan.md".to_string()),
-        target_line: Some(1),
-        is_embed: false,
-        alias: None,
-        candidates: None,
-        reason: None,
-        emplacement: None,
-    }
+    let parsed = match parse_link(link) {
+        Ok(link) => link,
+        Err(error) => {
+            return ResolutionTarget {
+                status: crate::output::Status::Error,
+                target_path: None,
+                target_range: None,
+                is_embed: false,
+                display_text: None,
+                candidates: None,
+                reason: Some(error.to_string()),
+                emplacement: None,
+            };
+        }
+    };
+
+    let vault = match detect_root(context_path, vault) {
+        Ok(vault) => vault,
+        Err(reason) => {
+            return ResolutionTarget {
+                status: crate::output::Status::Error,
+                target_path: None,
+                target_range: None,
+                is_embed: parsed.is_embed,
+                display_text: parsed.display_text.clone(),
+                candidates: None,
+                reason: Some(reason),
+                emplacement: None,
+            };
+        }
+    };
+
+    let context = ContextFile {
+        path: context_path.to_string(),
+    };
+
+    resolve_link(&parsed, &context, &vault, with_emplacement)
 }
 
 pub fn resolve_placeholder() -> &'static str {

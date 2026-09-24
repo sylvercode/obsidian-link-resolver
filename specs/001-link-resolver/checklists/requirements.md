@@ -21,6 +21,7 @@
 - [x] Edge cases are identified
 - [x] Scope is clearly bounded
 - [x] Dependencies and assumptions identified
+- [x] Obsidian reference rules OR1-OR14 are explicitly covered in the functional requirements and edge cases
 
 ## Feature Readiness
 
