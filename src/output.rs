@@ -107,6 +107,7 @@ pub struct ResolutionTarget {
     pub status: Status,
     /// The vault-relative, forward-slash-normalized path to the target file.
     /// Present for `Resolved` and `SubTargetNotFound`; `None` for other outcomes.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub target_path: Option<String>,
     /// The canonical target interval for heading/block/structured-block targets.
     /// `None` for plain-file or attachment targets.
@@ -115,6 +116,7 @@ pub struct ResolutionTarget {
     /// `true` if the original link was an embed (e.g., `![[...]]`), affecting display behavior.
     pub is_embed: bool,
     /// Text shown in the original markdown or wikilink label; informational only.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub display_text: Option<String>,
     /// For `Ambiguous` outcomes, the sorted list of conflicting vault-relative paths.
     /// Sorted by path using ordinal (byte-wise) comparison for determinism.
@@ -122,9 +124,11 @@ pub struct ResolutionTarget {
     pub candidates: Option<Vec<String>>,
     /// A human-readable reason for non-success outcomes.
     /// Present for `Unresolved`, `SubTargetNotFound`, `Ambiguous`, and `Error`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// The structured heading stack and section range, if requested and the target is inside a note.
     /// `None` for attachments or when not requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub emplacement: Option<StructuredEmplacement>,
 }
 
@@ -145,13 +149,22 @@ impl ResolutionTarget {
                     .map(|range| format!(":{}-{}", range.begin, range.end))
                     .unwrap_or_default()
             ),
-            Status::Unresolved => format!("unresolved: {}", self.reason.as_deref().unwrap_or("target not found")),
+            Status::Unresolved => format!(
+                "unresolved: {}",
+                self.reason.as_deref().unwrap_or("target not found")
+            ),
             Status::SubTargetNotFound => format!(
                 "sub_target_not_found: {}",
                 self.reason.as_deref().unwrap_or("sub-target not found")
             ),
-            Status::Ambiguous => format!("ambiguous: {}", self.reason.as_deref().unwrap_or("multiple matches")),
-            Status::Error => format!("error: {}", self.reason.as_deref().unwrap_or("resolution failed")),
+            Status::Ambiguous => format!(
+                "ambiguous: {}",
+                self.reason.as_deref().unwrap_or("multiple matches")
+            ),
+            Status::Error => format!(
+                "error: {}",
+                self.reason.as_deref().unwrap_or("resolution failed")
+            ),
         }
     }
 }
