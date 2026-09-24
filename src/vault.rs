@@ -213,9 +213,8 @@ pub fn resolve_name(
             if let Some(path_query) = &path_query {
                 path_matches(entry, path_query)
             } else if note_name.to_ascii_lowercase().ends_with(".md") {
-                entry
-                    .name
-                    .eq_ignore_ascii_case(note_name.trim_end_matches(".md"))
+                let without_ext = &note_name[..note_name.len() - 3];
+                entry.name.eq_ignore_ascii_case(without_ext)
             } else {
                 entry.name.eq_ignore_ascii_case(note_name)
             }
