@@ -21,11 +21,9 @@ fn main() {
         OutputFormat::Human => println!("{}", result.to_human_string()),
     }
 
-    if result.status == obsidian_link_resolver::output::Status::Error {
-        if let Some(reason) = &result.reason {
-            eprintln!("{reason}");
-        }
-    } else if args.verbose > 0 {
+    if (result.status == obsidian_link_resolver::output::Status::Error || args.verbose > 0)
+        && result.reason.is_some()
+    {
         if let Some(reason) = &result.reason {
             eprintln!("{reason}");
         }

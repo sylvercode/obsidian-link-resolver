@@ -76,7 +76,7 @@ pub fn resolve_link(
     } else {
         let rel_path = context_path
             .strip_prefix(&vault.root)
-            .map(|path| normalize_path(path))
+            .map(normalize_path)
             .unwrap_or_else(|_| context.path.clone());
         crate::vault::NoteIndexEntry {
             rel_path: rel_path.clone(),

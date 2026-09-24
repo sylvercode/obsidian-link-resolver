@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::vault::is_supported_linkable_name;
 
+type ParsedTarget = (Option<String>, Option<String>, Vec<String>, Option<String>);
+
 /// Error returned when parsing an Obsidian link fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkParseError {
@@ -199,9 +201,7 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
-fn parse_target(
-    target: &str,
-) -> Result<(Option<String>, Option<String>, Vec<String>, Option<String>), LinkParseError> {
+fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
         return Err(LinkParseError {
