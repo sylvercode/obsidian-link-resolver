@@ -4,7 +4,7 @@ use obsidian_link_resolver::vault::{
 };
 use std::fs;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
+use tempfile::TempDir;
 
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
@@ -28,13 +28,8 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     assert_eq!(explicit.root, fixture_root.to_string_lossy());
     assert_eq!(explicit.source, VaultSource::Explicit);
 
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock should be after unix epoch")
-        .as_nanos();
-    let context_outside = std::env::temp_dir().join(format!("olr-outside-context-{unique}"));
-    fs::create_dir_all(&context_outside).expect("temp dir should be creatable");
-    let outside_file = context_outside.join("outside.md");
+    let context_outside = TempDir::new().expect("temp dir should be creatable");
+    let outside_file = context_outside.path().join("outside.md");
     fs::write(&outside_file, "# Outside\n").expect("context file should be writable");
     let outside_vault = fixture_root.join("notes");
     assert!(
@@ -68,17 +63,14 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
 
 #[test]
 fn skips_entries_in_invalid_directory_names() {
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock should be after unix epoch")
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!("olr-invalid-dir-{unique}"));
-    let invalid_dir = root.join("bad*folder");
+    let root = TempDir::new().expect("temp dir should be creatable");
+    let invalid_dir = root.path().join("bad*folder");
     let valid_note = invalid_dir.join("good.md");
     fs::create_dir_all(&invalid_dir).expect("invalid directory should be creatable");
     fs::write(&valid_note, "# Hello\n").expect("file should be writable");
 
-    let entries = enumerate_vault(root.to_string_lossy().as_ref()).expect("vault should enumerate");
+    let entries =
+        enumerate_vault(root.path().to_string_lossy().as_ref()).expect("vault should enumerate");
     assert!(
         entries.is_empty(),
         "files under invalid directories should be ignored"
@@ -135,13 +127,8 @@ fn reports_ambiguous_and_vault_undetermined_cases() {
         other => panic!("unexpected ambiguity error: {other:?}"),
     }
 
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock should be after unix epoch")
-        .as_nanos();
-    let temp_dir = std::env::temp_dir().join(format!("olr-no-vault-{unique}"));
-    fs::create_dir_all(&temp_dir).expect("temp dir should be creatable");
-    let context = temp_dir.join("outside.md");
+    let temp_dir = TempDir::new().expect("temp dir should be creatable");
+    let context = temp_dir.path().join("outside.md");
     fs::write(&context, "# Outside\n").expect("context file should be writable");
 
     assert!(detect_root(context.to_string_lossy().as_ref(), None).is_err());
