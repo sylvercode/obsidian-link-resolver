@@ -301,20 +301,7 @@ fn parse_target(
 }
 
 fn percent_decode(input: &str) -> String {
-    let mut output = String::with_capacity(input.len());
-    let bytes = input.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'%' && index + 2 < bytes.len() {
-            let hex = &input[index + 1..index + 3];
-            if let Ok(value) = u8::from_str_radix(hex, 16) {
-                output.push(value as char);
-                index += 3;
-                continue;
-            }
-        }
-        output.push(bytes[index] as char);
-        index += 1;
-    }
-    output
+    urlencoding::decode(input)
+        .map(|value| value.into_owned())
+        .unwrap_or_else(|_| input.to_string())
 }

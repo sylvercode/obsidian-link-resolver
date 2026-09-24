@@ -18,6 +18,11 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     assert_eq!(markdown.note_name.as_deref(), Some("Some Note.md"));
     assert_eq!(markdown.heading_path, vec!["Heading"]);
 
+    let utf8_markdown = parse_link("[Display](Some%20Note%20%C3%A9.md#Heading)")
+        .expect("utf-8 markdown link should parse");
+    assert_eq!(utf8_markdown.note_name.as_deref(), Some("Some Note é.md"));
+    assert_eq!(utf8_markdown.heading_path, vec!["Heading"]);
+
     let same_file = parse_link("[[#Overview]]").expect("same-file link should parse");
     assert!(same_file.note_name.is_none());
     assert_eq!(same_file.heading_path, vec!["Overview"]);
