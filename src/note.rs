@@ -576,7 +576,6 @@ fn structured_block_regions(lines: &[String]) -> Vec<ParsedStructuredBlock> {
     while index < lines.len() {
         let line = lines[index].as_str();
         let trimmed_start = line.trim_start();
-        let trimmed_end = line.trim_end();
 
         if trimmed_start.starts_with("```") {
             let begin = index + 1;
@@ -695,7 +694,6 @@ fn structured_block_regions(lines: &[String]) -> Vec<ParsedStructuredBlock> {
             continue;
         }
 
-        let _ = trimmed_end;
         index += 1;
     }
 
