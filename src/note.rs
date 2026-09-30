@@ -527,14 +527,12 @@ fn derived_block_ref(
 
     if matches!(next.kind, StructuredBlockKind::List) {
         if let Some(block_id) = block_id {
-            if let Some(index) = next
-                .items
-                .iter()
-                .position(|item| item.block_id.as_deref() == Some(block_id))
-            {
-                let mut item = next.items[index].clone();
-                item.block_id = Some(block_id.to_string());
-                next.items[index] = item;
+            let normalized_block_id = block_id.trim();
+            if next.items.iter().any(|item| {
+                item.block_id
+                    .as_deref()
+                    .is_some_and(|item_id| item_id.eq_ignore_ascii_case(normalized_block_id))
+            }) {
                 return next;
             }
         }

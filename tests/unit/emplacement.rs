@@ -80,3 +80,15 @@ fn parsed_note_cache_remains_immutable_when_building_emplacement() {
         "cached block metadata should not be mutated while building response"
     );
 }
+
+#[test]
+fn list_item_emplacement_matches_block_id_case_insensitively() {
+    let contents = "# Root\n\n## Blocks\n\n- parent\n  - child ^list-block\n- sibling\n";
+    let parsed = ParsedNote::from_contents(contents, true);
+    let target = LineRange { begin: 5, end: 5 };
+
+    let lowercase = parsed.build_emplacement(Some(&target), Some("list-block"));
+    let mixed_case = parsed.build_emplacement(Some(&target), Some("LiSt-BlOcK"));
+
+    assert_eq!(lowercase, mixed_case);
+}
