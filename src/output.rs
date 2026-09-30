@@ -64,6 +64,41 @@ pub struct HeadingRef {
     pub end: u32,
 }
 
+/// The type of structured block enclosing a target line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StructuredBlockKind {
+    /// A quoted block introduced by `>` lines.
+    Quote,
+    /// A callout block introduced by `> [!...]` lines.
+    Callout,
+    /// A pipe-delimited table block.
+    Table,
+    /// A list block containing one or more list items.
+    List,
+    /// A fenced code block.
+    Code,
+    /// A math block delimited by `$$`.
+    Math,
+}
+
+/// The enclosing structured block for a target line.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StructuredBlockRef {
+    /// The structured block kind.
+    pub kind: StructuredBlockKind,
+    /// The 1-based line where the structured block begins.
+    pub begin: u32,
+    /// The 1-based line where the structured block ends, inclusive.
+    pub end: u32,
+    /// The block identifier that owns this node, if one is present.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_id: Option<String>,
+    /// Nested child nodes contained by this structured block.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub items: Vec<StructuredBlockRef>,
+}
+
 /// The structured heading stack and section range containing a resolved target.
 ///
 /// Provides a rich view of where a resolved link points: the ordered heading hierarchy
@@ -82,6 +117,9 @@ pub struct StructuredEmplacement {
     pub heading_stack: Vec<HeadingRef>,
     /// The line range of the section containing the target (or the whole file if no headings).
     pub section: LineRange,
+    /// The enclosing structured block for the target, if it falls inside one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub structured_block: Option<StructuredBlockRef>,
 }
 
 /// The result of resolving an Obsidian link to its target.
@@ -142,11 +180,15 @@ impl ResolutionTarget {
     pub fn to_human_string(&self) -> String {
         match self.status {
             Status::Resolved => format!(
-                "resolved: {}{}",
+                "resolved: {}{}{}",
                 self.target_path.as_deref().unwrap_or("<unknown>"),
                 self.target_range
                     .as_ref()
                     .map(|range| format!(":{}-{}", range.begin, range.end))
+                    .unwrap_or_default(),
+                self.emplacement
+                    .as_ref()
+                    .map(render_emplacement)
                     .unwrap_or_default()
             ),
             Status::Unresolved => format!(
@@ -167,6 +209,43 @@ impl ResolutionTarget {
             ),
         }
     }
+}
+
+fn render_emplacement(emplacement: &StructuredEmplacement) -> String {
+    let headings = if emplacement.heading_stack.is_empty() {
+        "<none>".to_string()
+    } else {
+        emplacement
+            .heading_stack
+            .iter()
+            .map(|heading| heading.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" > ")
+    };
+
+    let structured_block = emplacement.structured_block.as_ref().map(|block| {
+        let block_id = block
+            .block_id
+            .as_ref()
+            .map(|id| format!(" id={id}"))
+            .unwrap_or_default();
+        format!(
+            " block={:?}:{}-{}{} children={}",
+            block.kind,
+            block.begin,
+            block.end,
+            block_id,
+            block.items.len()
+        )
+    });
+
+    format!(
+        " | emplacement: headings={} section={}-{}{}",
+        headings,
+        emplacement.section.begin,
+        emplacement.section.end,
+        structured_block.unwrap_or_default()
+    )
 }
 
 impl ResolutionTarget {

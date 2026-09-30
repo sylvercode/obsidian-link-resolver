@@ -6,7 +6,9 @@
 //! with proper handling of code fences so `#`-like syntax inside code blocks is ignored.
 
 use crate::link::Link;
-use crate::output::LineRange;
+use crate::output::{
+    HeadingRef, LineRange, StructuredBlockKind, StructuredBlockRef, StructuredEmplacement,
+};
 
 /// A block reference extracted from a markdown note.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,10 +196,20 @@ pub fn find_target_range(
             .into_iter()
             .find(|block| block.id.eq_ignore_ascii_case(block_id.trim()))
             .map(|block| {
-                Some(LineRange {
-                    begin: block.line,
-                    end: block.line,
-                })
+                structured_block_for_line(contents, block.line, Some(block_id.trim())).map_or_else(
+                    || {
+                        Some(LineRange {
+                            begin: block.line,
+                            end: block.line,
+                        })
+                    },
+                    |structured_block| {
+                        Some(LineRange {
+                            begin: structured_block.begin,
+                            end: structured_block.end,
+                        })
+                    },
+                )
             })
             .ok_or_else(|| TargetLookupError::MissingTarget {
                 reason: format!("block id '^{}' not found", block_id.trim()),
@@ -245,6 +257,60 @@ pub fn find_target_range(
         .ok_or_else(|| TargetLookupError::MalformedReference {
             reason: "link did not contain a heading or block target".to_string(),
         })
+}
+
+/// Build the structured emplacement for a resolved target line.
+pub fn build_emplacement(
+    contents: &str,
+    target_range: Option<&LineRange>,
+    block_id: Option<&str>,
+) -> StructuredEmplacement {
+    let scan = scan_note(contents);
+    let line_count = scan.line_count.max(1);
+
+    match target_range {
+        None => StructuredEmplacement {
+            heading_stack: Vec::new(),
+            section: LineRange {
+                begin: 1,
+                end: line_count,
+            },
+            structured_block: None,
+        },
+        Some(target_range) => {
+            let target_line = target_range.begin;
+            let heading_sections = heading_sections(&scan.headings, scan.line_count);
+            let mut heading_stack = Vec::new();
+
+            for (heading, section) in scan.headings.iter().zip(heading_sections.iter()) {
+                if heading.line <= target_line && target_line <= section.end {
+                    heading_stack.push(HeadingRef {
+                        text: heading.text.clone(),
+                        level: heading.level,
+                        begin: heading.line,
+                        end: section.end,
+                    });
+                }
+            }
+
+            let section = heading_stack
+                .last()
+                .map(|heading| LineRange {
+                    begin: heading.begin,
+                    end: heading.end,
+                })
+                .unwrap_or(LineRange {
+                    begin: 1,
+                    end: line_count,
+                });
+
+            StructuredEmplacement {
+                heading_stack,
+                section,
+                structured_block: structured_block_for_line(contents, target_line, block_id),
+            }
+        }
+    }
 }
 
 fn parse_heading(line: &str) -> Option<(u8, String)> {
@@ -300,4 +366,263 @@ fn heading_sections(headings: &[NoteHeading], line_count: u32) -> Vec<NoteSectio
         });
     }
     sections
+}
+
+fn structured_block_for_line(
+    contents: &str,
+    target_line: u32,
+    block_id: Option<&str>,
+) -> Option<StructuredBlockRef> {
+    let lines: Vec<&str> = contents.lines().collect();
+    let regions = structured_block_regions(&lines);
+    let target_index = target_line.checked_sub(1)? as usize;
+    let line = lines.get(target_index)?.trim_start();
+
+    if let Some(region) = regions
+        .iter()
+        .find(|region| target_line >= region.begin && target_line <= region.end)
+    {
+        return Some(with_item_if_needed(region.clone(), line, block_id));
+    }
+
+    if line.starts_with('^') {
+        let mut previous = target_line.saturating_sub(1);
+        while previous >= 1 {
+            let previous_line = lines.get((previous - 1) as usize)?.trim();
+            if previous_line.is_empty() {
+                previous = previous.saturating_sub(1);
+                continue;
+            }
+
+            if let Some(region) = regions
+                .iter()
+                .find(|region| previous >= region.begin && previous <= region.end)
+            {
+                return Some(with_item_if_needed(region.clone(), previous_line, block_id));
+            }
+
+            break;
+        }
+    }
+
+    None
+}
+
+fn with_item_if_needed(
+    mut region: StructuredBlockRef,
+    line: &str,
+    block_id: Option<&str>,
+) -> StructuredBlockRef {
+    if matches!(region.kind, StructuredBlockKind::List) {
+        if let Some(block_id) = block_id {
+            if let Some(item) = region
+                .items
+                .iter_mut()
+                .find(|item| item.block_id.as_deref() == Some(block_id))
+            {
+                item.block_id = Some(block_id.to_string());
+                return region;
+            }
+        }
+
+        if !line.trim_start().starts_with('^') && line_contains_block_id(line) {
+            region.block_id = parse_block_id(line);
+        }
+
+        return region;
+    }
+
+    if let Some(block_id) = block_id {
+        region.block_id = Some(block_id.to_string());
+    }
+
+    region
+}
+
+fn line_contains_block_id(line: &str) -> bool {
+    parse_block_id(line).is_some()
+}
+
+fn structured_block_regions(lines: &[&str]) -> Vec<StructuredBlockRef> {
+    let mut regions = Vec::new();
+    let mut index = 0usize;
+
+    while index < lines.len() {
+        let line = lines[index];
+        let trimmed_start = line.trim_start();
+        let trimmed_end = line.trim_end();
+
+        if trimmed_start.starts_with("```") {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                end = index + 1;
+                if lines[index].trim_start().starts_with("```") {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+
+            regions.push(StructuredBlockRef {
+                kind: StructuredBlockKind::Code,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if trimmed_start == "$$" {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                end = index + 1;
+                if lines[index].trim_start() == "$$" {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+
+            regions.push(StructuredBlockRef {
+                kind: StructuredBlockKind::Math,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if trimmed_start.starts_with('>') {
+            let begin = index + 1;
+            let kind = if trimmed_start.starts_with("> [!") {
+                StructuredBlockKind::Callout
+            } else {
+                StructuredBlockKind::Quote
+            };
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                let next_trimmed = lines[index].trim_start();
+                if !next_trimmed.starts_with('>') {
+                    break;
+                }
+                end = index + 1;
+                index += 1;
+            }
+
+            regions.push(StructuredBlockRef {
+                kind,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if is_table_row(line) && index + 1 < lines.len() && is_table_separator_row(lines[index + 1])
+        {
+            let begin = index + 1;
+            let mut end = begin + 1;
+            index += 2;
+            while index < lines.len() && is_table_row(lines[index]) {
+                end = index + 1;
+                index += 1;
+            }
+
+            regions.push(StructuredBlockRef {
+                kind: StructuredBlockKind::Table,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if is_list_item(line) {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() && !lines[index].trim().is_empty() {
+                end = index + 1;
+                index += 1;
+            }
+
+            let items = collect_list_items(lines, begin as u32, end as u32);
+
+            regions.push(StructuredBlockRef {
+                kind: StructuredBlockKind::List,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items,
+            });
+            continue;
+        }
+
+        let _ = trimmed_end;
+        index += 1;
+    }
+
+    regions
+}
+
+fn collect_list_items(lines: &[&str], begin: u32, end: u32) -> Vec<StructuredBlockRef> {
+    let mut items = Vec::new();
+    let mut index = begin.saturating_sub(1) as usize;
+    let limit = end as usize;
+
+    while index < limit {
+        let line = lines[index];
+        if is_list_item(line) {
+            items.push(StructuredBlockRef {
+                kind: StructuredBlockKind::List,
+                begin: index as u32 + 1,
+                end: index as u32 + 1,
+                block_id: parse_block_id(line),
+                items: Vec::new(),
+            });
+        }
+        index += 1;
+    }
+
+    items
+}
+
+fn is_table_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with('|') && trimmed.ends_with('|') && trimmed.len() > 1
+}
+
+fn is_table_separator_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    is_table_row(trimmed)
+        && trimmed
+            .chars()
+            .all(|character| matches!(character, '|' | '-' | ':' | ' '))
+}
+
+fn is_list_item(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") {
+        return true;
+    }
+
+    let digit_prefix = trimmed
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .count();
+    if digit_prefix == 0 {
+        return false;
+    }
+
+    let suffix: &str = &trimmed[digit_prefix..];
+    suffix.starts_with(". ") || suffix.starts_with(") ")
 }

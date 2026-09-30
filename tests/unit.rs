@@ -6,3 +6,6 @@ mod link_parse;
 
 #[path = "unit/name_resolution.rs"]
 mod name_resolution;
+
+#[path = "unit/emplacement.rs"]
+mod emplacement;

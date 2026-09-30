@@ -4,7 +4,7 @@
 //! handling same-file references, heading/block lookups, and emplacement computation.
 
 use crate::link::Link;
-use crate::note::{find_target_range, TargetLookupError};
+use crate::note::{build_emplacement, find_target_range, TargetLookupError};
 use crate::output::{ResolutionTarget, Status};
 use crate::vault::{resolve_name, ContextFile, NameResolutionError, Vault};
 use std::fs;
@@ -51,7 +51,7 @@ pub fn resolve_link(
     link: &Link,
     context: &ContextFile,
     vault: &Vault,
-    _with_emplacement: bool,
+    with_emplacement: bool,
 ) -> ResolutionTarget {
     let context_path = Path::new(&context.path);
     let target_entry = if let Some(note_name) = &link.note_name {
@@ -95,11 +95,24 @@ pub fn resolve_link(
     let target_path = Some(target_entry.rel_path.clone());
     let is_markdown = target_entry.is_markdown;
 
-    let target_range = if link.heading_path.is_empty() && link.block_id.is_none() {
-        None
-    } else if is_markdown {
+    if !is_markdown && (!link.heading_path.is_empty() || link.block_id.is_some()) {
+        return ResolutionTarget {
+            status: Status::SubTargetNotFound,
+            target_path,
+            target_range: None,
+            is_embed: link.is_embed,
+            display_text: link.display_text.clone(),
+            candidates: None,
+            reason: Some("attachments do not contain headings or block ids".to_string()),
+            emplacement: None,
+        };
+    }
+
+    let needs_note_contents = is_markdown
+        && (with_emplacement || !link.heading_path.is_empty() || link.block_id.is_some());
+    let note_contents = if needs_note_contents {
         let absolute_path = vault_path_join(&vault.root, &target_entry.rel_path);
-        let contents = match fs::read_to_string(&absolute_path) {
+        Some(match fs::read_to_string(&absolute_path) {
             Ok(contents) => contents,
             Err(error) => {
                 return ResolutionTarget {
@@ -116,50 +129,54 @@ pub fn resolve_link(
                     emplacement: None,
                 };
             }
-        };
+        })
+    } else {
+        None
+    };
 
-        match find_target_range(&contents, link) {
-            Ok(range) => range,
-            Err(TargetLookupError::MissingTarget { reason }) => {
-                return ResolutionTarget {
-                    status: Status::SubTargetNotFound,
-                    target_path,
-                    target_range: None,
-                    is_embed: link.is_embed,
-                    display_text: link.display_text.clone(),
-                    candidates: None,
-                    reason: Some(reason),
-                    emplacement: None,
-                };
-            }
-            Err(TargetLookupError::MalformedReference { reason }) => {
-                return ResolutionTarget {
-                    status: Status::Error,
-                    target_path,
-                    target_range: None,
-                    is_embed: link.is_embed,
-                    display_text: link.display_text.clone(),
-                    candidates: None,
-                    reason: Some(reason),
-                    emplacement: None,
-                };
+    let target_range = if let Some(contents) = note_contents.as_ref() {
+        if link.heading_path.is_empty() && link.block_id.is_none() {
+            None
+        } else {
+            match find_target_range(contents, link) {
+                Ok(range) => range,
+                Err(TargetLookupError::MissingTarget { reason }) => {
+                    return ResolutionTarget {
+                        status: Status::SubTargetNotFound,
+                        target_path,
+                        target_range: None,
+                        is_embed: link.is_embed,
+                        display_text: link.display_text.clone(),
+                        candidates: None,
+                        reason: Some(reason),
+                        emplacement: None,
+                    };
+                }
+                Err(TargetLookupError::MalformedReference { reason }) => {
+                    return ResolutionTarget {
+                        status: Status::Error,
+                        target_path,
+                        target_range: None,
+                        is_embed: link.is_embed,
+                        display_text: link.display_text.clone(),
+                        candidates: None,
+                        reason: Some(reason),
+                        emplacement: None,
+                    };
+                }
             }
         }
     } else {
         None
     };
-    if !is_markdown && (!link.heading_path.is_empty() || link.block_id.is_some()) {
-        return ResolutionTarget {
-            status: Status::SubTargetNotFound,
-            target_path,
-            target_range: None,
-            is_embed: link.is_embed,
-            display_text: link.display_text.clone(),
-            candidates: None,
-            reason: Some("attachments do not contain headings or block ids".to_string()),
-            emplacement: None,
-        };
-    }
+
+    let emplacement = if with_emplacement && is_markdown {
+        note_contents.as_deref().map(|contents| {
+            build_emplacement(contents, target_range.as_ref(), link.block_id.as_deref())
+        })
+    } else {
+        None
+    };
 
     ResolutionTarget {
         status: Status::Resolved,
@@ -169,7 +186,7 @@ pub fn resolve_link(
         display_text: link.display_text.clone(),
         candidates: None,
         reason: None,
-        emplacement: None,
+        emplacement,
     }
 }
 

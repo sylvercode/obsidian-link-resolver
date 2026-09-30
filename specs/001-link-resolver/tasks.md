@@ -129,17 +129,17 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 ### Tests for User Story 2 (write FIRST, ensure they FAIL before implementation) ⚠️
 
-- [ ] T037 [P] [US2] Integration test for emplacement scenarios 8 (nested `Design#API#Auth` stack), 9 (no-heading note → empty stack + whole-file section), and US2 AS4 structured-block coverage (table/quote/callout/list/code/math boundaries with list-item-in-parent-list context) in `tests/integration/us2_emplacement.rs`
-- [ ] T038 [P] [US2] Unit tests in `tests/unit/emplacement.rs` for heading section-end computation (`end` is line before next heading of equal/higher level or EOF), enclosing structured-block boundary derivation, and list-item emplacement inside parent-list context (FR-008, FR-009, OR15)
+- [x] T037 [P] [US2] Integration test for emplacement scenarios 8 (nested `Design#API#Auth` stack), 9 (no-heading note → empty stack + whole-file section), and US2 AS4 structured-block coverage (table/quote/callout/list/code/math boundaries with list-item-in-parent-list context) in `tests/integration/us2_emplacement.rs`
+- [x] T038 [P] [US2] Unit tests in `tests/unit/emplacement.rs` for heading section-end computation (`end` is line before next heading of equal/higher level or EOF), enclosing structured-block boundary derivation, and list-item emplacement inside parent-list context (FR-008, FR-009, OR15)
 
 **Documentation Gate (Principle IX)**: All new types and functions added in US2 (`StructuredEmplacement`, `HeadingRef`, `LineRange`, heading-stack and section-range computation functions) MUST include Rustdoc comments explaining structure, field semantics, and computation logic. Verify with `cargo doc --all` before advancing to US3.
 
 ### Implementation for User Story 2
 
-- [ ] T039 [P] [US2] Expand emplacement output types in `src/output.rs` and `contracts/result.schema.json`: keep `HeadingRef { text, level (1–6), begin, end }`, `section: LineRange`, and add optional structured-block boundary payload for note targets inside list/table/quote/callout/fenced-code/math blocks, including list-item line context nested under the parent list block (FR-008, FR-009, OR15)
-- [ ] T040 [US2] Implement heading-stack plus structured-block emplacement computation in `src/note.rs`: return outermost→innermost headings, section range, and enclosing structured-block boundaries for the resolved target line; for no-heading notes return empty stack with whole-file section (FR-008, FR-009)
-- [ ] T041 [US2] Wire emplacement in `src/resolve.rs` to consume phase-3.1 `target_range`/block metadata, populate emplacement only when requested and target is a note, and keep attachment behavior as `emplacement = null/absent` (FR-014)
-- [ ] T042 [US2] Add/verify `--emplacement` plumbing in `src/cli.rs`, `src/lib.rs`, and `src/output.rs` so JSON and human outputs include emplacement fields deterministically when requested (FR-008, FR-015, FR-016)
+- [x] T039 [US2] Expand emplacement output types in `src/output.rs` and `contracts/result.schema.json`: keep `HeadingRef { text, level (1–6), begin, end }`, `section: LineRange`, and add optional structured-block boundary payload for note targets inside list/table/quote/callout/fenced-code/math blocks, including list-item line context nested under the parent list block (FR-008, FR-009, OR15)
+- [x] T040 [US2] Implement heading-stack plus structured-block emplacement computation in `src/note.rs`: return outermost→innermost headings, section range, and enclosing structured-block boundaries for the resolved target line; for no-heading notes return empty stack with whole-file section (FR-008, FR-009)
+- [x] T041 [US2] Wire emplacement in `src/resolve.rs` to consume phase-3.1 `target_range`/block metadata, populate emplacement only when requested and target is a note, and keep attachment behavior as `emplacement = null/absent` (FR-014)
+- [x] T042 [US2] Add/verify `--emplacement` plumbing in `src/cli.rs`, `src/lib.rs`, and `src/output.rs` so JSON and human outputs include emplacement fields deterministically when requested (FR-008, FR-015, FR-016)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — targets can be resolved with or without structured emplacement.
 
