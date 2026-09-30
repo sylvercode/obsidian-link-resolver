@@ -29,6 +29,10 @@ fn derives_enclosing_ranges_for_structured_block_targets() {
             LineRange { begin: 10, end: 11 },
         ),
         (
+            "[[Emplacement#^table-block]]",
+            LineRange { begin: 15, end: 17 },
+        ),
+        (
             "[[Emplacement#^triple-quote-block]]",
             LineRange { begin: 40, end: 42 },
         ),
