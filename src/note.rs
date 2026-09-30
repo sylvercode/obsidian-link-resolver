@@ -230,9 +230,7 @@ impl ParsedNote {
         let scan = scan_note(contents);
         let lines = contents.lines().map(str::to_owned).collect::<Vec<_>>();
         let structured_blocks = if need_structured_blocks {
-            Some(structured_block_regions(
-                &lines.iter().map(String::as_str).collect::<Vec<_>>(),
-            ))
+            Some(structured_block_regions(&lines))
         } else {
             None
         };
@@ -573,12 +571,12 @@ fn line_contains_block_id(line: &str) -> bool {
 
 /// Detect each contiguous structured block region within a note, such as code, math, quote, table,
 /// and list blocks.
-fn structured_block_regions(lines: &[&str]) -> Vec<ParsedStructuredBlock> {
+fn structured_block_regions(lines: &[String]) -> Vec<ParsedStructuredBlock> {
     let mut regions = Vec::new();
     let mut index = 0usize;
 
     while index < lines.len() {
-        let line = lines[index];
+        let line = lines[index].as_str();
         let trimmed_start = line.trim_start();
         let trimmed_end = line.trim_end();
 
@@ -656,12 +654,14 @@ fn structured_block_regions(lines: &[&str]) -> Vec<ParsedStructuredBlock> {
             continue;
         }
 
-        if is_table_row(line) && index + 1 < lines.len() && is_table_separator_row(lines[index + 1])
+        if is_table_row(line)
+            && index + 1 < lines.len()
+            && is_table_separator_row(lines[index + 1].as_str())
         {
             let begin = index + 1;
             let mut end = begin + 1;
             index += 2;
-            while index < lines.len() && is_table_row(lines[index]) {
+            while index < lines.len() && is_table_row(lines[index].as_str()) {
                 end = index + 1;
                 index += 1;
             }
@@ -705,13 +705,13 @@ fn structured_block_regions(lines: &[&str]) -> Vec<ParsedStructuredBlock> {
 }
 
 /// Collect nested list-item entries within a list block while preserving their per-item block ids.
-fn collect_list_items(lines: &[&str], begin: u32, end: u32) -> Vec<ParsedStructuredBlock> {
+fn collect_list_items(lines: &[String], begin: u32, end: u32) -> Vec<ParsedStructuredBlock> {
     let mut items = Vec::new();
     let mut index = begin.saturating_sub(1) as usize;
     let limit = end as usize;
 
     while index < limit {
-        let line = lines[index];
+        let line = lines[index].as_str();
         if is_list_item(line) {
             items.push(ParsedStructuredBlock {
                 kind: StructuredBlockKind::List,
