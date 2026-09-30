@@ -4,7 +4,7 @@
 //! handling same-file references, heading/block lookups, and emplacement computation.
 
 use crate::link::Link;
-use crate::note::{build_emplacement, find_target_range, TargetLookupError};
+use crate::note::{ParsedNote, TargetLookupError};
 use crate::output::{ResolutionTarget, Status};
 use crate::vault::{resolve_name, ContextFile, NameResolutionError, Vault};
 use std::fs;
@@ -134,11 +134,19 @@ pub fn resolve_link(
         None
     };
 
-    let target_range = if let Some(contents) = note_contents.as_ref() {
+    let parsed_note = if let Some(contents) = note_contents.as_ref() {
+        let need_structured_blocks =
+            with_emplacement || !link.heading_path.is_empty() || link.block_id.is_some();
+        Some(ParsedNote::from_contents(contents, need_structured_blocks))
+    } else {
+        None
+    };
+
+    let target_range = if let Some(parsed_note) = parsed_note.as_ref() {
         if link.heading_path.is_empty() && link.block_id.is_none() {
             None
         } else {
-            match find_target_range(contents, link) {
+            match parsed_note.find_target_range(link) {
                 Ok(range) => range,
                 Err(TargetLookupError::MissingTarget { reason }) => {
                     return ResolutionTarget {
@@ -171,8 +179,8 @@ pub fn resolve_link(
     };
 
     let emplacement = if with_emplacement && is_markdown {
-        note_contents.as_deref().map(|contents| {
-            build_emplacement(contents, target_range.as_ref(), link.block_id.as_deref())
+        parsed_note.as_ref().map(|parsed_note| {
+            parsed_note.build_emplacement(target_range.as_ref(), link.block_id.as_deref())
         })
     } else {
         None

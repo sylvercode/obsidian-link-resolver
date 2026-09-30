@@ -1,5 +1,5 @@
 use obsidian_link_resolver::link::parse_link;
-use obsidian_link_resolver::note::find_target_range;
+use obsidian_link_resolver::note::{find_target_range, ParsedNote};
 use obsidian_link_resolver::output::LineRange;
 
 #[test]
@@ -56,4 +56,27 @@ fn derives_enclosing_ranges_for_structured_block_targets() {
             "{raw_link} should resolve to the enclosing block"
         );
     }
+}
+
+#[test]
+fn parsed_note_cache_remains_immutable_when_building_emplacement() {
+    let contents = "# Root\n\n## Blocks\n\n- parent\n  - child ^list-block\n- sibling\n";
+    let parsed = ParsedNote::from_contents(contents, true);
+
+    let target = LineRange { begin: 5, end: 5 };
+    let first = parsed.build_emplacement(Some(&target), Some("list-block"));
+    let second = parsed.build_emplacement(Some(&target), Some("list-block"));
+
+    assert_eq!(first, second);
+    assert_eq!(
+        parsed
+            .cached_structured_blocks()
+            .as_ref()
+            .expect("structured blocks should be cached")
+            .iter()
+            .find(|block| block.begin == 4 && block.end == 6)
+            .and_then(|block| block.block_id.as_deref()),
+        None,
+        "cached block metadata should not be mutated while building response"
+    );
 }
