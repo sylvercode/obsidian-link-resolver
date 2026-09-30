@@ -6,7 +6,9 @@
 //! with proper handling of code fences so `#`-like syntax inside code blocks is ignored.
 
 use crate::link::Link;
-use crate::output::LineRange;
+use crate::output::{
+    HeadingRef, LineRange, StructuredBlockKind, StructuredBlockRef, StructuredEmplacement,
+};
 
 /// A block reference extracted from a markdown note.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,6 +63,25 @@ pub struct NoteSection {
     pub begin: u32,
     /// The 1-based line number where the section ends (inclusive).
     pub end: u32,
+}
+
+/// A structured block region captured by the parser for immutable caching.
+///
+/// This parse-only shape is intentionally separate from response output models so
+/// cached note data can be reused across requests without carrying request-specific
+/// projection state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedStructuredBlock {
+    /// The structured block kind.
+    kind: StructuredBlockKind,
+    /// The 1-based line where the structured block begins.
+    begin: u32,
+    /// The 1-based line where the structured block ends, inclusive.
+    end: u32,
+    /// The block identifier that owns this parsed node, if one is present.
+    block_id: Option<String>,
+    /// Parsed child nodes nested within this structured block.
+    items: Vec<ParsedStructuredBlock>,
 }
 
 /// Parse a markdown note and extract all ATX headings.
@@ -178,75 +199,264 @@ pub fn find_target_line(contents: &str, link: &Link) -> Result<Option<u32>, Targ
     find_target_range(contents, link).map(|range| range.map(|value| value.begin))
 }
 
-/// Find the canonical target range for a parsed link within the supplied note contents.
-pub fn find_target_range(
-    contents: &str,
-    link: &Link,
-) -> Result<Option<LineRange>, TargetLookupError> {
-    if link.heading_path.is_empty() && link.block_id.is_none() {
-        return Ok(None);
+/// An immutable snapshot of the parsed note content.
+///
+/// This cache is built once for a file and then reused for all downstream lookups.
+/// The cached data is intentionally never mutated while constructing a response object,
+/// which allows the same parsed view to be reused safely across multiple target resolutions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedNote {
+    /// The headings discovered in the note in document order.
+    pub headings: Vec<NoteHeading>,
+    /// The trailing block anchor IDs found in the note.
+    pub block_ids: Vec<NoteBlockReference>,
+    /// The number of lines in the source note.
+    pub line_count: u32,
+    /// The original note text split into logical lines.
+    pub lines: Vec<String>,
+    /// The structured block regions for the note, if they were needed for the current resolution.
+    structured_blocks: Option<Vec<ParsedStructuredBlock>>,
+}
+
+impl ParsedNote {
+    /// Parse a markdown note into a reusable immutable cache.
+    ///
+    /// # Arguments
+    ///
+    /// * `contents` - The raw markdown note contents.
+    /// * `need_structured_blocks` - If `true`, also precomputes the structured block regions so
+    ///   emplacement assembly can reuse them without rescanning the file.
+    pub fn from_contents(contents: &str, need_structured_blocks: bool) -> Self {
+        let scan = scan_note(contents);
+        let lines = contents.lines().map(str::to_owned).collect::<Vec<_>>();
+        let structured_blocks = if need_structured_blocks {
+            Some(structured_block_regions(&lines))
+        } else {
+            None
+        };
+
+        Self {
+            headings: scan.headings,
+            block_ids: scan.block_ids,
+            line_count: scan.line_count,
+            lines,
+            structured_blocks,
+        }
     }
 
-    let scan = scan_note(contents);
-    if let Some(block_id) = &link.block_id {
-        return scan
-            .block_ids
-            .into_iter()
-            .find(|block| block.id.eq_ignore_ascii_case(block_id.trim()))
-            .map(|block| {
+    /// Return a read-only projection of cached structured blocks in output shape.
+    ///
+    /// This is intended for callers that want to inspect cached block boundaries while keeping
+    /// the parse cache representation private and immutable.
+    pub fn cached_structured_blocks(&self) -> Option<Vec<StructuredBlockRef>> {
+        self.structured_blocks
+            .as_ref()
+            .map(|blocks| blocks.iter().map(to_output_block_ref).collect())
+    }
+
+    /// Resolve the canonical line range for a heading or block target using the cached parse.
+    ///
+    /// This method is side-effect free with respect to the cached note data: it derives the answer
+    /// from immutable values and returns a fresh `LineRange` for the response layer.
+    pub fn find_target_range(&self, link: &Link) -> Result<Option<LineRange>, TargetLookupError> {
+        if link.heading_path.is_empty() && link.block_id.is_none() {
+            return Ok(None);
+        }
+
+        if let Some(block_id) = &link.block_id {
+            return self
+                .block_ids
+                .iter()
+                .find(|block| block.id.eq_ignore_ascii_case(block_id.trim()))
+                .map(|block| {
+                    self.structured_block_for_line(block.line, Some(block_id.trim()))
+                        .map_or_else(
+                            || {
+                                Some(LineRange {
+                                    begin: block.line,
+                                    end: block.line,
+                                })
+                            },
+                            |structured_block| {
+                                Some(LineRange {
+                                    begin: structured_block.begin,
+                                    end: structured_block.end,
+                                })
+                            },
+                        )
+                })
+                .ok_or_else(|| TargetLookupError::MissingTarget {
+                    reason: format!("block id '^{}' not found", block_id.trim()),
+                });
+        }
+
+        let heading_sections = heading_sections(&self.headings, self.line_count);
+        let mut current_index = None;
+        let mut current_level = 0;
+        let mut search_begin = 1;
+        let mut search_end = self.line_count;
+
+        for segment in &link.heading_path {
+            let mut matched = None;
+            for (index, heading) in self.headings.iter().enumerate() {
+                if heading.line < search_begin || heading.line > search_end {
+                    continue;
+                }
+                if heading.level <= current_level {
+                    continue;
+                }
+                if heading.text.trim().eq_ignore_ascii_case(segment.trim()) {
+                    matched = Some((index, heading));
+                    break;
+                }
+            }
+
+            let (index, heading) = matched.ok_or_else(|| TargetLookupError::MissingTarget {
+                reason: format!("heading '{}' not found", segment.trim()),
+            })?;
+
+            current_index = Some(index);
+            current_level = heading.level;
+            search_begin = heading.line + 1;
+            search_end = heading_sections[index].end;
+        }
+
+        current_index
+            .map(|index| {
                 Some(LineRange {
-                    begin: block.line,
-                    end: block.line,
+                    begin: self.headings[index].line,
+                    end: heading_sections[index].end,
                 })
             })
-            .ok_or_else(|| TargetLookupError::MissingTarget {
-                reason: format!("block id '^{}' not found", block_id.trim()),
-            });
+            .ok_or_else(|| TargetLookupError::MalformedReference {
+                reason: "link did not contain a heading or block target".to_string(),
+            })
     }
 
-    let heading_sections = heading_sections(&scan.headings, scan.line_count);
-    let mut current_index = None;
-    let mut current_level = 0;
-    let mut search_begin = 1;
-    let mut search_end = scan.line_count;
+    /// Build the structured emplacement for a resolved target from the cached note data.
+    ///
+    /// The returned value is a derived response object. It does not mutate the cached note parse,
+    /// even when the target is inside a list block or another structured region.
+    pub fn build_emplacement(
+        &self,
+        target_range: Option<&LineRange>,
+        block_id: Option<&str>,
+    ) -> StructuredEmplacement {
+        let line_count = self.line_count.max(1);
 
-    for segment in &link.heading_path {
-        let mut matched = None;
-        for (index, heading) in scan.headings.iter().enumerate() {
-            if heading.line < search_begin || heading.line > search_end {
-                continue;
+        match target_range {
+            None => StructuredEmplacement {
+                heading_stack: Vec::new(),
+                section: LineRange {
+                    begin: 1,
+                    end: line_count,
+                },
+                structured_block: None,
+            },
+            Some(target_range) => {
+                let target_line = target_range.begin;
+                let heading_sections = heading_sections(&self.headings, self.line_count);
+                let mut heading_stack = Vec::new();
+
+                for (heading, section) in self.headings.iter().zip(heading_sections.iter()) {
+                    if heading.line <= target_line && target_line <= section.end {
+                        heading_stack.push(HeadingRef {
+                            text: heading.text.clone(),
+                            level: heading.level,
+                            begin: heading.line,
+                            end: section.end,
+                        });
+                    }
+                }
+
+                let section = heading_stack
+                    .last()
+                    .map(|heading| LineRange {
+                        begin: heading.begin,
+                        end: heading.end,
+                    })
+                    .unwrap_or(LineRange {
+                        begin: 1,
+                        end: line_count,
+                    });
+
+                StructuredEmplacement {
+                    heading_stack,
+                    section,
+                    structured_block: self.structured_block_for_line(target_line, block_id),
+                }
             }
-            if heading.level <= current_level {
-                continue;
-            }
-            if heading.text.trim().eq_ignore_ascii_case(segment.trim()) {
-                matched = Some((index, heading));
+        }
+    }
+
+    /// Resolve the enclosing structured block for a target line using the cached parse snapshot.
+    ///
+    /// The returned block is a derived response value; the cached region remains unchanged.
+    fn structured_block_for_line(
+        &self,
+        target_line: u32,
+        block_id: Option<&str>,
+    ) -> Option<StructuredBlockRef> {
+        let target_index = target_line.checked_sub(1)? as usize;
+        let line = self.lines.get(target_index)?.trim_start();
+        let regions = self.structured_blocks.as_ref()?;
+
+        if let Some(region) = regions
+            .iter()
+            .find(|region| target_line >= region.begin && target_line <= region.end)
+        {
+            return Some(derived_block_ref(region, line, block_id));
+        }
+
+        if line.starts_with('^') {
+            let mut previous = target_line.saturating_sub(1);
+            while previous >= 1 {
+                let previous_line = self.lines.get((previous - 1) as usize)?.trim();
+                if previous_line.is_empty() {
+                    previous = previous.saturating_sub(1);
+                    continue;
+                }
+
+                if let Some(region) = regions
+                    .iter()
+                    .find(|region| previous >= region.begin && previous <= region.end)
+                {
+                    return Some(derived_block_ref(region, previous_line, block_id));
+                }
+
                 break;
             }
         }
 
-        let (index, heading) = matched.ok_or_else(|| TargetLookupError::MissingTarget {
-            reason: format!("heading '{}' not found", segment.trim()),
-        })?;
-
-        current_index = Some(index);
-        current_level = heading.level;
-        search_begin = heading.line + 1;
-        search_end = heading_sections[index].end;
+        None
     }
-
-    current_index
-        .map(|index| {
-            Some(LineRange {
-                begin: scan.headings[index].line,
-                end: heading_sections[index].end,
-            })
-        })
-        .ok_or_else(|| TargetLookupError::MalformedReference {
-            reason: "link did not contain a heading or block target".to_string(),
-        })
 }
 
+/// Find the canonical target range for a parsed link within the supplied note contents.
+///
+/// This convenience wrapper creates a temporary parse cache for the note and then resolves the
+/// range from that immutable snapshot. It is intended for one-off lookups where the cache does not
+/// need to outlive the call.
+pub fn find_target_range(
+    contents: &str,
+    link: &Link,
+) -> Result<Option<LineRange>, TargetLookupError> {
+    ParsedNote::from_contents(contents, link.block_id.is_some()).find_target_range(link)
+}
+
+/// Build the structured emplacement for a resolved target line.
+///
+/// This convenience wrapper creates a parse snapshot when the caller wants a response object for a
+/// single note without managing a cache explicitly. The cached source data remains unchanged.
+pub fn build_emplacement(
+    contents: &str,
+    target_range: Option<&LineRange>,
+    block_id: Option<&str>,
+) -> StructuredEmplacement {
+    ParsedNote::from_contents(contents, true).build_emplacement(target_range, block_id)
+}
+
+/// Parse a single ATX heading line and return its level plus normalized heading text.
 fn parse_heading(line: &str) -> Option<(u8, String)> {
     let content = line.trim_start();
     let level = content
@@ -266,6 +476,7 @@ fn parse_heading(line: &str) -> Option<(u8, String)> {
     Some((level as u8, text.to_string()))
 }
 
+/// Extract a trailing block identifier from a markdown line when one is present.
 fn parse_block_id(line: &str) -> Option<String> {
     let trimmed = line.trim_end();
     let caret = trimmed.rfind('^')?;
@@ -284,6 +495,7 @@ fn parse_block_id(line: &str) -> Option<String> {
     Some(block_id.to_string())
 }
 
+/// Compute the inclusive section boundary for each heading in a note.
 fn heading_sections(headings: &[NoteHeading], line_count: u32) -> Vec<NoteSection> {
     let mut sections = Vec::with_capacity(headings.len());
     for (index, heading) in headings.iter().enumerate() {
@@ -300,4 +512,247 @@ fn heading_sections(headings: &[NoteHeading], line_count: u32) -> Vec<NoteSectio
         });
     }
     sections
+}
+
+/// Produce a response-safe copy of a cached structured block with request-specific metadata applied.
+///
+/// This keeps the original parsed block tree immutable while still allowing the current resolution
+/// to attach the targeted block id or list item metadata needed for output.
+fn derived_block_ref(
+    region: &ParsedStructuredBlock,
+    line: &str,
+    block_id: Option<&str>,
+) -> StructuredBlockRef {
+    let mut next = to_output_block_ref(region);
+
+    if matches!(next.kind, StructuredBlockKind::List) {
+        if let Some(block_id) = block_id {
+            let normalized_block_id = block_id.trim();
+            if next.items.iter().any(|item| {
+                item.block_id
+                    .as_deref()
+                    .is_some_and(|item_id| item_id.eq_ignore_ascii_case(normalized_block_id))
+            }) {
+                return next;
+            }
+        }
+
+        if !line.trim_start().starts_with('^') && line_contains_block_id(line) {
+            next.block_id = parse_block_id(line);
+        }
+
+        return next;
+    }
+
+    if let Some(block_id) = block_id {
+        next.block_id = Some(block_id.to_string());
+    }
+
+    next
+}
+
+/// Convert a cached parsed structured block into the public output model.
+fn to_output_block_ref(region: &ParsedStructuredBlock) -> StructuredBlockRef {
+    StructuredBlockRef {
+        kind: region.kind,
+        begin: region.begin,
+        end: region.end,
+        block_id: region.block_id.clone(),
+        items: region.items.iter().map(to_output_block_ref).collect(),
+    }
+}
+
+/// Return `true` when the line contains a trailing block ID in Obsidian form.
+fn line_contains_block_id(line: &str) -> bool {
+    parse_block_id(line).is_some()
+}
+
+/// Detect each contiguous structured block region within a note, such as code, math, quote, table,
+/// and list blocks.
+fn structured_block_regions(lines: &[String]) -> Vec<ParsedStructuredBlock> {
+    let mut regions = Vec::new();
+    let mut index = 0usize;
+
+    while index < lines.len() {
+        let line = lines[index].as_str();
+        let trimmed_start = line.trim_start();
+
+        if trimmed_start.starts_with("```") {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                end = index + 1;
+                if lines[index].trim_start().starts_with("```") {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+
+            regions.push(ParsedStructuredBlock {
+                kind: StructuredBlockKind::Code,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if trimmed_start == "$$" {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                end = index + 1;
+                if lines[index].trim_start() == "$$" {
+                    index += 1;
+                    break;
+                }
+                index += 1;
+            }
+
+            regions.push(ParsedStructuredBlock {
+                kind: StructuredBlockKind::Math,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if trimmed_start.starts_with('>') {
+            let begin = index + 1;
+            let kind = if trimmed_start.starts_with("> [!") {
+                StructuredBlockKind::Callout
+            } else {
+                StructuredBlockKind::Quote
+            };
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() {
+                let next_trimmed = lines[index].trim_start();
+                if !next_trimmed.starts_with('>') {
+                    break;
+                }
+                end = index + 1;
+                index += 1;
+            }
+
+            regions.push(ParsedStructuredBlock {
+                kind,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if is_table_row(line)
+            && index + 1 < lines.len()
+            && is_table_separator_row(lines[index + 1].as_str())
+        {
+            let begin = index + 1;
+            let mut end = begin + 1;
+            index += 2;
+            while index < lines.len() && is_table_row(lines[index].as_str()) {
+                end = index + 1;
+                index += 1;
+            }
+
+            regions.push(ParsedStructuredBlock {
+                kind: StructuredBlockKind::Table,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items: Vec::new(),
+            });
+            continue;
+        }
+
+        if is_list_item(line) {
+            let begin = index + 1;
+            let mut end = begin;
+            index += 1;
+            while index < lines.len() && !lines[index].trim().is_empty() {
+                end = index + 1;
+                index += 1;
+            }
+
+            let items = collect_list_items(lines, begin as u32, end as u32);
+
+            regions.push(ParsedStructuredBlock {
+                kind: StructuredBlockKind::List,
+                begin: begin as u32,
+                end: end as u32,
+                block_id: None,
+                items,
+            });
+            continue;
+        }
+
+        index += 1;
+    }
+
+    regions
+}
+
+/// Collect nested list-item entries within a list block while preserving their per-item block ids.
+fn collect_list_items(lines: &[String], begin: u32, end: u32) -> Vec<ParsedStructuredBlock> {
+    let mut items = Vec::new();
+    let mut index = begin.saturating_sub(1) as usize;
+    let limit = end as usize;
+
+    while index < limit {
+        let line = lines[index].as_str();
+        if is_list_item(line) {
+            items.push(ParsedStructuredBlock {
+                kind: StructuredBlockKind::List,
+                begin: index as u32 + 1,
+                end: index as u32 + 1,
+                block_id: parse_block_id(line),
+                items: Vec::new(),
+            });
+        }
+        index += 1;
+    }
+
+    items
+}
+
+/// Return `true` when the line matches a markdown table row shape.
+fn is_table_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with('|') && trimmed.ends_with('|') && trimmed.len() > 1
+}
+
+/// Return `true` when the line matches a markdown table separator row.
+fn is_table_separator_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    is_table_row(trimmed)
+        && trimmed
+            .chars()
+            .all(|character| matches!(character, '|' | '-' | ':' | ' '))
+}
+
+/// Return `true` when the line starts a markdown list item, including ordered lists.
+fn is_list_item(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") {
+        return true;
+    }
+
+    let digit_prefix = trimmed
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .count();
+    if digit_prefix == 0 {
+        return false;
+    }
+
+    let suffix: &str = &trimmed[digit_prefix..];
+    suffix.starts_with(". ") || suffix.starts_with(") ")
 }

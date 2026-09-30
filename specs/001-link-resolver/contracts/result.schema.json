@@ -6,7 +6,8 @@
     "type": "object",
     "additionalProperties": false,
     "required": [
-        "status"
+        "status",
+        "is_embed"
     ],
     "properties": {
         "status": {
@@ -28,26 +29,15 @@
             "description": "Resolved target file path, expressed as a vault-relative path with forward-slash (/) separators (never absolute). Present for resolved and sub_target_not_found."
         },
         "target_range": {
-            "type": [
-                "object",
-                "null"
-            ],
-            "additionalProperties": false,
-            "required": [
-                "begin",
-                "end"
-            ],
-            "description": "Resolved target interval for headings and blocks. For a single-line target, begin == end. Null when the target is a plain file or attachment with no heading/block selection.",
-            "properties": {
-                "begin": {
-                    "type": "integer",
-                    "minimum": 1
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/lineRange"
                 },
-                "end": {
-                    "type": "integer",
-                    "minimum": 1
+                {
+                    "type": "null"
                 }
-            }
+            ],
+            "description": "Canonical target interval for heading/block/structured-block targets. Null or omitted for plain-file or attachment targets."
         },
         "is_embed": {
             "type": "boolean",
@@ -61,82 +51,32 @@
             "description": "Display text from the link; informational only, never affects resolution."
         },
         "candidates": {
-            "type": "array",
+            "type": [
+                "array",
+                "null"
+            ],
             "items": {
                 "type": "string"
             },
-            "description": "Candidate target paths (vault-relative, forward-slash separated); present only for status 'ambiguous'. Sorted ascending by vault-relative path using ordinal (byte-wise) comparison for byte-for-byte deterministic output."
+            "description": "Candidate target paths (vault-relative, forward-slash separated); present only for status ambiguous. Sorted ascending by vault-relative path using ordinal (byte-wise) comparison for byte-for-byte deterministic output."
         },
         "reason": {
             "type": [
                 "string",
                 "null"
             ],
-            "description": "Actionable reason for any non-'resolved' outcome."
+            "description": "Actionable reason for any non-resolved outcome."
         },
         "emplacement": {
-            "type": [
-                "object",
-                "null"
-            ],
-            "additionalProperties": false,
-            "required": [
-                "heading_stack",
-                "section"
-            ],
-            "description": "Structured emplacement; present only when --emplacement is requested and target lands inside a note.",
-            "properties": {
-                "heading_stack": {
-                    "type": "array",
-                    "description": "Containing headings, outermost to innermost; empty when the target has no containing headings.",
-                    "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "text",
-                            "level",
-                            "begin",
-                            "end"
-                        ],
-                        "properties": {
-                            "text": {
-                                "type": "string"
-                            },
-                            "level": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 6
-                            },
-                            "begin": {
-                                "type": "integer",
-                                "minimum": 1
-                            },
-                            "end": {
-                                "type": "integer",
-                                "minimum": 1
-                            }
-                        }
-                    }
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/structuredEmplacement"
                 },
-                "section": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                        "begin",
-                        "end"
-                    ],
-                    "properties": {
-                        "begin": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "end": {
-                            "type": "integer",
-                            "minimum": 1
-                        }
-                    }
+                {
+                    "type": "null"
                 }
-            }
+            ],
+            "description": "Structured emplacement; present only when --emplacement is requested and target lands inside a note."
         }
     },
     "allOf": [
@@ -144,13 +84,27 @@
             "if": {
                 "properties": {
                     "status": {
-                        "const": "ambiguous"
+                        "const": "resolved"
                     }
                 }
             },
             "then": {
                 "required": [
-                    "candidates"
+                    "target_path"
+                ]
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "status": {
+                        "const": "unresolved"
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "reason"
                 ]
             }
         },
@@ -168,6 +122,155 @@
                     "reason"
                 ]
             }
+        },
+        {
+            "if": {
+                "properties": {
+                    "status": {
+                        "const": "ambiguous"
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "candidates",
+                    "reason"
+                ]
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "status": {
+                        "const": "error"
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "reason"
+                ]
+            }
         }
-    ]
+    ],
+    "$defs": {
+        "lineRange": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "begin",
+                "end"
+            ],
+            "properties": {
+                "begin": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "end": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "headingRef": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "text",
+                "level",
+                "begin",
+                "end"
+            ],
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                },
+                "begin": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "end": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "structuredBlockRef": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "kind",
+                "begin",
+                "end"
+            ],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "quote",
+                        "callout",
+                        "table",
+                        "list",
+                        "code",
+                        "math"
+                    ]
+                },
+                "begin": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "end": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "block_id": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/structuredBlockRef"
+                    }
+                }
+            }
+        },
+        "structuredEmplacement": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "heading_stack",
+                "section"
+            ],
+            "properties": {
+                "heading_stack": {
+                    "type": "array",
+                    "description": "Containing headings, outermost to innermost; empty when the target has no containing headings.",
+                    "items": {
+                        "$ref": "#/$defs/headingRef"
+                    }
+                },
+                "section": {
+                    "$ref": "#/$defs/lineRange"
+                },
+                "structured_block": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/structuredBlockRef"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            }
+        }
+    }
 }
