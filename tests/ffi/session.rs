@@ -4,6 +4,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::process::Command;
+use tempfile::tempdir;
 
 #[repr(C)]
 struct OlrSession;
@@ -102,6 +103,84 @@ fn ffi_session_can_load_and_resolve_many_consecutive_links() {
         unsafe { olr_string_free(json_ptr) };
         assert_eq!(status, 0);
     }
+
+    unsafe { olr_session_close(session) };
+}
+
+#[test]
+fn ffi_session_reuses_cached_index_after_open() {
+    let library = load_library();
+    let olr_session_open: OlrSessionOpenFn =
+        unsafe { *library.get(b"olr_session_open\0").unwrap() };
+    let olr_resolve: OlrResolveFn = unsafe { *library.get(b"olr_resolve\0").unwrap() };
+    let olr_string_free: OlrStringFreeFn = unsafe { *library.get(b"olr_string_free\0").unwrap() };
+    let olr_session_close: OlrSessionCloseFn =
+        unsafe { *library.get(b"olr_session_close\0").unwrap() };
+
+    let temp = tempdir().unwrap();
+    let vault_root = temp.path().join("vault");
+    std::fs::create_dir_all(vault_root.join(".obsidian")).unwrap();
+    std::fs::create_dir_all(vault_root.join("notes")).unwrap();
+    std::fs::write(vault_root.join("notes").join("ctx.md"), "# Context\n").unwrap();
+    std::fs::write(vault_root.join("notes").join("existing.md"), "# Existing\n").unwrap();
+
+    let vault_root_cstr = CString::new(vault_root.to_string_lossy().into_owned()).unwrap();
+    let context_cstr = CString::new(
+        vault_root
+            .join("notes")
+            .join("ctx.md")
+            .to_string_lossy()
+            .into_owned(),
+    )
+    .unwrap();
+
+    let mut open_status = 0_i32;
+    let session = unsafe { olr_session_open(vault_root_cstr.as_ptr(), &mut open_status) };
+    assert!(!session.is_null(), "session should be opened");
+    assert_eq!(open_status, 0);
+
+    let missing_link = CString::new("[[newly-added]]").unwrap();
+    let mut first_status = 0_i32;
+    let first_json_ptr = unsafe {
+        olr_resolve(
+            session,
+            missing_link.as_ptr(),
+            context_cstr.as_ptr(),
+            0,
+            &mut first_status,
+        )
+    };
+    assert!(!first_json_ptr.is_null());
+    let first_json = unsafe { CStr::from_ptr(first_json_ptr) }
+        .to_str()
+        .unwrap()
+        .to_string();
+    unsafe { olr_string_free(first_json_ptr) };
+    assert_eq!(first_status, 2);
+    assert!(first_json.contains("\"status\":\"unresolved\""));
+
+    std::fs::write(vault_root.join("newly-added.md"), "# Added later\n").unwrap();
+
+    let mut second_status = 0_i32;
+    let second_json_ptr = unsafe {
+        olr_resolve(
+            session,
+            missing_link.as_ptr(),
+            context_cstr.as_ptr(),
+            0,
+            &mut second_status,
+        )
+    };
+    assert!(!second_json_ptr.is_null());
+    let second_json = unsafe { CStr::from_ptr(second_json_ptr) }
+        .to_str()
+        .unwrap()
+        .to_string();
+    unsafe { olr_string_free(second_json_ptr) };
+
+    // The session should keep using the index created at open time.
+    assert_eq!(second_status, 2);
+    assert!(second_json.contains("\"status\":\"unresolved\""));
 
     unsafe { olr_session_close(session) };
 }

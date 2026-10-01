@@ -20,6 +20,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::Path;
+use std::sync::Mutex;
 
 /// Status code returned by the FFI entry points.
 pub type OlrStatus = i32;
@@ -43,11 +44,12 @@ pub struct OlrSession {
 /// Cached session state for repeated in-process resolutions.
 struct ResolverSession {
     root: Option<String>,
+    cached_vault: Mutex<Option<crate::vault::Vault>>,
 }
 
 impl ResolverSession {
     fn new(vault_root: Option<&str>) -> Result<Self, String> {
-        if let Some(root) = vault_root {
+        let canonical_root = if let Some(root) = vault_root {
             let root_path = Path::new(root);
             if !root_path.exists() {
                 return Err(format!("vault root '{root}' does not exist"));
@@ -55,10 +57,30 @@ impl ResolverSession {
             if !root_path.is_dir() {
                 return Err(format!("vault root '{root}' is not a directory"));
             }
-        }
+
+            Some(
+                std::fs::canonicalize(root_path)
+                    .map_err(|error| format!("failed to read vault root '{root}': {error}"))?
+                    .to_string_lossy()
+                    .into_owned(),
+            )
+        } else {
+            None
+        };
+
+        let cached_vault = if let Some(root) = canonical_root.as_deref() {
+            Some(crate::vault::Vault {
+                root: root.to_string(),
+                source: crate::vault::VaultSource::Explicit,
+                entries: crate::vault::enumerate_vault(root)?,
+            })
+        } else {
+            None
+        };
 
         Ok(Self {
-            root: vault_root.map(str::to_owned),
+            root: canonical_root,
+            cached_vault: Mutex::new(cached_vault),
         })
     }
 
@@ -68,7 +90,51 @@ impl ResolverSession {
         context_path: &str,
         with_emplacement: bool,
     ) -> crate::output::ResolutionTarget {
-        crate::resolve(link, context_path, self.root.as_deref(), with_emplacement)
+        let vault = match self.vault_for_context(context_path) {
+            Ok(vault) => vault,
+            Err(reason) => {
+                return crate::output::ResolutionTarget {
+                    status: crate::output::Status::Error,
+                    target_path: None,
+                    target_range: None,
+                    is_embed: false,
+                    display_text: None,
+                    candidates: None,
+                    reason: Some(reason),
+                    emplacement: None,
+                };
+            }
+        };
+
+        crate::resolve_with_vault(link, context_path, &vault, with_emplacement)
+    }
+
+    fn vault_for_context(&self, context_path: &str) -> Result<crate::vault::Vault, String> {
+        let context_abs = std::fs::canonicalize(context_path)
+            .map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
+
+        let mut cached = self
+            .cached_vault
+            .lock()
+            .map_err(|_| "session cache lock poisoned".to_string())?;
+
+        if let Some(vault) = cached.as_ref() {
+            if context_abs.starts_with(Path::new(&vault.root)) {
+                return Ok(vault.clone());
+            }
+
+            if self.root.is_some() {
+                return Err(format!(
+                    "context path '{context_path}' is outside the explicit vault root '{}', refusing to resolve links",
+                    vault.root
+                ));
+            }
+        }
+
+        let detected = crate::vault::detect_root(context_path, self.root.as_deref())?;
+        let out = detected.clone();
+        *cached = Some(detected);
+        Ok(out)
     }
 }
 

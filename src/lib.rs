@@ -48,10 +48,10 @@ pub mod output;
 pub mod resolve;
 pub mod vault;
 
-use crate::link::parse_link;
+use crate::link::{parse_link, Link};
 use crate::output::ResolutionTarget;
 use crate::resolve::resolve_link;
-use crate::vault::{detect_root, ContextFile};
+use crate::vault::{detect_root, ContextFile, Vault};
 
 /// Resolve an Obsidian link to its target file and location within a vault.
 ///
@@ -120,6 +120,41 @@ pub fn resolve(
         }
     };
 
+    resolve_parsed(parsed, context_path, &vault, with_emplacement)
+}
+
+/// Resolve a link using a prebuilt [`Vault`] index.
+pub fn resolve_with_vault(
+    link: &str,
+    context_path: &str,
+    vault: &Vault,
+    with_emplacement: bool,
+) -> ResolutionTarget {
+    let parsed = match parse_link(link) {
+        Ok(link) => link,
+        Err(error) => {
+            return ResolutionTarget {
+                status: crate::output::Status::Error,
+                target_path: None,
+                target_range: None,
+                is_embed: false,
+                display_text: None,
+                candidates: None,
+                reason: Some(error.to_string()),
+                emplacement: None,
+            };
+        }
+    };
+
+    resolve_parsed(parsed, context_path, vault, with_emplacement)
+}
+
+fn resolve_parsed(
+    parsed: Link,
+    context_path: &str,
+    vault: &Vault,
+    with_emplacement: bool,
+) -> ResolutionTarget {
     let context = ContextFile {
         path: context_path.to_string(),
     };
