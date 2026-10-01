@@ -184,3 +184,21 @@ fn ffi_session_reuses_cached_index_after_open() {
 
     unsafe { olr_session_close(session) };
 }
+
+#[test]
+fn ffi_session_open_rejects_invalid_utf8_root() {
+    let library = load_library();
+    let olr_session_open: OlrSessionOpenFn =
+        unsafe { *library.get(b"olr_session_open\0").unwrap() };
+
+    let invalid_root = CString::from_vec_with_nul(vec![0xFF, 0x00]).unwrap();
+
+    let mut out_status = 0_i32;
+    let session = unsafe { olr_session_open(invalid_root.as_ptr(), &mut out_status) };
+
+    assert!(session.is_null(), "invalid UTF-8 root should fail open");
+    assert_eq!(
+        out_status, 1,
+        "invalid UTF-8 root should return error status"
+    );
+}

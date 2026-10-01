@@ -165,6 +165,19 @@ fn cstr_to_string(ptr: *const c_char) -> Option<String> {
     c_string.to_str().ok().map(str::to_owned)
 }
 
+fn cstr_to_optional_string(ptr: *const c_char) -> Result<Option<String>, ()> {
+    if ptr.is_null() {
+        return Ok(None);
+    }
+
+    let c_string = unsafe { CStr::from_ptr(ptr) };
+    c_string
+        .to_str()
+        .map(str::to_owned)
+        .map(Some)
+        .map_err(|_| ())
+}
+
 fn make_owned_string(value: impl AsRef<str>) -> *mut c_char {
     CString::new(value.as_ref())
         .unwrap_or_else(|_| CString::new("invalid utf-8").unwrap())
@@ -199,7 +212,13 @@ pub unsafe extern "C" fn olr_session_open(
     vault_root: *const c_char,
     out_status: *mut OlrStatus,
 ) -> *mut OlrSession {
-    let requested_root = cstr_to_string(vault_root);
+    let requested_root = match cstr_to_optional_string(vault_root) {
+        Ok(root) => root,
+        Err(()) => {
+            write_status(out_status, OLR_STATUS_ERROR);
+            return std::ptr::null_mut();
+        }
+    };
 
     match ResolverSession::new(requested_root.as_deref()) {
         Ok(session) => {
