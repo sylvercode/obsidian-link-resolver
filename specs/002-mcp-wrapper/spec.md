@@ -75,6 +75,22 @@ An AI client or automation workflow often resolves many links in the same vault 
 
 ---
 
+### User Story 5 - Install the MCP server through a standard client registration flow (Priority: P2)
+
+A user wants to enable the resolver in an AI client without manual source builds or unfamiliar setup steps. The delivery mechanism is a locally installed MCP server that a client can register through standard configuration, with clear installation guidance in the user documentation and a straightforward path for connecting the server to the user's vault.
+
+**Why this priority**: Without a clear installation story, the capability is difficult to adopt even if the underlying resolver works correctly. Users need a predictable, low-friction setup path that fits the common MCP client model.
+
+**Independent Test**: Can be tested by reviewing the installation documentation and verifying that it describes the supported local server delivery model, configuration path, and vault setup steps in a way a non-expert user can follow.
+
+**Acceptance Scenarios**:
+
+1. **Given** a user wants to install the resolver in a local MCP client, **When** they follow the documentation, **Then** they can register the server in the standard client configuration flow without custom integration steps.
+2. **Given** the user has a vault path available, **When** they configure the server, **Then** the documentation explains how to point the server to the target vault and how the client will launch the local server process.
+3. **Given** a user is evaluating the feature, **When** they read the docs, **Then** they understand the recommended delivery model and the rationale for using a local server with the client’s standard MCP registration configuration.
+
+---
+
 ### Edge Cases
 
 - When the link or context is invalid, the MCP wrapper returns a clear error outcome rather than crashing or producing incomplete data.
@@ -103,8 +119,10 @@ An AI client or automation workflow often resolves many links in the same vault 
 - **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions.
 - **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
 - **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
-- **FR-015**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
-- **FR-016**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
+- **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the client’s standard MCP configuration mechanism, rather than requiring a custom application integration or ad hoc installation path.
+- **FR-016**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
+- **FR-017**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
+- **FR-018**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -125,7 +143,8 @@ An AI client or automation workflow often resolves many links in the same vault 
 - **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
 - **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios.
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
-- **SC-008**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
+- **SC-008**: The project documents the installation and client registration flow for the MCP server in user-facing documentation so a user can install and configure it without source-level setup instructions.
+- **SC-009**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
 
 ## Assumptions
 
