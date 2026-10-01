@@ -8,12 +8,17 @@ use std::process::Command;
 #[repr(C)]
 struct OlrSession;
 
-type OlrVersionFn = unsafe fn() -> *mut c_char;
-type OlrSessionOpenFn = unsafe fn(*const c_char, *mut i32) -> *mut OlrSession;
-type OlrResolveFn =
-    unsafe fn(*mut OlrSession, *const c_char, *const c_char, i32, *mut i32) -> *mut c_char;
-type OlrStringFreeFn = unsafe fn(*mut c_char);
-type OlrSessionCloseFn = unsafe fn(*mut OlrSession);
+type OlrVersionFn = unsafe extern "C" fn() -> *mut c_char;
+type OlrSessionOpenFn = unsafe extern "C" fn(*const c_char, *mut i32) -> *mut OlrSession;
+type OlrResolveFn = unsafe extern "C" fn(
+    *mut OlrSession,
+    *const c_char,
+    *const c_char,
+    i32,
+    *mut i32,
+) -> *mut c_char;
+type OlrStringFreeFn = unsafe extern "C" fn(*mut c_char);
+type OlrSessionCloseFn = unsafe extern "C" fn(*mut OlrSession);
 
 fn library_file_path() -> PathBuf {
     let filename = format!(
