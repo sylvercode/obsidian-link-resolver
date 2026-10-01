@@ -159,7 +159,7 @@ fn resolve_parsed(
         path: context_path.to_string(),
     };
 
-    resolve_link(&parsed, &context, &vault, with_emplacement)
+    resolve_link(&parsed, &context, vault, with_emplacement)
 }
 
 pub fn resolve_placeholder() -> &'static str {
