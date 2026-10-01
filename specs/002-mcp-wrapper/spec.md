@@ -44,17 +44,34 @@ A caller expects the MCP wrapper to behave like the current tool: the same outco
 
 ### User Story 3 - Offer discoverable, agent-friendly tool metadata (Priority: P3)
 
-An AI client needs to discover what the tool does, what inputs it requires, and how to interpret the responses before calling it. The MCP wrapper exposes well-defined tool metadata, input schema, and result schema so clients can discover the capability reliably and call it with confidence.
+An AI client needs to discover what the tool does, what inputs it requires, and how to interpret the responses before calling it. The MCP wrapper exposes well-defined tool metadata, input schema, and result schema so clients can discover the capability reliably and call it with confidence. The tool description must explain that the resolver can return either a simple target line or a richer structured emplacement: the simple line is sufficient for a single location, while the structured emplacement is preferred when an agent wants to read a precise section or shard of a note.
 
-**Why this priority**: Tool discovery and schema clarity are essential for agent interoperability. Without clear metadata, a client cannot reliably call the capability in a standard MCP ecosystem.
+**Why this priority**: Tool discovery and schema clarity are essential for agent interoperability. Without clear metadata, a client cannot reliably call the capability in a standard MCP ecosystem, and without guidance on when to prefer emplacement, agents may choose the lower-fidelity output even when a section-based read is more efficient.
 
-**Independent Test**: Can be tested by querying the MCP server's tool list and input schema, then verifying that the arguments and result fields are documented and match the underlying resolver semantics.
+**Independent Test**: Can be tested by querying the MCP server's tool list and input schema, then verifying that the arguments and result fields are documented and match the underlying resolver semantics, including the explanation of when to use a simple target line versus the richer emplacement data.
 
 **Acceptance Scenarios**:
 
 1. **Given** an MCP client connects to the server, **When** it lists available tools, **Then** it sees a dedicated resolver tool with a clear purpose and description.
 2. **Given** the tool is inspected for its schema, **When** the client reads its arguments, **Then** it can determine the required link, context path, and optional settings without guesswork.
-3. **Given** the tool returns a result, **When** the client inspects the result structure, **Then** it can distinguish success, unresolved, ambiguous, and error outcomes unambiguously.
+3. **Given** the tool description is read, **When** the client considers whether to request the simple line or the emplacement detail, **Then** it sees that emplacement is the better choice for targeted reads of a section or sharded context, while the simple line is enough for a single point target.
+4. **Given** the tool returns a result, **When** the client inspects the result structure, **Then** it can distinguish success, unresolved, ambiguous, and error outcomes unambiguously.
+
+---
+
+### User Story 4 - Reuse a cached vault index across repeated MCP calls (Priority: P2)
+
+An AI client or automation workflow often resolves many links in the same vault within a short time. The MCP wrapper reuses a cached vault index for that vault so repeated link resolution avoids re-enumerating the entire vault on each call, keeps the result faster for common agent workflows, and preserves the same semantics as the underlying resolver.
+
+**Why this priority**: Performance matters for agent-driven reads because a vault may contain many notes and the same vault is frequently queried repeatedly within a single session. Avoiding repeated full directory walks improves responsiveness while keeping the resolution rules unchanged.
+
+**Independent Test**: Can be tested by making repeated resolution calls against the same vault in the same MCP session and asserting that the vault index is reused rather than rebuilt; the behavior should be equivalent to the underlying resolver without altering the result contract.
+
+**Acceptance Scenarios**:
+
+1. **Given** an MCP session resolves multiple links in the same vault, **When** the calls repeat against that vault, **Then** the wrapper reuses the cached vault state instead of re-enumerating the whole vault on every request.
+2. **Given** the same vault is later queried in a new session or after a relevant filesystem change, **When** the wrapper refreshes the cache, **Then** it rebuilds or invalidates the index as appropriate so the result remains current.
+3. **Given** a link is resolved against a cached vault, **When** the result is returned, **Then** it matches the current resolver semantics and does not change the observed target behavior.
 
 ---
 
@@ -66,6 +83,7 @@ An AI client needs to discover what the tool does, what inputs it requires, and 
 - When a non-markdown attachment is requested, the wrapper preserves the attachment semantics and does not invent heading or emplacement information.
 - When the underlying resolver requires a vault root or vault detection, the MCP wrapper exposes the same behavior to callers through the tool contract.
 - When identical inputs are submitted twice, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response.
+- When a vault is queried repeatedly, the MCP wrapper keeps the cached vault index for the active session and refreshes it only when needed so repeated calls stay efficient.
 
 ## Requirements *(mandatory)*
 
@@ -78,12 +96,15 @@ An AI client needs to discover what the tool does, what inputs it requires, and 
 - **FR-005**: The MCP tool MUST preserve the current resolver behavior for note-name matching, path-qualified references, same-file links, heading paths, block ids, and attachment handling.
 - **FR-006**: The MCP wrapper MUST expose a deterministic machine-readable result schema so clients can parse tool output without scraping human-readable text.
 - **FR-007**: The MCP wrapper MUST provide tool metadata that clearly describes what it resolves, which inputs it expects, and how the result should be interpreted.
-- **FR-008**: The MCP wrapper MUST allow callers to request structured emplacement information when available, while still respecting the underlying resolver's semantics for note and attachment targets.
-- **FR-009**: The wrapper MUST not silently change or reinterpret the current resolver's decisions; it must act as a faithful adapter over the existing capability.
-- **FR-010**: The MCP server MUST surface the current resolver's status and reason fields in a way that supports agent branching and retries without custom parsing.
-- **FR-011**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions.
-- **FR-012**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
-- **FR-013**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
+- **FR-008**: The tool description MUST explain the choice between a simple target line and a richer structured emplacement: a simple target line is suitable for a single point target, while the structured emplacement is preferable when an agent wants to read the precise section or shard of a note that contains the target.
+- **FR-009**: The MCP wrapper MUST allow callers to request structured emplacement information when available, while still respecting the underlying resolver's semantics for note and attachment targets.
+- **FR-010**: The wrapper MUST not silently change or reinterpret the current resolver's decisions; it must act as a faithful adapter over the existing capability.
+- **FR-011**: The MCP server MUST surface the current resolver's status and reason fields in a way that supports agent branching and retries without custom parsing.
+- **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions.
+- **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
+- **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
+- **FR-015**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
+- **FR-016**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -100,9 +121,11 @@ An AI client needs to discover what the tool does, what inputs it requires, and 
 - **SC-001**: An MCP client can resolve a valid Obsidian link through the wrapper and receive the same target path and location as the underlying resolver in 100% of a defined test corpus.
 - **SC-002**: The MCP wrapper preserves all five resolver outcomes — resolved, unresolved, sub-target-not-found, ambiguous, and error — in 100% of supported calls.
 - **SC-003**: An agent can discover the resolver tool through standard MCP tooling and invoke it without custom text parsing or shell integration in 100% of tested client configurations.
-- **SC-004**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
-- **SC-005**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
-- **SC-006**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
+- **SC-004**: The tool description explicitly tells clients when to prefer a simple target line versus a richer emplacement result, and that guidance aligns with the supported agent workflow for sharded section reads in 100% of the documented scenarios.
+- **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
+- **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios.
+- **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
+- **SC-008**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
 
 ## Assumptions
 
