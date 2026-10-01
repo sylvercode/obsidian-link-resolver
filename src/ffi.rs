@@ -106,8 +106,14 @@ fn make_owned_string(value: impl AsRef<str>) -> *mut c_char {
 }
 
 /// Return the library's semantic version as a caller-owned UTF-8 string.
+///
+/// # Safety
+///
+/// The returned pointer is caller-owned and must be released with `olr_string_free` when no
+/// longer needed. No additional caller invariants are required beyond respecting the FFI ownership
+/// contract.
 #[unsafe(no_mangle)]
-pub extern "C" fn olr_version() -> *mut c_char {
+pub unsafe extern "C" fn olr_version() -> *mut c_char {
     make_owned_string(version())
 }
 
@@ -116,8 +122,14 @@ pub extern "C" fn olr_version() -> *mut c_char {
 /// If `vault_root` is `NULL`, the session defers vault detection to each resolution using the
 /// context file path. If a specific vault root is provided, it is validated before the session is
 /// returned. The returned session is opaque to callers and must be released with `olr_session_close`.
+///
+/// # Safety
+///
+/// `vault_root` must either be `NULL` or a valid pointer to a NUL-terminated UTF-8 string that
+/// remains live for the duration of the call. `out_status` must either be `NULL` or point to
+/// writable memory for the call result.
 #[unsafe(no_mangle)]
-pub extern "C" fn olr_session_open(
+pub unsafe extern "C" fn olr_session_open(
     vault_root: *const c_char,
     out_status: *mut OlrStatus,
 ) -> *mut OlrSession {
@@ -128,9 +140,7 @@ pub extern "C" fn olr_session_open(
             write_status(out_status, OLR_STATUS_RESOLVED);
             Box::into_raw(Box::new(OlrSession { inner: session }))
         }
-        Err(reason) => {
-            let message = format!("{reason}");
-            _ = message;
+        Err(_reason) => {
             write_status(out_status, OLR_STATUS_ERROR);
             std::ptr::null_mut()
         }
@@ -138,8 +148,15 @@ pub extern "C" fn olr_session_open(
 }
 
 /// Resolve a single Obsidian link within a context file using the session's vault index.
+///
+/// # Safety
+///
+/// The caller must pass a valid `session` handle returned by `olr_session_open`, or `NULL` to
+/// indicate invalid input. `link`, `context_path`, and `out_status` must each either be `NULL` or
+/// point to valid, NUL-terminated UTF-8 strings / writable memory for the duration of the call.
+/// The returned pointer is caller-owned and must be freed with `olr_string_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn olr_resolve(
+pub unsafe extern "C" fn olr_resolve(
     session: *mut OlrSession,
     link: *const c_char,
     context_path: *const c_char,
@@ -167,7 +184,7 @@ pub extern "C" fn olr_resolve(
         }
     };
 
-    let result = unsafe { &*session }
+    let result = (&*session)
         .inner
         .resolve(&link_str, &context_str, with_emplacement != 0);
     let out = result.to_json().unwrap_or_else(|_| {
@@ -191,25 +208,31 @@ pub extern "C" fn olr_resolve(
 }
 
 /// Free a string allocated by the library in the FFI boundary.
+///
+/// # Safety
+///
+/// `ptr` must be either `NULL` or a pointer previously returned by the library via one of the
+/// string-producing FFI functions. Passing any other pointer causes undefined behavior.
 #[unsafe(no_mangle)]
-pub extern "C" fn olr_string_free(ptr: *mut c_char) {
+pub unsafe extern "C" fn olr_string_free(ptr: *mut c_char) {
     if ptr.is_null() {
         return;
     }
 
-    unsafe {
-        let _ = CString::from_raw(ptr);
-    }
+    let _ = CString::from_raw(ptr);
 }
 
 /// Close and free an open resolver session.
+///
+/// # Safety
+///
+/// `session` must be either `NULL` or a pointer returned by `olr_session_open`. Passing any other
+/// pointer or freeing the same session more than once is undefined behavior.
 #[unsafe(no_mangle)]
-pub extern "C" fn olr_session_close(session: *mut OlrSession) {
+pub unsafe extern "C" fn olr_session_close(session: *mut OlrSession) {
     if session.is_null() {
         return;
     }
 
-    unsafe {
-        drop(Box::from_raw(session));
-    }
+    drop(Box::from_raw(session));
 }
