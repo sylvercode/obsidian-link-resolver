@@ -1,7 +1,9 @@
 use libloading::Library;
+use std::env;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[repr(C)]
 struct OlrSession;
@@ -13,12 +15,48 @@ type OlrResolveFn =
 type OlrStringFreeFn = unsafe fn(*mut c_char);
 type OlrSessionCloseFn = unsafe fn(*mut OlrSession);
 
-fn load_library() -> Library {
-    let library_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+fn library_file_path() -> PathBuf {
+    let filename = format!(
+        "{}obsidian_link_resolver{}",
+        env::consts::DLL_PREFIX,
+        env::consts::DLL_SUFFIX
+    );
+
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("target")
         .join("debug")
-        .join("libobsidian_link_resolver.so");
+        .join(filename)
+}
 
+fn ensure_cdylib_built() -> PathBuf {
+    let library_path = library_file_path();
+    if library_path.exists() {
+        return library_path;
+    }
+
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let status = Command::new(cargo)
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args(["build", "--lib"])
+        .status()
+        .expect("failed to invoke cargo build --lib for the CDYLIB");
+
+    assert!(
+        status.success(),
+        "cargo build --lib failed before loading the CDYLIB"
+    );
+
+    let built_path = library_file_path();
+    assert!(
+        built_path.exists(),
+        "cdylib should be built at {}",
+        built_path.display()
+    );
+    built_path
+}
+
+fn load_library() -> Library {
+    let library_path = ensure_cdylib_built();
     unsafe { Library::new(library_path).expect("cdylib should be built") }
 }
 
