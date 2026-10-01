@@ -120,9 +120,10 @@ A user wants to enable the resolver in an AI client without manual source builds
 - **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
 - **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
 - **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the client’s standard MCP configuration mechanism, rather than requiring a custom application integration or ad hoc installation path.
-- **FR-016**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
-- **FR-017**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
-- **FR-018**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
+- **FR-016**: The project MUST publish or otherwise make available prebuilt MCP server binaries for all supported client platforms so the installation flow is reliable for ordinary users and does not depend on local source builds.
+- **FR-017**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
+- **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
+- **FR-019**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -143,7 +144,7 @@ A user wants to enable the resolver in an AI client without manual source builds
 - **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
 - **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios.
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
-- **SC-008**: The project documents the installation and client registration flow for the MCP server in user-facing documentation so a user can install and configure it without source-level setup instructions.
+- **SC-008**: The project publishes prebuilt MCP server binaries for all supported platforms and documents the installation and client registration flow in user-facing documentation so a user can install and configure it without source-level setup instructions.
 - **SC-009**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
 
 ## Assumptions
