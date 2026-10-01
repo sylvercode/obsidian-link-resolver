@@ -285,7 +285,7 @@ fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn is_supported_directory_name(name: &str) -> bool {
+fn is_supported_base_name(name: &str) -> bool {
     if name.is_empty() || name.starts_with('.') {
         return false;
     }
@@ -298,17 +298,12 @@ fn is_supported_directory_name(name: &str) -> bool {
     !name.chars().any(|ch| INVALID.contains(&ch)) && !name.contains("%%")
 }
 
+fn is_supported_directory_name(name: &str) -> bool {
+    is_supported_base_name(name)
+}
+
 pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
-    if file_name.is_empty() || file_name.starts_with('.') {
-        return false;
-    }
-    if file_name.contains("..") {
-        return false;
-    }
-    const INVALID: &[char] = &[
-        '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
-    ];
-    if file_name.chars().any(|ch| INVALID.contains(&ch)) || file_name.contains("%%") {
+    if !is_supported_base_name(file_name) {
         return false;
     }
     let ext = Path::new(file_name)
