@@ -141,12 +141,20 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
 
     let mut entries = Vec::new();
     let walker = WalkDir::new(root_path).into_iter().filter_entry(|entry| {
-        !is_hidden_dir(entry)
-            && entry
+        if entry.path() == root_path {
+            return true;
+        }
+        if is_hidden_dir(entry) {
+            return false;
+        }
+        if entry.file_type().is_dir() {
+            return entry
                 .file_name()
                 .to_str()
-                .map(is_supported_linkable_name)
-                .unwrap_or(false)
+                .map(is_supported_directory_name)
+                .unwrap_or(false);
+        }
+        true
     });
     for entry in walker.filter_map(Result::ok) {
         let path = entry.path();
@@ -275,6 +283,19 @@ fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
         .to_str()
         .map(|name| name.starts_with('.'))
         .unwrap_or(false)
+}
+
+fn is_supported_directory_name(name: &str) -> bool {
+    if name.is_empty() || name.starts_with('.') {
+        return false;
+    }
+    if name.contains("..") {
+        return false;
+    }
+    const INVALID: &[char] = &[
+        '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
+    ];
+    !name.chars().any(|ch| INVALID.contains(&ch)) && !name.contains("%%")
 }
 
 pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
