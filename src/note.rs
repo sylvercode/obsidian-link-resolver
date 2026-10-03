@@ -34,9 +34,15 @@ pub struct NoteScan {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TargetLookupError {
     /// The requested heading or block id was not found.
-    MissingTarget { reason: String },
+    MissingTarget {
+        /// Human-readable explanation of why the target could not be found.
+        reason: String,
+    },
     /// The link reference is structurally invalid for target lookup.
-    MalformedReference { reason: String },
+    MalformedReference {
+        /// Human-readable explanation of the malformed reference.
+        reason: String,
+    },
 }
 
 /// A heading extracted from a markdown note.

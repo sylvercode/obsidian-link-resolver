@@ -1,3 +1,5 @@
+//! Build script that generates the C header from the FFI surface.
+
 use std::env;
 use std::path::PathBuf;
 

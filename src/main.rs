@@ -1,3 +1,5 @@
+//! Command-line entry point for the Obsidian Link Resolver binary.
+
 use clap::Parser;
 use obsidian_link_resolver::cli::{CliArgs, OutputFormat};
 

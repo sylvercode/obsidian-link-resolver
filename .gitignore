@@ -12,6 +12,9 @@
 /obj/
 /out/
 
+# Generated benchmark corpus
+tests/fixtures/bench-vault/
+
 # Generated library artifacts
 include/obsidian_link_resolver.h
 

@@ -161,7 +161,3 @@ fn resolve_parsed(
 
     resolve_link(&parsed, &context, vault, with_emplacement)
 }
-
-pub fn resolve_placeholder() -> &'static str {
-    "obsidian-link-resolver"
-}
