@@ -32,7 +32,7 @@ fn generate_bench_vault(root: &Path, sentinel: &Path) -> Result<(), String> {
 
     write_file(
         &root.join("Context Note.md"),
-        "# Context Note\n\nThis note holds the benchmark link target.\n\n[[Target Note#Target Heading]]\n",
+        &format!("# Context Note\n\nThis note holds the benchmark link target.\n\n{TARGET_LINK}\n"),
     )?;
     write_file(
         &root.join("Target Note.md"),
