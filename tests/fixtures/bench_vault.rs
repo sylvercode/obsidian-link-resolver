@@ -1,6 +1,7 @@
 //! Synthetic benchmark vault generation for the warm-run latency gate.
 
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 const BENCH_ROOT: &str = "tests/fixtures/bench-vault";
@@ -12,7 +13,7 @@ const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 /// a uniquely named target note with a heading target, and approximately
 /// 5,000 additional markdown notes distributed across nested directories so the
 /// benchmark exercises realistic vault enumeration behavior.
-pub fn ensure_bench_vault() -> Result<(PathBuf, PathBuf, &'static str), String> {
+pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
     let root = PathBuf::from(BENCH_ROOT);
     let sentinel = root.join(".obsidian").join(".bench-vault-ready");
 
@@ -24,11 +25,19 @@ pub fn ensure_bench_vault() -> Result<(PathBuf, PathBuf, &'static str), String> 
     Ok((root, context_path, TARGET_LINK))
 }
 
-fn generate_bench_vault(root: &Path, sentinel: &Path) -> Result<(), String> {
-    fs::create_dir_all(root.join(".obsidian"))
-        .map_err(|error| format!("failed to create benchmark vault metadata directory: {error}"))?;
-    fs::create_dir_all(root.join("bulk"))
-        .map_err(|error| format!("failed to create benchmark vault corpus directory: {error}"))?;
+fn generate_bench_vault(root: &Path, sentinel: &Path) -> io::Result<()> {
+    fs::create_dir_all(root.join(".obsidian")).map_err(|error| {
+        io::Error::new(
+            error.kind(),
+            format!("failed to create benchmark vault metadata directory: {error}"),
+        )
+    })?;
+    fs::create_dir_all(root.join("bulk")).map_err(|error| {
+        io::Error::new(
+            error.kind(),
+            format!("failed to create benchmark vault corpus directory: {error}"),
+        )
+    })?;
 
     write_file(
         &root.join("Context Note.md"),
@@ -42,9 +51,12 @@ fn generate_bench_vault(root: &Path, sentinel: &Path) -> Result<(), String> {
     for shard in 0..100 {
         let shard_dir = root.join("bulk").join(format!("{shard:02}"));
         fs::create_dir_all(&shard_dir).map_err(|error| {
-            format!(
-                "failed to create benchmark shard directory '{}': {error}",
-                shard_dir.display()
+            io::Error::new(
+                error.kind(),
+                format!(
+                    "failed to create benchmark shard directory '{}': {error}",
+                    shard_dir.display()
+                ),
             )
         })?;
 
@@ -66,15 +78,22 @@ fn generate_bench_vault(root: &Path, sentinel: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn write_file(path: &Path, contents: &str) -> Result<(), String> {
+fn write_file(path: &Path, contents: &str) -> io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
-            format!(
-                "failed to create parent directory '{}': {error}",
-                parent.display()
+            io::Error::new(
+                error.kind(),
+                format!(
+                    "failed to create parent directory '{}': {error}",
+                    parent.display()
+                ),
             )
         })?;
     }
-    fs::write(path, contents)
-        .map_err(|error| format!("failed to write '{}': {error}", path.display()))
+    fs::write(path, contents).map_err(|error| {
+        io::Error::new(
+            error.kind(),
+            format!("failed to write '{}': {error}", path.display()),
+        )
+    })
 }
