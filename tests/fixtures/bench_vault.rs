@@ -16,9 +16,32 @@ const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
     let root = PathBuf::from(BENCH_ROOT);
     let sentinel = root.join(".obsidian").join(".bench-vault-ready");
+    let lock_path = root.join(".obsidian").join(".bench-vault.lock");
 
     if !sentinel.is_file() {
-        generate_bench_vault(&root, &sentinel)?;
+        let lock_created = match fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_path)
+        {
+            Ok(_) => true,
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
+            Err(error) => return Err(error),
+        };
+
+        if !lock_created {
+            while lock_path.exists() && !sentinel.is_file() {
+                std::thread::yield_now();
+            }
+        }
+
+        if !sentinel.is_file() {
+            generate_bench_vault(&root, &sentinel)?;
+        }
+
+        if lock_path.exists() {
+            let _ = fs::remove_file(&lock_path);
+        }
     }
 
     let context_path = root.join("Context Note.md");
