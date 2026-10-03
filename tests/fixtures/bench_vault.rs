@@ -15,10 +15,21 @@ const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 /// benchmark exercises realistic vault enumeration behavior.
 pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
     let root = PathBuf::from(BENCH_ROOT);
-    let sentinel = root.join(".obsidian").join(".bench-vault-ready");
-    let lock_path = root.join(".obsidian").join(".bench-vault.lock");
+    let metadata_dir = root.join(".obsidian");
+    let sentinel = metadata_dir.join(".bench-vault-ready");
+    let lock_path = metadata_dir.join(".bench-vault.lock");
 
     if !sentinel.is_file() {
+        fs::create_dir_all(&metadata_dir).map_err(|error| {
+            io::Error::new(
+                error.kind(),
+                format!(
+                    "failed to create benchmark vault metadata directory '{}': {error}",
+                    metadata_dir.display()
+                ),
+            )
+        })?;
+
         let lock_created = match fs::OpenOptions::new()
             .create_new(true)
             .write(true)
