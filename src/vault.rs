@@ -84,10 +84,15 @@ pub struct Vault {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NameResolutionError {
     /// No matching note or attachment was found.
-    Unresolved { reason: String },
+    Unresolved {
+        /// Human-readable explanation of why the name did not resolve.
+        reason: String,
+    },
     /// More than one candidate matched the requested name.
     Ambiguous {
+        /// Vault-relative candidate paths that matched the requested name.
         candidates: Vec<String>,
+        /// Human-readable explanation of the ambiguity.
         reason: String,
     },
 }

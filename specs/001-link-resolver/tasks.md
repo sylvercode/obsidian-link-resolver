@@ -181,14 +181,14 @@ Single Rust crate at repository root (plan.md "Structure Decision"): library cor
 
 **Documentation Gate (Principle IX)**: Final verification phase. Run `cargo doc --all` and fix any remaining missing-docs warnings. Run `cargo clippy -- -W missing-docs` and resolve all findings. Generate and review the full API documentation to ensure all public symbols have clear, complete Rustdoc comments with purpose, constraints, parameters, return values, and examples where helpful. This is a BLOCKING gate before release.
 
-- [ ] T051 [P] Generate a synthetic ~5,000-note benchmark vault under `tests/fixtures/bench-vault/` (including an `.obsidian/` directory) via a reproducible helper script/module, providing the representative-vault corpus for the warm-run latency gate (SC-005; addresses analysis G1; consumed by T052 and the release gate in T008)
-- [ ] T052 [P] Implement the `criterion` warm-run latency benchmark in `benches/resolve.rs` against the ~5,000-note benchmark vault from T051, asserting warm-run p50 ≤100 ms as the CI regression/release gate (SC-005)
-- [ ] T053 [P] Write `README.md` usage documentation covering CLI invocation, exit-code contract, `target_range` semantics, structured emplacement (including structured-block boundaries), and the three integration surfaces (CLI protocol, JSON schema, C ABI/FFI)
-- [ ] T054 [P] Run `cargo doc --all --no-deps` and review generated HTML docs; ensure all public types/functions/modules (including OR15/target-range/emplacement symbols) are documented and rendered correctly
-- [ ] T055 Run `quickstart.md` validation scenarios end-to-end (including OR1-OR15 and structured-block emplacement cases) against fixture vault(s) and confirm each `status`/exit code and contract field expectations
-- [ ] T056 [P] Run `cargo fmt --check` and `cargo clippy -- -D warnings` and resolve any findings
-- [ ] T057 [P] Run `cargo clippy -- -W missing-docs` and resolve any missing documentation warnings across all modules
-- [ ] T058 Review path handling for read-only operation, no traversal outside resolved vault root, and structured-block scanning safety on malformed markdown inputs (security hardening; Assumptions: read-only operation)
+- [x] T051 [P] Generate a synthetic ~5,000-note benchmark vault under `tests/fixtures/bench-vault/` (including an `.obsidian/` directory) via a reproducible helper script/module, providing the representative-vault corpus for the warm-run latency gate (SC-005; addresses analysis G1; consumed by T052 and the release gate in T008)
+- [x] T052 [P] Implement the `criterion` warm-run latency benchmark in `benches/resolve.rs` against the ~5,000-note benchmark vault from T051, asserting warm-run p50 ≤100 ms as the CI regression/release gate (SC-005)
+- [x] T053 [P] Write `README.md` usage documentation covering CLI invocation, exit-code contract, `target_range` semantics, structured emplacement (including structured-block boundaries), and the three integration surfaces (CLI protocol, JSON schema, C ABI/FFI)
+- [x] T054 [P] Run `cargo doc --all --no-deps` and review generated HTML docs; ensure all public types/functions/modules (including OR15/target-range/emplacement symbols) are documented and rendered correctly
+- [x] T055 Run `quickstart.md` validation scenarios end-to-end (including OR1-OR15 and structured-block emplacement cases) against fixture vault(s) and confirm each `status`/exit code and contract field expectations
+- [x] T056 [P] Run `cargo fmt --check` and `cargo clippy -- -D warnings` and resolve any findings
+- [x] T057 [P] Run `cargo clippy -- -W missing-docs` and resolve any missing documentation warnings across all modules
+- [x] T058 Review path handling for read-only operation, no traversal outside resolved vault root, and structured-block scanning safety on malformed markdown inputs (security hardening; Assumptions: read-only operation)
 
 ---
 

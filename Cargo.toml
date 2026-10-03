@@ -27,6 +27,10 @@ criterion = "0.8"
 libloading = "0.8"
 tempfile = "3"
 
+[[bench]]
+name = "resolve"
+harness = false
+
 [build-dependencies]
 cbindgen = "0.29"
 
