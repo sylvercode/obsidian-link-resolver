@@ -9,3 +9,6 @@ mod name_resolution;
 
 #[path = "unit/emplacement.rs"]
 mod emplacement;
+
+#[path = "unit/latency_gate.rs"]
+mod latency_gate;
