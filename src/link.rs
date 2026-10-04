@@ -159,9 +159,14 @@ pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
 
 fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let mut parts = inner.splitn(2, '|');
-    let target = parts.next().unwrap_or_default().trim();
-    let display_text = parts
-        .next()
+    let target_part = parts.next().unwrap_or_default().trim();
+    let display_part = parts.next();
+    let target = if display_part.is_some() {
+        target_part.strip_suffix('\\').unwrap_or(target_part)
+    } else {
+        target_part
+    };
+    let display_text = display_part
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);

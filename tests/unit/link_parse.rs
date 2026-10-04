@@ -31,6 +31,11 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     let same_file_block = parse_link("[[#^abc123]]").expect("same-file block link should parse");
     assert_eq!(same_file_block.block_id.as_deref(), Some("abc123"));
 
+    let escaped_alias_separator =
+        parse_link("[[#^abc123\\|anchor]]").expect("escaped alias separator should parse");
+    assert_eq!(escaped_alias_separator.block_id.as_deref(), Some("abc123"));
+    assert_eq!(escaped_alias_separator.display_text.as_deref(), Some("anchor"));
+
     let case_insensitive =
         parse_link("[[project plan#milestones]]").expect("case-insensitive match should parse");
     assert_eq!(case_insensitive.note_name.as_deref(), Some("project plan"));

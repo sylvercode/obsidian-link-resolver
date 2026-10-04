@@ -113,4 +113,22 @@ fn resolves_same_file_block_link_with_relative_context_path() {
     assert_eq!(result.target_path.as_deref(), Some("notes/a.md"));
     assert_eq!(result.target_range.as_ref().map(|range| range.begin), Some(20));
     assert_eq!(result.display_text.as_deref(), Some("anchor"));
+
+    let escaped_separator_result = resolve("[[#^abc123\\|anchor]]", &context_rel, None, false);
+    assert_eq!(escaped_separator_result.status, Status::Resolved);
+    assert_eq!(
+        escaped_separator_result.target_path.as_deref(),
+        Some("notes/a.md")
+    );
+    assert_eq!(
+        escaped_separator_result
+            .target_range
+            .as_ref()
+            .map(|range| range.begin),
+        Some(20)
+    );
+    assert_eq!(
+        escaped_separator_result.display_text.as_deref(),
+        Some("anchor")
+    );
 }
