@@ -1,5 +1,6 @@
 use obsidian_link_resolver::link::{parse_link, LinkStyle};
 
+/// Verifies parser coverage for wikilinks, markdown links, same-file links, and invalid sub-targets.
 #[test]
 fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     let link = parse_link("![[folder/sub/Note#Heading#Child|Alias]]").expect("link should parse");
@@ -34,11 +35,17 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     let escaped_alias_separator =
         parse_link("[[#^abc123\\|anchor]]").expect("escaped alias separator should parse");
     assert_eq!(escaped_alias_separator.block_id.as_deref(), Some("abc123"));
-    assert_eq!(escaped_alias_separator.display_text.as_deref(), Some("anchor"));
+    assert_eq!(
+        escaped_alias_separator.display_text.as_deref(),
+        Some("anchor")
+    );
 
-    let windows_style_path =
-        parse_link("[[folder\\sub\\Note#Heading]]").expect("windows-style vault paths should parse");
-    assert_eq!(windows_style_path.folder_path.as_deref(), Some("folder/sub"));
+    let windows_style_path = parse_link("[[folder\\sub\\Note#Heading]]")
+        .expect("windows-style vault paths should parse");
+    assert_eq!(
+        windows_style_path.folder_path.as_deref(),
+        Some("folder/sub")
+    );
     assert_eq!(windows_style_path.note_name.as_deref(), Some("Note"));
     assert_eq!(windows_style_path.heading_path, vec!["Heading"]);
 
@@ -47,16 +54,13 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     assert_eq!(case_insensitive.note_name.as_deref(), Some("project plan"));
     assert_eq!(case_insensitive.heading_path, vec!["milestones"]);
 
-    let dotted_note_name =
-        parse_link("[[4. Castle Ravenloft#^K67HallofBones]]").expect("dotted basename should parse");
+    let dotted_note_name = parse_link("[[4. Castle Ravenloft#^K67HallofBones]]")
+        .expect("dotted basename should parse");
     assert_eq!(
         dotted_note_name.note_name.as_deref(),
         Some("4. Castle Ravenloft")
     );
-    assert_eq!(
-        dotted_note_name.block_id.as_deref(),
-        Some("K67HallofBones")
-    );
+    assert_eq!(dotted_note_name.block_id.as_deref(), Some("K67HallofBones"));
 
     assert!(parse_link("[[Note#Heading#^abc123]]").is_err());
 }

@@ -1,6 +1,17 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use serde_json::Value;
 
+/// Invoke the CLI resolver with deterministic JSON output enabled.
+///
+/// # Parameters
+///
+/// - `link`: Link string passed to the resolver CLI.
+/// - `context`: Context note path passed to `--context`.
+/// - `extra_args`: Additional CLI arguments to append.
+///
+/// # Returns
+///
+/// The raw process output and parsed JSON payload.
 fn run_resolver(link: &str, context: &str, extra_args: &[&str]) -> (std::process::Output, Value) {
     let mut command = cargo_bin_cmd!("obsidian-link-resolver");
     command.args([link, "--context", context, "--format", "json"]);
@@ -12,6 +23,7 @@ fn run_resolver(link: &str, context: &str, extra_args: &[&str]) -> (std::process
     (output, json)
 }
 
+/// Verifies canonical link forms resolve and emit single-line JSON.
 #[test]
 fn resolves_primary_link_forms_to_single_line_json() {
     let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
@@ -56,6 +68,7 @@ fn resolves_primary_link_forms_to_single_line_json() {
     }
 }
 
+/// Verifies heading and block links return the expected target line ranges.
 #[test]
 fn returns_target_range_for_heading_and_block_targets() {
     let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));

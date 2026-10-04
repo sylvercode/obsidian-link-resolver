@@ -2,6 +2,7 @@ use obsidian_link_resolver::link::parse_link;
 use obsidian_link_resolver::note::{find_target_range, ParsedNote};
 use obsidian_link_resolver::output::LineRange;
 
+/// Verifies child heading sections end before the next equal-or-higher heading.
 #[test]
 fn computes_heading_section_end_before_next_equal_or_higher_heading() {
     let contents =
@@ -15,6 +16,7 @@ fn computes_heading_section_end_before_next_equal_or_higher_heading() {
     assert_eq!(range, LineRange { begin: 5, end: 7 });
 }
 
+/// Verifies block-id targets resolve to the enclosing structured block span.
 #[test]
 fn derives_enclosing_ranges_for_structured_block_targets() {
     let contents = "# Emplacement\n\n## Blocks\n\n> quoted line 1\n> quoted line 2\n\n^quote-block\n\n> [!note] callout line 1\n> callout line 2\n\n^callout-block\n\n| Col | Value |\n| --- | ----- |\n| one | two |\n\n^table-block\n\n- parent item\n  - child item ^list-block\n  continuation of child\n- sibling item\n\n```text\ncode line 1\ncode line 2\n```\n\n^code-block\n\n$$\nmath line 1\nmath line 2\n$$\n\n^math-block\n\n> outer quote\n>> middle quote\n>>> inner quote ^triple-quote-block\n";
@@ -62,6 +64,7 @@ fn derives_enclosing_ranges_for_structured_block_targets() {
     }
 }
 
+/// Verifies repeated emplacement builds do not mutate cached parse state.
 #[test]
 fn parsed_note_cache_remains_immutable_when_building_emplacement() {
     let contents = "# Root\n\n## Blocks\n\n- parent\n  - child ^list-block\n- sibling\n";
@@ -85,6 +88,7 @@ fn parsed_note_cache_remains_immutable_when_building_emplacement() {
     );
 }
 
+/// Verifies list-block matching uses case-insensitive block-id comparisons.
 #[test]
 fn list_item_emplacement_matches_block_id_case_insensitively() {
     let contents = "# Root\n\n## Blocks\n\n- parent\n  - child ^list-block\n- sibling\n";
@@ -97,6 +101,7 @@ fn list_item_emplacement_matches_block_id_case_insensitively() {
     assert_eq!(lowercase, mixed_case);
 }
 
+/// Verifies heading resolution normalizes markdown heading text with trailing hashes.
 #[test]
 fn heading_links_match_markdown_heading_text_with_trailing_hashes() {
     let contents = "# Root\n\n## Example ##\nbody\n";

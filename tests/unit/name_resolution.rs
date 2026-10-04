@@ -6,10 +6,16 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
+/// Return the absolute path to the shared fixture vault root.
+///
+/// # Returns
+///
+/// Absolute fixture vault path used by unit tests.
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
 }
 
+/// Verifies vault detection and case-insensitive name resolution on fixture data.
 #[test]
 fn detects_vault_root_and_resolves_names_case_insensitively() {
     let fixture_root = fixture_root();
@@ -61,6 +67,7 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
     assert_eq!(path_qualified.rel_path, "folder/sub/Note.md");
 }
 
+/// Verifies entries under invalid directory names are excluded during enumeration.
 #[test]
 fn skips_entries_in_invalid_directory_names() {
     let root = TempDir::new().expect("temp dir should be creatable");
@@ -77,6 +84,7 @@ fn skips_entries_in_invalid_directory_names() {
     );
 }
 
+/// Verifies slash-bearing and trailing-dot note names are rejected as invalid references.
 #[test]
 fn rejects_note_names_with_path_separators() {
     let vault = Vault {
@@ -98,8 +106,8 @@ fn rejects_note_names_with_path_separators() {
         other => panic!("unexpected error: {other:?}"),
     }
 
-    let invalid_trailing_dot = resolve_name(&vault, "Note.", None)
-        .expect_err("names ending in a dot should be rejected");
+    let invalid_trailing_dot =
+        resolve_name(&vault, "Note.", None).expect_err("names ending in a dot should be rejected");
     match invalid_trailing_dot {
         NameResolutionError::Unresolved { reason } => {
             assert!(reason.contains("not a supported linkable name"));
@@ -108,6 +116,7 @@ fn rejects_note_names_with_path_separators() {
     }
 }
 
+/// Verifies ambiguous name matches and vault-undetermined contexts produce expected failures.
 #[test]
 fn reports_ambiguous_and_vault_undetermined_cases() {
     let vault = Vault {

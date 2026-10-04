@@ -38,16 +38,28 @@ pub const OLR_STATUS_AMBIGUOUS: OlrStatus = 4;
 
 /// Opaque resolver session handle.
 pub struct OlrSession {
+    /// Internal session state used by the Rust implementation.
     inner: ResolverSession,
 }
 
 /// Cached session state for repeated in-process resolutions.
 struct ResolverSession {
+    /// Optional explicit vault root supplied when the session was opened.
     root: Option<String>,
+    /// Lazily reused vault index bound to the active root/context.
     cached_vault: Mutex<Option<crate::vault::Vault>>,
 }
 
 impl ResolverSession {
+    /// Create a new session and optionally pre-enumerate an explicit vault.
+    ///
+    /// # Parameters
+    ///
+    /// - `vault_root`: Optional explicit vault root path supplied by the caller.
+    ///
+    /// # Returns
+    ///
+    /// A ready resolver session with validated root and optional preloaded index.
     fn new(vault_root: Option<&str>) -> Result<Self, String> {
         let canonical_root = if let Some(root) = vault_root {
             let root_path = Path::new(root);
@@ -84,6 +96,17 @@ impl ResolverSession {
         })
     }
 
+    /// Resolve one link using the session-scoped vault cache.
+    ///
+    /// # Parameters
+    ///
+    /// - `link`: Raw Obsidian link text.
+    /// - `context_path`: Path to the file containing the link.
+    /// - `with_emplacement`: Whether structured emplacement data should be included.
+    ///
+    /// # Returns
+    ///
+    /// The resolution output for the provided request.
     fn resolve(
         &self,
         link: &str,
@@ -109,6 +132,15 @@ impl ResolverSession {
         crate::resolve_with_vault(link, context_path, &vault, with_emplacement)
     }
 
+    /// Return a vault view valid for the provided context path, refreshing cache if needed.
+    ///
+    /// # Parameters
+    ///
+    /// - `context_path`: Path to the context file requiring vault-scoped resolution.
+    ///
+    /// # Returns
+    ///
+    /// A vault index that can safely resolve links for the given context.
     fn vault_for_context(&self, context_path: &str) -> Result<crate::vault::Vault, String> {
         let context_abs = std::fs::canonicalize(context_path)
             .map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
@@ -148,6 +180,12 @@ pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// Write an FFI status code to an optional out-parameter.
+///
+/// # Parameters
+///
+/// - `out_status`: Optional pointer to writable status storage.
+/// - `status`: Status code to write.
 fn write_status(out_status: *mut OlrStatus, status: OlrStatus) {
     if !out_status.is_null() {
         unsafe {
@@ -156,6 +194,15 @@ fn write_status(out_status: *mut OlrStatus, status: OlrStatus) {
     }
 }
 
+/// Convert a required C string pointer to a Rust `String`.
+///
+/// # Parameters
+///
+/// - `ptr`: Pointer to a NUL-terminated UTF-8 C string.
+///
+/// # Returns
+///
+/// `Some(String)` when the pointer is non-null and UTF-8 valid; otherwise `None`.
 fn cstr_to_string(ptr: *const c_char) -> Option<String> {
     if ptr.is_null() {
         return None;
@@ -165,6 +212,15 @@ fn cstr_to_string(ptr: *const c_char) -> Option<String> {
     c_string.to_str().ok().map(str::to_owned)
 }
 
+/// Convert an optional C string pointer to `Option<String>`, validating UTF-8.
+///
+/// # Parameters
+///
+/// - `ptr`: Optional pointer to a NUL-terminated UTF-8 C string.
+///
+/// # Returns
+///
+/// `Ok(None)` for null pointers, `Ok(Some(String))` for valid UTF-8, or `Err(())` on invalid UTF-8.
 fn cstr_to_optional_string(ptr: *const c_char) -> Result<Option<String>, ()> {
     if ptr.is_null() {
         return Ok(None);
@@ -178,6 +234,15 @@ fn cstr_to_optional_string(ptr: *const c_char) -> Result<Option<String>, ()> {
         .map_err(|_| ())
 }
 
+/// Allocate a new caller-owned C string from a Rust string-like value.
+///
+/// # Parameters
+///
+/// - `value`: Source string content to encode as a C string.
+///
+/// # Returns
+///
+/// A heap-allocated C string pointer owned by the caller.
 fn make_owned_string(value: impl AsRef<str>) -> *mut c_char {
     CString::new(value.as_ref())
         .unwrap_or_else(|_| CString::new("invalid utf-8").unwrap())

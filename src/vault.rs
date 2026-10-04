@@ -98,6 +98,15 @@ pub enum NameResolutionError {
 }
 
 /// Detect the vault root, enumerate its entries, and build a [`Vault`].
+///
+/// # Parameters
+///
+/// - `context_path`: Path to the file containing the link being resolved.
+/// - `explicit_root`: Optional caller-specified vault root path.
+///
+/// # Returns
+///
+/// A fully enumerated vault or an error when root detection/validation fails.
 pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Vault, String> {
     let context_abs = fs::canonicalize(context_path)
         .map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
@@ -138,6 +147,14 @@ pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Va
 }
 
 /// Enumerate note and attachment paths in a vault without reading file bodies.
+///
+/// # Parameters
+///
+/// - `root`: Vault root directory to walk.
+///
+/// # Returns
+///
+/// A complete list of supported note and attachment entries.
 pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
     let root_path = Path::new(root);
     if !root_path.is_dir() {
@@ -203,6 +220,16 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
 }
 
 /// Resolve a note name against the vault index.
+///
+/// # Parameters
+///
+/// - `vault`: Vault index to search.
+/// - `note_name`: Requested note name token from the link.
+/// - `folder_path`: Optional path qualifier for path-specific resolution.
+///
+/// # Returns
+///
+/// The unique matching index entry, or unresolved/ambiguous resolution error details.
 pub fn resolve_name(
     vault: &Vault,
     note_name: &str,
@@ -256,6 +283,16 @@ pub fn resolve_name(
     Ok(matches.remove(0))
 }
 
+/// Return `true` when an indexed entry matches a path-qualified note query.
+///
+/// # Parameters
+///
+/// - `entry`: Vault index entry to evaluate.
+/// - `path_query`: Path-qualified query token from the link.
+///
+/// # Returns
+///
+/// `true` when the entry path matches the query (with `.md` normalization for notes).
 fn path_matches(entry: &NoteIndexEntry, path_query: &str) -> bool {
     if entry.rel_path.eq_ignore_ascii_case(path_query) {
         return true;
@@ -272,6 +309,15 @@ fn path_matches(entry: &NoteIndexEntry, path_query: &str) -> bool {
     }
 }
 
+/// Normalize a path into vault-relative slash-separated form.
+///
+/// # Parameters
+///
+/// - `path`: Path to normalize.
+///
+/// # Returns
+///
+/// A forward-slash path string containing only normal components.
 fn normalize_path(path: &Path) -> String {
     path.components()
         .filter_map(|component| match component {
@@ -282,6 +328,15 @@ fn normalize_path(path: &Path) -> String {
         .join("/")
 }
 
+/// Return `true` when a directory entry name is dot-prefixed.
+///
+/// # Parameters
+///
+/// - `entry`: Directory entry from vault traversal.
+///
+/// # Returns
+///
+/// `true` when the entry name starts with `.`.
 fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
     entry
         .file_name()
@@ -290,6 +345,15 @@ fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
         .unwrap_or(false)
 }
 
+/// Validate a single path component for use in vault links and index entries.
+///
+/// # Parameters
+///
+/// - `name`: Candidate file or directory name component.
+///
+/// # Returns
+///
+/// `true` when the component is non-empty, supported, and free of disallowed characters.
 fn is_supported_base_name(name: &str) -> bool {
     let trimmed = name.trim();
     if trimmed.is_empty() || trimmed != name || trimmed.starts_with('.') {
@@ -298,16 +362,35 @@ fn is_supported_base_name(name: &str) -> bool {
     if trimmed.ends_with('.') || trimmed.contains("..") {
         return false;
     }
+    /// Characters disallowed in supported vault file and directory names.
     const INVALID: &[char] = &[
         '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
     ];
     !trimmed.chars().any(|ch| INVALID.contains(&ch)) && !trimmed.contains("%%")
 }
 
+/// Validate a vault directory name for traversal eligibility.
+///
+/// # Parameters
+///
+/// - `name`: Candidate directory name.
+///
+/// # Returns
+///
+/// `true` when the directory name is eligible for traversal.
 fn is_supported_directory_name(name: &str) -> bool {
     is_supported_base_name(name)
 }
 
+/// Validate a linkable file name, including supported Obsidian attachment extensions.
+///
+/// # Parameters
+///
+/// - `file_name`: Candidate linkable file name.
+///
+/// # Returns
+///
+/// `true` when the file name is structurally valid and extension-supported.
 pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
     if !is_supported_base_name(file_name) {
         return false;
@@ -324,6 +407,15 @@ pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
     ext.is_empty() || supported.contains(&ext.as_str())
 }
 
+/// Validate a link reference token used inside wikilink and markdown targets.
+///
+/// # Parameters
+///
+/// - `name`: Candidate reference token.
+///
+/// # Returns
+///
+/// `true` when the token is valid for link reference use.
 pub(crate) fn is_supported_link_reference_name(name: &str) -> bool {
     is_supported_base_name(name)
 }

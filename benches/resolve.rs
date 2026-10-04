@@ -9,8 +9,14 @@ use obsidian_link_resolver::vault::{enumerate_vault, Vault, VaultSource};
 #[path = "../tests/fixtures/bench_vault.rs"]
 mod bench_vault;
 
+/// Maximum allowed median warm-run latency for the benchmark gate.
 const WARM_RUN_P50_LIMIT: Duration = Duration::from_millis(100);
 
+/// Build and return the synthetic benchmark vault with a reusable context and target link.
+///
+/// # Returns
+///
+/// A tuple containing `(context_path, link, vault)`.
 fn benchmark_vault() -> (String, &'static str, Vault) {
     let (vault_root, context_path, link) =
         bench_vault::ensure_bench_vault().expect("benchmark vault should be generated");
@@ -25,6 +31,11 @@ fn benchmark_vault() -> (String, &'static str, Vault) {
     (context_path.to_string_lossy().into_owned(), link, vault)
 }
 
+/// Measure the median warm-run latency over a fixed sample window.
+///
+/// # Returns
+///
+/// The measured p50 latency across 31 warm-run samples.
 fn warm_run_p50() -> Duration {
     let (context_path, link, vault) = benchmark_vault();
     let mut samples = Vec::with_capacity(31);
@@ -48,6 +59,7 @@ fn warm_run_p50() -> Duration {
     samples[p50_index]
 }
 
+/// Enforce the warm-run latency gate used by CI.
 #[test]
 fn warm_run_latency_gate() {
     let p50 = warm_run_p50();
@@ -57,6 +69,11 @@ fn warm_run_latency_gate() {
     );
 }
 
+/// Register the Criterion benchmark for repeated warm-run resolution timing.
+///
+/// # Parameters
+///
+/// - `c`: Criterion benchmark registry used to register the measurement function.
 fn warm_run_resolve(c: &mut Criterion) {
     let (context_path, link, vault) = benchmark_vault();
     let warmed_result = resolve_with_vault(link, &context_path, &vault, false);

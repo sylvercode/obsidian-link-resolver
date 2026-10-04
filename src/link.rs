@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::vault::is_supported_link_reference_name;
 
+/// Tuple form returned by target parsing: `(folder, note, heading_path, block_id)`.
 type ParsedTarget = (Option<String>, Option<String>, Vec<String>, Option<String>);
 
 /// Error returned when parsing an Obsidian link fails.
@@ -18,6 +19,15 @@ pub struct LinkParseError {
 }
 
 impl core::fmt::Display for LinkParseError {
+    /// Format the parse error message for display surfaces.
+    ///
+    /// # Parameters
+    ///
+    /// - `f`: Formatter receiving the rendered error message.
+    ///
+    /// # Returns
+    ///
+    /// A formatting result from writing the message to `f`.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.message)
     }
@@ -114,6 +124,14 @@ impl Link {
 }
 
 /// Parse a raw Obsidian link string into the canonical [`Link`] representation.
+///
+/// # Parameters
+///
+/// - `raw`: Raw link string to parse.
+///
+/// # Returns
+///
+/// The parsed `Link` model or a parse error when syntax/target constraints are invalid.
 pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -157,6 +175,17 @@ pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
     })
 }
 
+/// Parse a wikilink payload (`[[...]]`) into the canonical `Link` shape.
+///
+/// # Parameters
+///
+/// - `raw`: Original raw link string.
+/// - `inner`: Inner wikilink payload between `[[` and `]]`.
+/// - `is_embed`: Whether this link originated from embed syntax.
+///
+/// # Returns
+///
+/// The parsed canonical link model or a parse error.
 fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let mut parts = inner.splitn(2, '|');
     let target_part = parts.next().unwrap_or_default().trim();
@@ -184,6 +213,17 @@ fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
+/// Parse a markdown link payload (`[label](target)`) into the canonical `Link` shape.
+///
+/// # Parameters
+///
+/// - `raw`: Original raw link string.
+/// - `inner`: Markdown payload after stripping the outer wrapper.
+/// - `is_embed`: Whether this link originated from embed syntax.
+///
+/// # Returns
+///
+/// The parsed canonical link model or a parse error.
 fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let open_paren = inner.find("](").ok_or_else(|| LinkParseError {
         message: format!("unsupported markdown link syntax: {raw}"),
@@ -206,6 +246,15 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
+/// Parse the target portion of a link into folder, note, heading path, and block id parts.
+///
+/// # Parameters
+///
+/// - `target`: Link target token to parse.
+///
+/// # Returns
+///
+/// A tuple `(folder_path, note_name, heading_path, block_id)` or parse failure.
 fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
@@ -306,6 +355,15 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     Ok((folder_path, note_name, heading_path, block_id))
 }
 
+/// Percent-decode a markdown link target while preserving the original on decode errors.
+///
+/// # Parameters
+///
+/// - `input`: URL-encoded target value.
+///
+/// # Returns
+///
+/// The decoded string, or the original value if decode fails.
 fn percent_decode(input: &str) -> String {
     urlencoding::decode(input)
         .map(|value| value.into_owned())

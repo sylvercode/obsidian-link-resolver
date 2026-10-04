@@ -3,6 +3,7 @@
 use clap::Parser;
 use obsidian_link_resolver::cli::{CliArgs, OutputFormat};
 
+/// Parse CLI arguments, resolve one link, render output, and exit with the mapped status code.
 fn main() {
     let args = CliArgs::parse();
     let result = obsidian_link_resolver::resolve(

@@ -4,7 +4,9 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// Root directory where the generated benchmark vault is created.
 const BENCH_ROOT: &str = "tests/fixtures/bench-vault";
+/// Canonical link resolved repeatedly by benchmark and latency-gate tests.
 const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 
 /// Ensure the synthetic benchmark vault exists and return its key paths.
@@ -13,6 +15,10 @@ const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 /// a uniquely named target note with a heading target, and approximately
 /// 5,000 additional markdown notes distributed across nested directories so the
 /// benchmark exercises realistic vault enumeration behavior.
+///
+/// # Returns
+///
+/// A tuple `(vault_root, context_path, target_link)` used by latency benchmarks.
 pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
     let root = PathBuf::from(BENCH_ROOT);
     let metadata_dir = root.join(".obsidian");
@@ -59,6 +65,16 @@ pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
     Ok((root, context_path, TARGET_LINK))
 }
 
+/// Generate the benchmark vault corpus and write the readiness sentinel.
+///
+/// # Parameters
+///
+/// - `root`: Root directory where the synthetic vault is created.
+/// - `sentinel`: File path written last to indicate generation completed.
+///
+/// # Returns
+///
+/// `Ok(())` after successful generation, or an `io::Error` if setup fails.
 fn generate_bench_vault(root: &Path, sentinel: &Path) -> io::Result<()> {
     fs::create_dir_all(root.join(".obsidian")).map_err(|error| {
         io::Error::new(
@@ -112,6 +128,16 @@ fn generate_bench_vault(root: &Path, sentinel: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// Write one file, ensuring all parent directories exist first.
+///
+/// # Parameters
+///
+/// - `path`: Destination file path to write.
+/// - `contents`: File contents to persist.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an `io::Error` with contextual path details.
 fn write_file(path: &Path, contents: &str) -> io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
