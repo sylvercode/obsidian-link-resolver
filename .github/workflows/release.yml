@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-24.04
@@ -32,3 +35,19 @@ jobs:
           cargo build --release --target x86_64-unknown-linux-gnu
           cargo build --release --target aarch64-unknown-linux-gnu
           cargo build --release --target x86_64-pc-windows-gnu
+      - name: Stage release assets
+        run: |
+          mkdir -p dist
+          cp target/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-x86_64
+          cp target/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-x86_64.so
+          cp target/x86_64-unknown-linux-gnu/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-x86_64-gnu
+          cp target/x86_64-unknown-linux-gnu/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-x86_64-gnu.so
+          cp target/aarch64-unknown-linux-gnu/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-aarch64
+          cp target/aarch64-unknown-linux-gnu/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-aarch64.so
+          cp target/x86_64-pc-windows-gnu/release/obsidian-link-resolver.exe dist/obsidian-link-resolver-windows-x86_64.exe
+          cp target/x86_64-pc-windows-gnu/release/obsidian_link_resolver.dll dist/obsidian_link_resolver-windows-x86_64.dll
+          cp include/obsidian_link_resolver.h dist/obsidian_link_resolver.h
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
