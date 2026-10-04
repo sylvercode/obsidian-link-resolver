@@ -97,6 +97,15 @@ fn rejects_note_names_with_path_separators() {
         }
         other => panic!("unexpected error: {other:?}"),
     }
+
+    let invalid_trailing_dot = resolve_name(&vault, "Note.", None)
+        .expect_err("names ending in a dot should be rejected");
+    match invalid_trailing_dot {
+        NameResolutionError::Unresolved { reason } => {
+            assert!(reason.contains("not a supported linkable name"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]

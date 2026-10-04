@@ -213,13 +213,14 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
             message: "link target is empty".to_string(),
         });
     }
+    let target = target.replace('\\', "/");
 
     let (note_part, subtarget_part) = if let Some(stripped) = target.strip_prefix('#') {
         (None, Some(stripped))
     } else if let Some((note, subtarget)) = target.split_once('#') {
         (Some(note), Some(subtarget))
     } else {
-        (Some(target), None)
+        (Some(target.as_str()), None)
     };
 
     let (folder_path, note_name) = match note_part.map(str::trim).filter(|value| !value.is_empty())

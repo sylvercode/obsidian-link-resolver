@@ -36,6 +36,12 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     assert_eq!(escaped_alias_separator.block_id.as_deref(), Some("abc123"));
     assert_eq!(escaped_alias_separator.display_text.as_deref(), Some("anchor"));
 
+    let windows_style_path =
+        parse_link("[[folder\\sub\\Note#Heading]]").expect("windows-style vault paths should parse");
+    assert_eq!(windows_style_path.folder_path.as_deref(), Some("folder/sub"));
+    assert_eq!(windows_style_path.note_name.as_deref(), Some("Note"));
+    assert_eq!(windows_style_path.heading_path, vec!["Heading"]);
+
     let case_insensitive =
         parse_link("[[project plan#milestones]]").expect("case-insensitive match should parse");
     assert_eq!(case_insensitive.note_name.as_deref(), Some("project plan"));

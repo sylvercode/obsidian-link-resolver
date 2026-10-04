@@ -291,16 +291,17 @@ fn is_hidden_dir(entry: &walkdir::DirEntry) -> bool {
 }
 
 fn is_supported_base_name(name: &str) -> bool {
-    if name.is_empty() || name.starts_with('.') {
+    let trimmed = name.trim();
+    if trimmed.is_empty() || trimmed != name || trimmed.starts_with('.') {
         return false;
     }
-    if name.contains("..") {
+    if trimmed.ends_with('.') || trimmed.contains("..") {
         return false;
     }
     const INVALID: &[char] = &[
         '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
     ];
-    !name.chars().any(|ch| INVALID.contains(&ch)) && !name.contains("%%")
+    !trimmed.chars().any(|ch| INVALID.contains(&ch)) && !trimmed.contains("%%")
 }
 
 fn is_supported_directory_name(name: &str) -> bool {
