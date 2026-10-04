@@ -20,10 +20,18 @@ jobs:
             x86_64-unknown-linux-gnu
             aarch64-unknown-linux-gnu
             x86_64-pc-windows-gnu
+            x86_64-apple-darwin
+            aarch64-apple-darwin
       - name: Install cross-compilation toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 curl xz-utils
+          curl -L https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -o /tmp/zig.tar.xz
+          mkdir -p /tmp/zig
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          sudo mv /tmp/zig-linux-x86_64-0.14.0 /usr/local/zig
+          echo "/usr/local/zig" >> "$GITHUB_PATH"
+          cargo install cargo-zigbuild --locked
       - name: Build release artifacts
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
@@ -35,19 +43,33 @@ jobs:
           cargo build --release --target x86_64-unknown-linux-gnu
           cargo build --release --target aarch64-unknown-linux-gnu
           cargo build --release --target x86_64-pc-windows-gnu
+          cargo zigbuild --release --target x86_64-apple-darwin
+          cargo zigbuild --release --target aarch64-apple-darwin
       - name: Stage release assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
           mkdir -p dist
-          cp target/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-x86_64
-          cp target/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-x86_64.so
-          cp target/x86_64-unknown-linux-gnu/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-x86_64-gnu
-          cp target/x86_64-unknown-linux-gnu/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-x86_64-gnu.so
-          cp target/aarch64-unknown-linux-gnu/release/obsidian-link-resolver dist/obsidian-link-resolver-linux-aarch64
-          cp target/aarch64-unknown-linux-gnu/release/libobsidian_link_resolver.so dist/libobsidian_link_resolver-linux-aarch64.so
-          cp target/x86_64-pc-windows-gnu/release/obsidian-link-resolver.exe dist/obsidian-link-resolver-windows-x86_64.exe
-          cp target/x86_64-pc-windows-gnu/release/obsidian_link_resolver.dll dist/obsidian_link_resolver-windows-x86_64.dll
-          cp include/obsidian_link_resolver.h dist/obsidian_link_resolver.h
+
+          cp target/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-linux-x86_64"
+          cp target/release/libobsidian_link_resolver.so "dist/libobsidian_link_resolver-${RELEASE_TAG}-linux-x86_64.so"
+
+          cp target/aarch64-unknown-linux-gnu/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-linux-aarch64"
+          cp target/aarch64-unknown-linux-gnu/release/libobsidian_link_resolver.so "dist/libobsidian_link_resolver-${RELEASE_TAG}-linux-aarch64.so"
+
+          cp target/x86_64-pc-windows-gnu/release/obsidian-link-resolver.exe "dist/obsidian-link-resolver-${RELEASE_TAG}-windows-x86_64.exe"
+          cp target/x86_64-pc-windows-gnu/release/obsidian_link_resolver.dll "dist/libobsidian_link_resolver-${RELEASE_TAG}-windows-x86_64.dll"
+
+          cp target/x86_64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-x86_64"
+          cp target/x86_64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-x86_64.dylib"
+
+          cp target/aarch64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-aarch64"
+          cp target/aarch64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-aarch64.dylib"
+
+          cp include/obsidian_link_resolver.h "dist/obsidian_link_resolver-${RELEASE_TAG}.h"
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          generate_release_notes: true
