@@ -41,5 +41,16 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     assert_eq!(case_insensitive.note_name.as_deref(), Some("project plan"));
     assert_eq!(case_insensitive.heading_path, vec!["milestones"]);
 
+    let dotted_note_name =
+        parse_link("[[4. Castle Ravenloft#^K67HallofBones]]").expect("dotted basename should parse");
+    assert_eq!(
+        dotted_note_name.note_name.as_deref(),
+        Some("4. Castle Ravenloft")
+    );
+    assert_eq!(
+        dotted_note_name.block_id.as_deref(),
+        Some("K67HallofBones")
+    );
+
     assert!(parse_link("[[Note#Heading#^abc123]]").is_err());
 }

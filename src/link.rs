@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::vault::is_supported_linkable_name;
+use crate::vault::is_supported_link_reference_name;
 
 type ParsedTarget = (Option<String>, Option<String>, Vec<String>, Option<String>);
 
@@ -233,7 +233,7 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
                         message: format!("missing note name in link target: {target}"),
                     });
                 }
-                if !is_supported_linkable_name(note) {
+                if !is_supported_link_reference_name(note) {
                     return Err(LinkParseError {
                         message: format!("invalid note name in link target: {target}"),
                     });
@@ -243,7 +243,7 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
                     Some(note.to_string()),
                 )
             } else {
-                if !is_supported_linkable_name(note_part) {
+                if !is_supported_link_reference_name(note_part) {
                     return Err(LinkParseError {
                         message: format!("invalid note name in link target: {target}"),
                     });

@@ -1,7 +1,9 @@
 use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve;
+use std::fs;
 use std::env;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
@@ -131,4 +133,35 @@ fn resolves_same_file_block_link_with_relative_context_path() {
         escaped_separator_result.display_text.as_deref(),
         Some("anchor")
     );
+}
+
+#[test]
+fn resolves_dotted_note_name_with_escaped_alias_separator() {
+    let root = TempDir::new().expect("temp dir should be creatable");
+    fs::create_dir_all(root.path().join(".obsidian")).expect("vault marker should be creatable");
+
+    let context_path = root.path().join("7. Argynvostholt.md");
+    let target_path = root.path().join("4. Castle Ravenloft.md");
+
+    fs::write(&context_path, "# Argynvostholt\n").expect("context note should be writable");
+    fs::write(
+        &target_path,
+        "# Castle Ravenloft\n\nArea intro.\n\nA vast hall. ^K67HallofBones\n",
+    )
+    .expect("target note should be writable");
+
+    let result = resolve(
+        "[[4. Castle Ravenloft#^K67HallofBones\\|area K67]]",
+        context_path.to_string_lossy().as_ref(),
+        Some(root.path().to_string_lossy().as_ref()),
+        false,
+    );
+
+    assert_eq!(result.status, Status::Resolved);
+    assert_eq!(
+        result.target_path.as_deref(),
+        Some("4. Castle Ravenloft.md")
+    );
+    assert_eq!(result.display_text.as_deref(), Some("area K67"));
+    assert_eq!(result.target_range.as_ref().map(|range| range.begin), Some(5));
 }

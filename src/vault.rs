@@ -209,7 +209,7 @@ pub fn resolve_name(
     folder_path: Option<&str>,
 ) -> Result<NoteIndexEntry, NameResolutionError> {
     let note_name = note_name.trim();
-    if !is_supported_linkable_name(note_name) {
+    if !is_supported_link_reference_name(note_name) {
         return Err(NameResolutionError::Unresolved {
             reason: format!("note '{note_name}' is not a supported linkable name"),
         });
@@ -321,4 +321,8 @@ pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
         "m4a", "mp3", "ogg", "wav", "webm", "3gp", "mkv", "mov", "mp4", "ogv", "pdf",
     ];
     ext.is_empty() || supported.contains(&ext.as_str())
+}
+
+pub(crate) fn is_supported_link_reference_name(name: &str) -> bool {
+    is_supported_base_name(name)
 }
