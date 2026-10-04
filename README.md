@@ -4,6 +4,62 @@
 context file, then returns the target file and, when applicable, the 1-based
 line range for the target heading or block.
 
+## Install / Update
+
+### Bash (Linux/macOS)
+
+Install latest release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.sh | bash
+```
+
+Update existing installation in your `PATH`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.sh | bash -s -- --mode update
+```
+
+Install a pinned version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.sh | bash -s -- --version 1.2.3
+```
+
+### PowerShell (Windows/Linux/macOS)
+
+Install latest release:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.ps1))) -Mode install
+```
+
+Update existing installation in your `PATH`:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.ps1))) -Mode update
+```
+
+Install a pinned version:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.ps1))) -Version 1.2.3
+```
+
+### Manual fallback (no pipe-to-shell)
+
+If you prefer to inspect first:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.sh
+bash install.sh --help
+```
+
+```powershell
+iwr https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install.ps1 -OutFile install.ps1
+pwsh ./install.ps1 -Mode install
+```
+
 ## Usage
 
 ```bash
