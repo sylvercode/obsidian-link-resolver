@@ -1,5 +1,6 @@
 use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve;
+use std::env;
 use std::path::PathBuf;
 
 fn fixture_root() -> PathBuf {
@@ -95,4 +96,21 @@ fn resolves_documented_fixture_scenarios() {
 
     let explicit_vault = resolve_case("[[Project Plan]]", "notes/a.md", Some(""));
     assert_eq!(explicit_vault.status, Status::Resolved);
+}
+
+#[test]
+fn resolves_same_file_block_link_with_relative_context_path() {
+    let root = fixture_root();
+    let context_abs = root.join("notes/a.md");
+    let cwd = env::current_dir().expect("current working directory should be available");
+    let relative = context_abs
+        .strip_prefix(&cwd)
+        .expect("fixture context should be under test working directory");
+    let context_rel = format!("./{}", relative.to_string_lossy());
+
+    let result = resolve("[[#^abc123|anchor]]", &context_rel, None, false);
+    assert_eq!(result.status, Status::Resolved);
+    assert_eq!(result.target_path.as_deref(), Some("notes/a.md"));
+    assert_eq!(result.target_range.as_ref().map(|range| range.begin), Some(20));
+    assert_eq!(result.display_text.as_deref(), Some("anchor"));
 }

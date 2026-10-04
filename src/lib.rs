@@ -58,7 +58,7 @@ use crate::vault::{detect_root, ContextFile, Vault};
 /// # Arguments
 ///
 /// * `link` - The Obsidian link string (e.g., `"[[Project Plan#Milestones]]"` or `"[[#Heading]]"` for same-file)
-/// * `context_path` - Absolute path of the file containing the link
+/// * `context_path` - Path of the file containing the link (absolute or relative)
 /// * `vault` - Optional explicit vault root path; if `None`, the resolver walks up from the context file
 ///   to find the nearest `.obsidian` directory
 /// * `with_emplacement` - If `true`, include the structured heading stack and section ranges in the result

@@ -54,6 +54,10 @@ pub fn resolve_link(
     with_emplacement: bool,
 ) -> ResolutionTarget {
     let context_path = Path::new(&context.path);
+    let canonical_context_path = fs::canonicalize(context_path).ok();
+    let effective_context_path = canonical_context_path
+        .as_deref()
+        .unwrap_or(context_path);
     let target_entry = if let Some(note_name) = &link.note_name {
         match resolve_name(vault, note_name, link.folder_path.as_deref()) {
             Ok(entry) => entry,
@@ -74,18 +78,18 @@ pub fn resolve_link(
             }
         }
     } else {
-        let rel_path = context_path
+        let rel_path = effective_context_path
             .strip_prefix(&vault.root)
             .map(normalize_path)
-            .unwrap_or_else(|_| context.path.clone());
+            .unwrap_or_else(|_| normalize_path(context_path));
         crate::vault::NoteIndexEntry {
             rel_path: rel_path.clone(),
-            name: context_path
+            name: effective_context_path
                 .file_stem()
                 .and_then(|value| value.to_str())
                 .unwrap_or_default()
                 .to_string(),
-            is_markdown: context_path
+            is_markdown: effective_context_path
                 .extension()
                 .and_then(|value| value.to_str())
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("md")),
