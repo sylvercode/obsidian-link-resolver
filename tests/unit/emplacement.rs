@@ -96,3 +96,15 @@ fn list_item_emplacement_matches_block_id_case_insensitively() {
 
     assert_eq!(lowercase, mixed_case);
 }
+
+#[test]
+fn heading_links_match_markdown_heading_text_with_trailing_hashes() {
+    let contents = "# Root\n\n## Example ##\nbody\n";
+    let link = parse_link("[[Note#Example]]").expect("link should parse");
+
+    let range = find_target_range(contents, &link)
+        .expect("target range lookup should succeed")
+        .expect("heading target should produce a range");
+
+    assert_eq!(range, LineRange { begin: 3, end: 4 });
+}

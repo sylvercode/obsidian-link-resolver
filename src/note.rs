@@ -478,7 +478,7 @@ fn parse_heading(line: &str) -> Option<(u8, String)> {
         return None;
     }
 
-    let text = after_hashes.trim();
+    let text = after_hashes.trim().trim_end_matches('#').trim();
     Some((level as u8, text.to_string()))
 }
 
