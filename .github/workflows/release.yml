@@ -13,11 +13,22 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.98.1
-      - run: cargo test
-      - run: cargo bench --bench resolve -- --warm-up-time 0.1
-      - run: cargo build --release
-      - run: cargo build --release --target x86_64-unknown-linux-gnu
-      - run: cargo build --release --target aarch64-unknown-linux-gnu
-      - run: cargo build --release --target x86_64-apple-darwin
-      - run: cargo build --release --target aarch64-apple-darwin
-      - run: cargo build --release --target x86_64-pc-windows-gnu
+          targets: |
+            x86_64-unknown-linux-gnu
+            aarch64-unknown-linux-gnu
+            x86_64-pc-windows-gnu
+      - name: Install cross-compilation toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+      - name: Build release artifacts
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
+        run: |
+          cargo test
+          cargo bench --bench resolve -- --warm-up-time 0.1
+          cargo build --release
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
+          cargo build --release --target x86_64-pc-windows-gnu
