@@ -1,7 +1,5 @@
 #!/usr/bin/env pwsh
 param(
-	[ValidateSet("install", "update")]
-	[string] $Mode = "install",
 	[string] $Version,
 	[string] $InstallDir
 )
@@ -64,10 +62,19 @@ if (-not $release.tag_name) {
 }
 
 $tagName = [string] $release.tag_name
-$assetName = "$BinaryName-$tagName-$osToken-$archToken"
-$asset = $release.assets | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
+$assetCandidates = @(
+	"$BinaryName-$tagName-$osToken-$archToken",
+	"$BinaryName-$tagName-$osToken-$archToken.exe"
+)
+if ($IsWindows) {
+	$assetCandidates = @(
+		"$BinaryName-$tagName-$osToken-$archToken.exe",
+		"$BinaryName-$tagName-$osToken-$archToken"
+	)
+}
+$asset = $release.assets | Where-Object { $assetCandidates -contains $_.name } | Select-Object -First 1
 if (-not $asset) {
-	Fail "Could not find asset '$assetName' in release '$tagName'."
+	Fail "Could not find a compatible installer asset for '$osToken-$archToken' in release '$tagName'."
 }
 
 $existingPath = $null
@@ -77,21 +84,16 @@ try {
 	$existingPath = $null
 }
 
-if (-not $InstallDir) {
-	if ($Mode -eq "update") {
-		if (-not $existingPath) {
-			Fail "Cannot update: '$binaryFileName' is not installed in PATH."
-		}
-		$targetPath = $existingPath
-	} else {
-		if ($IsWindows) {
-			$InstallDir = Join-Path $HOME ".local\bin"
-		} else {
-			$InstallDir = Join-Path $HOME ".local/bin"
-		}
-		$targetPath = Join-Path $InstallDir $binaryFileName
-	}
+if ($InstallDir) {
+	$targetPath = Join-Path $InstallDir $binaryFileName
+} elseif ($existingPath) {
+	$targetPath = $existingPath
 } else {
+	if ($IsWindows) {
+		$InstallDir = Join-Path $HOME ".local\bin"
+	} else {
+		$InstallDir = Join-Path $HOME ".local/bin"
+	}
 	$targetPath = Join-Path $InstallDir $binaryFileName
 }
 
@@ -118,5 +120,9 @@ try {
 	}
 }
 
-Write-Host "Installed $binaryFileName $tagName to $targetPath"
-Write-Host "Tip: ensure '$targetDir' is in your PATH"
+if ($existingPath) {
+	Write-Host "Updated $binaryFileName $tagName at $targetPath"
+} else {
+	Write-Host "Installed $binaryFileName $tagName to $targetPath"
+	Write-Host "Tip: ensure '$targetDir' is in your PATH"
+}

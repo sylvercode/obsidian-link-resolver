@@ -3,18 +3,20 @@ set -euo pipefail
 
 REPO="sylvercode/obsidian-link-resolver"
 BINARY_NAME="obsidian-link-resolver"
-MODE="install"
 VERSION=""
 INSTALL_DIR=""
 
 usage() {
 	cat <<'EOF'
-Usage: install.sh [--mode install|update] [--version <version>] [--install-dir <dir>]
+Usage: install.sh [--version <version>] [--install-dir <dir>]
+
+Behavior:
+  Always tries to update the installed binary in PATH, and falls back to a fresh
+  install when no existing binary is found.
 
 Options:
-  --mode         install (default) or update
   --version      Specific version to install, with or without leading 'v'
-  --install-dir  Destination directory (defaults based on mode and OS)
+  --install-dir  Install destination when no existing binary is found
   -h, --help     Show this help
 EOF
 }
@@ -26,11 +28,6 @@ fail() {
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-	--mode)
-		[[ $# -ge 2 ]] || fail "--mode requires a value"
-		MODE="$2"
-		shift 2
-		;;
 	--version)
 		[[ $# -ge 2 ]] || fail "--version requires a value"
 		VERSION="$2"
@@ -50,13 +47,6 @@ while [[ $# -gt 0 ]]; do
 		;;
 	esac
 done
-
-case "$MODE" in
-install | update) ;;
-*)
-	fail "--mode must be 'install' or 'update'"
-	;;
-esac
 
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v awk >/dev/null 2>&1 || fail "awk is required"
@@ -106,40 +96,48 @@ tag_name="$(
 )"
 [[ -n "$tag_name" ]] || fail "release metadata missing tag_name"
 
-asset_name="${BINARY_NAME}-${tag_name}-${os_token}-${arch_token}"
+asset_candidates=()
+if [[ "$os_token" == "windows" ]]; then
+	asset_candidates+=("${BINARY_NAME}-${tag_name}-${os_token}-${arch_token}.exe" "${BINARY_NAME}-${tag_name}-${os_token}-${arch_token}")
+else
+	asset_candidates+=("${BINARY_NAME}-${tag_name}-${os_token}-${arch_token}" "${BINARY_NAME}-${tag_name}-${os_token}-${arch_token}.exe")
+fi
 
-download_url="$(
-	printf '%s' "$release_json" | awk -v asset="$asset_name" '
-		$0 ~ "\"name\": \"" asset "\"" { found=1; next }
-		found && /"browser_download_url":/ {
-			gsub(/.*"browser_download_url": "/, "", $0)
-			gsub(/",?$/, "", $0)
-			print $0
-			exit
-		}
-	'
-)"
-[[ -n "$download_url" ]] || fail "could not find asset '${asset_name}' in release ${tag_name}"
+download_url=""
+for asset_name in "${asset_candidates[@]}"; do
+	download_url="$(
+		printf '%s' "$release_json" | awk -v asset="$asset_name" '
+			$0 ~ "\"name\": \"" asset "\"" { found=1; next }
+			found && /"browser_download_url":/ {
+				gsub(/.*"browser_download_url": "/, "", $0)
+				gsub(/",?$/, "", $0)
+				print $0
+				exit
+			}
+		'
+	)"
+	if [[ -n "$download_url" ]]; then
+		break
+	fi
+done
+[[ -n "$download_url" ]] || fail "could not find a compatible installer asset for ${os_token}-${arch_token} in release ${tag_name}"
 
 existing_path=""
 if command -v "$BINARY_NAME" >/dev/null 2>&1; then
 	existing_path="$(command -v "$BINARY_NAME")"
 fi
 
-if [[ -z "$INSTALL_DIR" ]]; then
-	if [[ "$MODE" == "update" ]]; then
-		[[ -n "$existing_path" ]] || fail "cannot update: '${BINARY_NAME}' is not installed in PATH"
-		target_path="$existing_path"
-	else
-		if [[ "$(id -u)" -eq 0 ]]; then
-			INSTALL_DIR="/usr/local/bin"
-		else
-			INSTALL_DIR="${HOME}/.local/bin"
-		fi
-		target_path="${INSTALL_DIR}/${BINARY_NAME}"
-	fi
-else
+if [[ -n "$INSTALL_DIR" ]]; then
 	target_path="${INSTALL_DIR%/}/${BINARY_NAME}"
+elif [[ -n "$existing_path" ]]; then
+	target_path="$existing_path"
+else
+	if [[ "$(id -u)" -eq 0 ]]; then
+		INSTALL_DIR="/usr/local/bin"
+	else
+		INSTALL_DIR="${HOME}/.local/bin"
+	fi
+	target_path="${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
 target_dir="$(dirname "$target_path")"
@@ -152,5 +150,9 @@ tmpfile="${tmpdir}/${BINARY_NAME}"
 curl -fsSL --retry 3 --retry-delay 1 "$download_url" -o "$tmpfile" || fail "failed downloading ${asset_name}"
 install -m 0755 "$tmpfile" "$target_path" || fail "failed installing to ${target_path}"
 
-echo "Installed ${BINARY_NAME} ${tag_name} to ${target_path}"
-echo "Tip: ensure '${target_dir}' is in your PATH"
+if [[ -n "$existing_path" ]]; then
+	echo "Updated ${BINARY_NAME} ${tag_name} at ${target_path}"
+else
+	echo "Installed ${BINARY_NAME} ${tag_name} to ${target_path}"
+	echo "Tip: ensure '${target_dir}' is in your PATH"
+fi
