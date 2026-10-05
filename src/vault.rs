@@ -362,7 +362,7 @@ fn is_supported_base_name(name: &str) -> bool {
     if trimmed.ends_with('.') || trimmed.contains("..") {
         return false;
     }
-    /// Characters disallowed in supported vault file and directory names.
+    // Characters disallowed in supported vault file and directory names.
     const INVALID: &[char] = &[
         '*', '"', '/', '\\', '<', '>', ':', '|', '?', '#', '[', ']', '^',
     ];
