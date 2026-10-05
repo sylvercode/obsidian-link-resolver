@@ -76,10 +76,22 @@ pub fn resolve_link(
             }
         }
     } else {
-        let rel_path = effective_context_path
-            .strip_prefix(&vault.root)
-            .map(normalize_path)
-            .unwrap_or_else(|_| normalize_path(context_path));
+        let rel_path = if let Some(canonical_context_path) = canonical_context_path.as_ref() {
+            canonical_context_path
+                .strip_prefix(&vault.root)
+                .map(normalize_path)
+                .or_else(|_| {
+                    Path::new(&context.path)
+                        .strip_prefix(&vault.root)
+                        .map(normalize_path)
+                })
+                .unwrap_or_else(|_| context.path.clone())
+        } else {
+            Path::new(&context.path)
+                .strip_prefix(&vault.root)
+                .map(normalize_path)
+                .unwrap_or_else(|_| context.path.clone())
+        };
         crate::vault::NoteIndexEntry {
             rel_path: rel_path.clone(),
             name: effective_context_path
