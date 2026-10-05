@@ -113,3 +113,16 @@ fn heading_links_match_markdown_heading_text_with_trailing_hashes() {
 
     assert_eq!(range, LineRange { begin: 3, end: 4 });
 }
+
+/// Verifies heading text containing a literal trailing hash is preserved.
+#[test]
+fn heading_links_preserve_literal_hash_in_heading_text() {
+    let contents = "# C#\nbody\n";
+    let link = parse_link("[[Note#C#]]").expect("link should parse");
+
+    let range = find_target_range(contents, &link)
+        .expect("target range lookup should succeed")
+        .expect("heading target should produce a range");
+
+    assert_eq!(range, LineRange { begin: 1, end: 2 });
+}
