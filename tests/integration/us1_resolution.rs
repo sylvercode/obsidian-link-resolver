@@ -1,6 +1,5 @@
 use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve;
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -122,10 +121,10 @@ fn resolves_documented_fixture_scenarios() {
 fn resolves_same_file_block_link_with_relative_context_path() {
     let root = fixture_root();
     let context_abs = root.join("notes/a.md");
-    let cwd = env::current_dir().expect("current working directory should be available");
+    let manifest_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let relative = context_abs
-        .strip_prefix(&cwd)
-        .expect("fixture context should be under test working directory");
+        .strip_prefix(&manifest_root)
+        .expect("fixture context should be under the project manifest root");
     let context_rel = format!("./{}", relative.to_string_lossy());
 
     let result = resolve("[[#^abc123|anchor]]", &context_rel, None, false);
