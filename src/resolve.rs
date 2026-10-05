@@ -54,7 +54,11 @@ pub fn resolve_link(
     with_emplacement: bool,
 ) -> ResolutionTarget {
     let context_path = Path::new(&context.path);
-    let canonical_context_path = fs::canonicalize(context_path).ok();
+    let canonical_context_path = if link.note_name.is_none() {
+        fs::canonicalize(context_path).ok()
+    } else {
+        None
+    };
     let effective_context_path = canonical_context_path.as_deref().unwrap_or(context_path);
     let target_entry = if let Some(note_name) = &link.note_name {
         match resolve_name(vault, note_name, link.folder_path.as_deref()) {
