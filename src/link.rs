@@ -276,7 +276,11 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
             message: "link target is empty".to_string(),
         });
     }
-    let target = target.replace('\\', "/");
+    let target = if target.contains('\\') {
+        target.replace('\\', "/")
+    } else {
+        target.to_string()
+    };
 
     let (note_part, subtarget_part) = if let Some(stripped) = target.strip_prefix('#') {
         (None, Some(stripped))
