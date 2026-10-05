@@ -486,7 +486,7 @@ fn parse_heading(line: &str) -> Option<(u8, String)> {
         .count();
     let normalized = if trailing_hash_count > 0 {
         let prefix = &text[..text.len() - trailing_hash_count];
-        if prefix.is_empty() || prefix.ends_with(char::is_whitespace) {
+        if !prefix.is_empty() && prefix.ends_with(char::is_whitespace) {
             prefix.trim().to_string()
         } else {
             text.to_string()
