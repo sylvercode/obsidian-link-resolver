@@ -126,9 +126,14 @@ fn rejects_note_names_with_path_separators() {
 
     let whitespace_root = TempDir::new().expect("temp dir should be creatable");
     let leading_whitespace = whitespace_root.path().join(" Note.md");
-    let trailing_whitespace = whitespace_root.path().join("Note.md ");
     fs::write(&leading_whitespace, "# Hidden\n").expect("leading-space file should be writable");
-    fs::write(&trailing_whitespace, "# Hidden\n").expect("trailing-space file should be writable");
+
+    #[cfg(not(windows))]
+    {
+        let trailing_whitespace = whitespace_root.path().join("Note.md ");
+        fs::write(&trailing_whitespace, "# Hidden\n")
+            .expect("trailing-space file should be writable");
+    }
 
     let whitespace_entries = enumerate_vault(whitespace_root.path().to_string_lossy().as_ref())
         .expect("vault should enumerate despite stray whitespace names");
@@ -136,6 +141,17 @@ fn rejects_note_names_with_path_separators() {
         whitespace_entries.is_empty(),
         "files with leading or trailing whitespace should be ignored"
     );
+
+    #[cfg(windows)]
+    {
+        assert!(
+            whitespace_entries
+                .iter()
+                .all(|entry| !entry.rel_path.starts_with(" Note.")
+                    && !entry.rel_path.ends_with(".md ")),
+            "windows should not create or assert on trailing-space filenames"
+        );
+    }
 }
 
 /// Verifies ambiguous name matches and vault-undetermined contexts produce expected failures.
