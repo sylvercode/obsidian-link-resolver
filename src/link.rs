@@ -251,13 +251,11 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
 /// # Parameters
 ///
 /// - `path`: Relative folder path to validate.
-/// - `_kind`: Reserved for compatibility with callers that classify the path.
-/// - `_target`: Reserved for compatibility with callers that include the full raw target.
 ///
 /// # Returns
 ///
 /// `true` when every segment is a valid relative reference segment, otherwise `false`.
-fn validate_relative_path_segments(path: &str, _kind: &str, _target: &str) -> bool {
+fn validate_relative_path_segments(path: &str) -> bool {
     if path.is_empty() {
         return false;
     }
@@ -306,7 +304,7 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
                         message: format!("missing note name in link target: {target}"),
                     });
                 }
-                if !validate_relative_path_segments(folder, "folder path", &target) {
+                if !validate_relative_path_segments(folder) {
                     return Err(LinkParseError {
                         message: format!("invalid folder path in link target: {target}"),
                     });
