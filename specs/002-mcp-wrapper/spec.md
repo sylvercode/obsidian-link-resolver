@@ -8,6 +8,13 @@
 
 **Input**: User description: "Prepare new spec to add a mcp that wrap the current tool"
 
+## Clarifications
+
+### Session 2026-10-04
+
+- Q: Which host platforms should the MCP binary release promise support? → A: Current release targets: Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64 (Option A).
+- Q: After a vault file changes, when must a later MCP resolution reflect that change? → A: Before the next resolution when detected; otherwise within 60 seconds (Option A).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Resolve links through a standard tool interface (Priority: P1)
@@ -70,7 +77,7 @@ An AI client or automation workflow often resolves many links in the same vault 
 **Acceptance Scenarios**:
 
 1. **Given** an MCP session resolves multiple links in the same vault, **When** the calls repeat against that vault, **Then** the wrapper reuses the cached vault state instead of re-enumerating the whole vault on every request.
-2. **Given** the same vault is later queried in a new session or after a relevant filesystem change, **When** the wrapper refreshes the cache, **Then** it rebuilds or invalidates the index as appropriate so the result remains current.
+2. **Given** a relevant filesystem change occurs in a cached vault, **When** the change is detected, **Then** the cache is refreshed before the next resolution; if changes are not detected sooner, they are reflected within 60 seconds.
 3. **Given** a link is resolved against a cached vault, **When** the result is returned, **Then** it matches the current resolver semantics and does not change the observed target behavior.
 
 ---
@@ -116,7 +123,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - When a non-markdown attachment is requested, the wrapper preserves the attachment semantics and does not invent heading or emplacement information.
 - When the underlying resolver requires a vault root or vault detection, the MCP wrapper exposes the same behavior to callers through the tool contract.
 - When identical inputs are submitted twice, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response.
-- When a vault is queried repeatedly, the MCP wrapper keeps the cached vault index for the active session and refreshes it only when needed so repeated calls stay efficient.
+- When a vault is queried repeatedly, its cached index is reused; detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
 - When diagnostic logging is enabled, operational events and failures, including cache activity, are reported separately from tool results; when disabled, optional diagnostic logs are not emitted.
 
 ## Requirements *(mandatory)*
@@ -138,9 +145,9 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
 - **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
 - **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the client’s standard MCP configuration mechanism, rather than requiring a custom application integration or ad hoc installation path.
-- **FR-016**: The project MUST publish or otherwise make available prebuilt MCP server binaries for all supported client platforms so the installation flow is reliable for ordinary users and does not depend on local source builds.
+- **FR-016**: The project MUST publish or otherwise make available prebuilt MCP server binaries for Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64 so the installation flow is reliable for ordinary users and does not depend on local source builds.
 - **FR-017**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
-- **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
+- **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics. Relevant filesystem changes MUST be reflected before the next resolution when detected, and otherwise within 60 seconds.
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
 - **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text or note contents.
 
@@ -161,9 +168,9 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-003**: An agent can discover the resolver tool through standard MCP tooling and invoke it without custom text parsing or shell integration in 100% of tested client configurations.
 - **SC-004**: The tool description explicitly tells clients when to prefer a simple target line versus a richer emplacement result, and that guidance aligns with the supported agent workflow for sharded section reads in 100% of the documented scenarios.
 - **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
-- **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios.
+- **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios. Detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
-- **SC-008**: The project publishes prebuilt MCP server binaries for all supported platforms and documents the installation and client registration flow in user-facing documentation so a user can install and configure it without source-level setup instructions.
+- **SC-008**: The project publishes prebuilt MCP server binaries for Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64, and documents the installation and client registration flow in user-facing documentation so a user can install and configure it without source-level setup instructions.
 - **SC-009**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
 - **SC-010**: With diagnostic logging enabled, users can identify server startup, request outcomes, operational failures, and cache reuse or refresh outcomes, while MCP protocol responses remain unchanged; with logging disabled, no optional diagnostic logs are emitted.
 
