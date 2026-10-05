@@ -114,6 +114,28 @@ fn rejects_note_names_with_path_separators() {
         }
         other => panic!("unexpected error: {other:?}"),
     }
+
+    let invalid_parent_ref = resolve_name(&vault, "folder/../Note", None)
+        .expect_err("parent-directory references should be rejected");
+    match invalid_parent_ref {
+        NameResolutionError::Unresolved { reason } => {
+            assert!(reason.contains("not a supported linkable name"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    let whitespace_root = TempDir::new().expect("temp dir should be creatable");
+    let leading_whitespace = whitespace_root.path().join(" Note.md");
+    let trailing_whitespace = whitespace_root.path().join("Note.md ");
+    fs::write(&leading_whitespace, "# Hidden\n").expect("leading-space file should be writable");
+    fs::write(&trailing_whitespace, "# Hidden\n").expect("trailing-space file should be writable");
+
+    let whitespace_entries = enumerate_vault(whitespace_root.path().to_string_lossy().as_ref())
+        .expect("vault should enumerate despite stray whitespace names");
+    assert!(
+        whitespace_entries.is_empty(),
+        "files with leading or trailing whitespace should be ignored"
+    );
 }
 
 /// Verifies ambiguous name matches and vault-undetermined contexts produce expected failures.
