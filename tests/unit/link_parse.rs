@@ -62,5 +62,18 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     );
     assert_eq!(dotted_note_name.block_id.as_deref(), Some("K67HallofBones"));
 
+    for raw in [
+        "[[/Note]]",
+        "[[folder//Note]]",
+        "[[folder/./Note]]",
+        "[[folder/../Note]]",
+        "[[folder/..]]",
+    ] {
+        assert!(
+            parse_link(raw).is_err(),
+            "invalid path reference should be rejected: {raw}"
+        );
+    }
+
     assert!(parse_link("[[Note#Heading#^abc123]]").is_err());
 }

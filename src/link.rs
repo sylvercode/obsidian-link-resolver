@@ -255,6 +255,22 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
 /// # Returns
 ///
 /// A tuple `(folder_path, note_name, heading_path, block_id)` or parse failure.
+fn validate_relative_path_segments(
+    path: &str,
+    _kind: &str,
+    _target: &str,
+) -> Result<bool, LinkParseError> {
+    if path.is_empty() {
+        return Ok(false);
+    }
+    for segment in path.split('/') {
+        if segment.is_empty() || !is_supported_link_reference_name(segment) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
@@ -275,12 +291,22 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let (folder_path, note_name) = match note_part.map(str::trim).filter(|value| !value.is_empty())
     {
         Some(note_part) => {
+            if note_part.starts_with('/') || note_part.ends_with('/') {
+                return Err(LinkParseError {
+                    message: format!("invalid path in link target: {target}"),
+                });
+            }
             if let Some((folder, note)) = note_part.rsplit_once('/') {
                 let folder = folder.trim();
                 let note = note.trim();
                 if note.is_empty() {
                     return Err(LinkParseError {
                         message: format!("missing note name in link target: {target}"),
+                    });
+                }
+                if !validate_relative_path_segments(folder, "folder path", &target)? {
+                    return Err(LinkParseError {
+                        message: format!("invalid folder path in link target: {target}"),
                     });
                 }
                 if !is_supported_link_reference_name(note) {
