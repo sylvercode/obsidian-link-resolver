@@ -337,24 +337,10 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let mut segments: Vec<String> = subtarget
-            .split('#')
-            .map(str::trim)
-            .map(str::to_string)
-            .collect();
-        if segments.last().map(String::as_str) == Some("") {
-            let last = segments.pop().unwrap();
-            if let Some(prev) = segments.last_mut() {
-                prev.push('#');
-            } else {
-                return Err(LinkParseError {
-                    message: format!("empty sub-target segment in link target: {target}"),
-                });
-            }
-            if !last.is_empty() {
-                segments.push(last);
-            }
-        }
+        // `#` is the reserved separator for heading path segments and block ids in a target.
+        // Literal `#` characters are not valid in the note or folder name itself; the existing
+        // name validators reject them before we ever get here.
+        let segments: Vec<&str> = subtarget.split('#').collect();
         for (index, segment) in segments.iter().enumerate() {
             let segment = segment.trim();
             if segment.is_empty() {

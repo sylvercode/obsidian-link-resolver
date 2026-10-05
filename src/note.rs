@@ -478,21 +478,23 @@ fn parse_heading(line: &str) -> Option<(u8, String)> {
         return None;
     }
 
-    let mut text = after_hashes.trim().to_string();
-    while text.ends_with('#') {
-        let trimmed = text.trim_end_matches('#');
-        if trimmed.is_empty() {
-            text.clear();
-            break;
+    let text = after_hashes.trim();
+    let trailing_hash_count = text
+        .chars()
+        .rev()
+        .take_while(|character| *character == '#')
+        .count();
+    let normalized = if trailing_hash_count > 0 {
+        let prefix = &text[..text.len() - trailing_hash_count];
+        if prefix.is_empty() || prefix.ends_with(char::is_whitespace) {
+            prefix.trim().to_string()
+        } else {
+            text.to_string()
         }
-        let before_hash = trimmed.chars().next_back();
-        if before_hash.is_some_and(char::is_whitespace) {
-            text = trimmed.trim_end().to_string();
-            continue;
-        }
-        break;
-    }
-    Some((level as u8, text))
+    } else {
+        text.to_string()
+    };
+    Some((level as u8, normalized))
 }
 
 /// Extract a trailing block identifier from a markdown line when one is present.
