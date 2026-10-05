@@ -58,7 +58,7 @@ use crate::vault::{detect_root, ContextFile, Vault};
 /// # Arguments
 ///
 /// * `link` - The Obsidian link string (e.g., `"[[Project Plan#Milestones]]"` or `"[[#Heading]]"` for same-file)
-/// * `context_path` - Absolute path of the file containing the link
+/// * `context_path` - Path of the file containing the link (absolute or relative)
 /// * `vault` - Optional explicit vault root path; if `None`, the resolver walks up from the context file
 ///   to find the nearest `.obsidian` directory
 /// * `with_emplacement` - If `true`, include the structured heading stack and section ranges in the result
@@ -124,6 +124,17 @@ pub fn resolve(
 }
 
 /// Resolve a link using a prebuilt [`Vault`] index.
+///
+/// # Arguments
+///
+/// * `link` - Raw Obsidian link text to resolve.
+/// * `context_path` - Path of the file containing the link.
+/// * `vault` - Pre-enumerated vault index to resolve against.
+/// * `with_emplacement` - Whether structured emplacement details should be included.
+///
+/// # Returns
+///
+/// A [`ResolutionTarget`] describing the resolution outcome.
 pub fn resolve_with_vault(
     link: &str,
     context_path: &str,
@@ -149,6 +160,18 @@ pub fn resolve_with_vault(
     resolve_parsed(parsed, context_path, vault, with_emplacement)
 }
 
+/// Resolve an already parsed link against a preselected vault and context path.
+///
+/// # Parameters
+///
+/// - `parsed`: Parsed link payload ready for resolution.
+/// - `context_path`: Path to the file that contains the link.
+/// - `vault`: Pre-enumerated vault index to resolve against.
+/// - `with_emplacement`: Whether structured emplacement details should be computed.
+///
+/// # Returns
+///
+/// A fully populated resolution output record.
 fn resolve_parsed(
     parsed: Link,
     context_path: &str,

@@ -3,6 +3,7 @@
 use std::env;
 use std::path::PathBuf;
 
+/// Generate the public C header from the Rust FFI surface at build time.
 fn main() {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());

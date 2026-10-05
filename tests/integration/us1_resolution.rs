@@ -1,11 +1,29 @@
 use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve;
+use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
+/// Return the absolute path to the shared fixture vault root.
+///
+/// # Returns
+///
+/// Absolute fixture vault path used by integration tests.
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
 }
 
+/// Resolve one fixture-case link with optional explicit vault override.
+///
+/// # Parameters
+///
+/// - `link`: Link string to resolve.
+/// - `context_rel`: Context path relative to the fixture root.
+/// - `vault_rel`: Optional explicit vault path relative to the fixture root.
+///
+/// # Returns
+///
+/// Resolver output for the test case.
 fn resolve_case(
     link: &str,
     context_rel: &str,
@@ -26,6 +44,7 @@ fn resolve_case(
     )
 }
 
+/// Verifies all documented core resolution scenarios on the fixture vault.
 #[test]
 fn resolves_documented_fixture_scenarios() {
     let resolved = resolve_case("[[Project Plan]]", "notes/a.md", None);
@@ -95,4 +114,78 @@ fn resolves_documented_fixture_scenarios() {
 
     let explicit_vault = resolve_case("[[Project Plan]]", "notes/a.md", Some(""));
     assert_eq!(explicit_vault.status, Status::Resolved);
+}
+
+/// Verifies same-file block references resolve when context is supplied as a relative path.
+#[test]
+fn resolves_same_file_block_link_with_relative_context_path() {
+    let root = fixture_root();
+    let context_abs = root.join("notes/a.md");
+    let manifest_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let relative = context_abs
+        .strip_prefix(&manifest_root)
+        .expect("fixture context should be under the project manifest root");
+    let context_rel = format!("./{}", relative.to_string_lossy());
+
+    let result = resolve("[[#^abc123|anchor]]", &context_rel, None, false);
+    assert_eq!(result.status, Status::Resolved);
+    assert_eq!(result.target_path.as_deref(), Some("notes/a.md"));
+    assert_eq!(
+        result.target_range.as_ref().map(|range| range.begin),
+        Some(20)
+    );
+    assert_eq!(result.display_text.as_deref(), Some("anchor"));
+
+    let escaped_separator_result = resolve("[[#^abc123\\|anchor]]", &context_rel, None, false);
+    assert_eq!(escaped_separator_result.status, Status::Resolved);
+    assert_eq!(
+        escaped_separator_result.target_path.as_deref(),
+        Some("notes/a.md")
+    );
+    assert_eq!(
+        escaped_separator_result
+            .target_range
+            .as_ref()
+            .map(|range| range.begin),
+        Some(20)
+    );
+    assert_eq!(
+        escaped_separator_result.display_text.as_deref(),
+        Some("anchor")
+    );
+}
+
+/// Verifies dotted note names and escaped alias separators parse and resolve correctly.
+#[test]
+fn resolves_dotted_note_name_with_escaped_alias_separator() {
+    let root = TempDir::new().expect("temp dir should be creatable");
+    fs::create_dir_all(root.path().join(".obsidian")).expect("vault marker should be creatable");
+
+    let context_path = root.path().join("7. Argynvostholt.md");
+    let target_path = root.path().join("4. Castle Ravenloft.md");
+
+    fs::write(&context_path, "# Argynvostholt\n").expect("context note should be writable");
+    fs::write(
+        &target_path,
+        "# Castle Ravenloft\n\nArea intro.\n\nA vast hall. ^K67HallofBones\n",
+    )
+    .expect("target note should be writable");
+
+    let result = resolve(
+        "[[4. Castle Ravenloft#^K67HallofBones\\|area K67]]",
+        context_path.to_string_lossy().as_ref(),
+        Some(root.path().to_string_lossy().as_ref()),
+        false,
+    );
+
+    assert_eq!(result.status, Status::Resolved);
+    assert_eq!(
+        result.target_path.as_deref(),
+        Some("4. Castle Ravenloft.md")
+    );
+    assert_eq!(result.display_text.as_deref(), Some("area K67"));
+    assert_eq!(
+        result.target_range.as_ref().map(|range| range.begin),
+        Some(5)
+    );
 }

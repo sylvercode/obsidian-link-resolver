@@ -2,6 +2,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use serde_json::Value;
 use tempfile::TempDir;
 
+/// Verifies ambiguous outcomes return sorted candidates and schema-compatible payloads.
 #[test]
 fn ambiguous_results_are_sorted_and_validated_against_schema() {
     let temp = TempDir::new().expect("temp dir should be creatable");

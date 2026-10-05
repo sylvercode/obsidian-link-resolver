@@ -54,6 +54,12 @@ pub fn resolve_link(
     with_emplacement: bool,
 ) -> ResolutionTarget {
     let context_path = Path::new(&context.path);
+    let canonical_context_path = if link.note_name.is_none() {
+        fs::canonicalize(context_path).ok()
+    } else {
+        None
+    };
+    let effective_context_path = canonical_context_path.as_deref().unwrap_or(context_path);
     let target_entry = if let Some(note_name) = &link.note_name {
         match resolve_name(vault, note_name, link.folder_path.as_deref()) {
             Ok(entry) => entry,
@@ -74,18 +80,30 @@ pub fn resolve_link(
             }
         }
     } else {
-        let rel_path = context_path
-            .strip_prefix(&vault.root)
-            .map(normalize_path)
-            .unwrap_or_else(|_| context.path.clone());
+        let rel_path = if let Some(canonical_context_path) = canonical_context_path.as_ref() {
+            canonical_context_path
+                .strip_prefix(&vault.root)
+                .map(normalize_path)
+                .or_else(|_| {
+                    Path::new(&context.path)
+                        .strip_prefix(&vault.root)
+                        .map(normalize_path)
+                })
+                .unwrap_or_else(|_| context.path.clone())
+        } else {
+            Path::new(&context.path)
+                .strip_prefix(&vault.root)
+                .map(normalize_path)
+                .unwrap_or_else(|_| context.path.clone())
+        };
         crate::vault::NoteIndexEntry {
             rel_path: rel_path.clone(),
-            name: context_path
+            name: effective_context_path
                 .file_stem()
                 .and_then(|value| value.to_str())
                 .unwrap_or_default()
                 .to_string(),
-            is_markdown: context_path
+            is_markdown: effective_context_path
                 .extension()
                 .and_then(|value| value.to_str())
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("md")),
@@ -198,6 +216,19 @@ pub fn resolve_link(
     }
 }
 
+/// Build a non-success result while preserving embed and display metadata from the source link.
+///
+/// # Parameters
+///
+/// - `status`: Failure-like status to assign.
+/// - `target_path`: Optional resolved target path, when known.
+/// - `target_range`: Optional target line range, when known.
+/// - `link`: Parsed input link used to copy output metadata.
+/// - `reason`: Human-readable reason for the non-success outcome.
+///
+/// # Returns
+///
+/// A `ResolutionTarget` populated with consistent failure metadata.
 fn error_like(
     status: Status,
     target_path: Option<String>,
@@ -217,6 +248,15 @@ fn error_like(
     }
 }
 
+/// Normalize a path into a vault-relative forward-slash string.
+///
+/// # Parameters
+///
+/// - `path`: Path to normalize.
+///
+/// # Returns
+///
+/// A slash-separated path string with only normal components.
 fn normalize_path(path: &Path) -> String {
     path.components()
         .filter_map(|component| match component {
@@ -227,6 +267,16 @@ fn normalize_path(path: &Path) -> String {
         .join("/")
 }
 
+/// Join a vault root and vault-relative path into a platform path.
+///
+/// # Parameters
+///
+/// - `root`: Vault root directory.
+/// - `relative_path`: Vault-relative target path.
+///
+/// # Returns
+///
+/// A platform-native joined path.
 fn vault_path_join(root: &str, relative_path: &str) -> std::path::PathBuf {
     Path::new(root).join(relative_path)
 }

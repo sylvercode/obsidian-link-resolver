@@ -2,10 +2,26 @@ use obsidian_link_resolver::output::{LineRange, Status};
 use obsidian_link_resolver::resolve;
 use std::path::PathBuf;
 
+/// Return the absolute path to the shared fixture vault root.
+///
+/// # Returns
+///
+/// Absolute fixture vault path used by integration tests.
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
 }
 
+/// Resolve a fixture-case link while controlling whether emplacement data is requested.
+///
+/// # Parameters
+///
+/// - `link`: Link string to resolve.
+/// - `context_rel`: Context path relative to the fixture root.
+/// - `with_emplacement`: Whether to request structured emplacement data.
+///
+/// # Returns
+///
+/// Resolver output for the test case.
 fn resolve_case(
     link: &str,
     context_rel: &str,
@@ -22,6 +38,7 @@ fn resolve_case(
     )
 }
 
+/// Verifies nested heading links produce the expected heading stack and section range.
 #[test]
 fn returns_nested_heading_stack_and_section_ranges() {
     let result = resolve_case("[[Design#API#Auth]]", "notes/a.md", true);
@@ -50,6 +67,7 @@ fn returns_nested_heading_stack_and_section_ranges() {
     assert_eq!(emplacement.section, LineRange { begin: 5, end: 7 });
 }
 
+/// Verifies whole-file emplacement is returned for notes without heading structure.
 #[test]
 fn returns_empty_stack_and_whole_file_section_for_flat_notes() {
     let result = resolve_case("[[Flat]]", "notes/a.md", true);
@@ -63,6 +81,15 @@ fn returns_empty_stack_and_whole_file_section_for_flat_notes() {
     assert_eq!(emplacement.section, LineRange { begin: 1, end: 3 });
 }
 
+/// Assert a link resolves to the expected structured block envelope in emplacement output.
+///
+/// # Parameters
+///
+/// - `raw_link`: Raw link value to resolve.
+/// - `expected_range`: Expected canonical target range.
+/// - `expected_kind`: Expected serialized structured block kind.
+/// - `expected_block_id`: Expected block id on the top-level structured block.
+/// - `expected_child_block_id`: Expected block id on a nested child node, when applicable.
 fn assert_structured_block(
     raw_link: &str,
     expected_range: LineRange,
@@ -131,6 +158,7 @@ fn assert_structured_block(
     }
 }
 
+/// Verifies supported structured block kinds expose canonical begin/end boundaries.
 #[test]
 fn returns_structured_block_boundaries_for_supported_blocks() {
     assert_structured_block(

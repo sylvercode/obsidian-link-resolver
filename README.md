@@ -60,6 +60,10 @@ Required input:
 - `<LINK>`: the raw Obsidian link string.
 - `--context <FILE>`: the markdown file that contains the link.
 
+Shell tip: wrap links in single quotes when possible (`'[[#^id|Alias]]'`).
+If a shell-escaped alias separator (`\|`) reaches the binary, it is treated
+the same as `|`.
+
 Optional flags:
 
 - `--vault <DIR>`: use an explicit vault root instead of auto-detecting one.

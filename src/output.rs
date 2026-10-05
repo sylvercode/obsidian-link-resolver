@@ -172,11 +172,19 @@ pub struct ResolutionTarget {
 
 impl ResolutionTarget {
     /// Serialize the result as compact machine-readable JSON.
+    ///
+    /// # Returns
+    ///
+    /// A compact JSON string or a serialization error.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
 
     /// Render a human-readable summary of the result.
+    ///
+    /// # Returns
+    ///
+    /// A concise display string suitable for terminal output.
     pub fn to_human_string(&self) -> String {
         match self.status {
             Status::Resolved => format!(
@@ -211,6 +219,15 @@ impl ResolutionTarget {
     }
 }
 
+/// Render the optional emplacement payload in a compact human-readable suffix.
+///
+/// # Parameters
+///
+/// - `emplacement`: Structured emplacement data attached to a resolved target.
+///
+/// # Returns
+///
+/// A printable suffix for `to_human_string` output.
 fn render_emplacement(emplacement: &StructuredEmplacement) -> String {
     let headings = if emplacement.heading_stack.is_empty() {
         "<none>".to_string()

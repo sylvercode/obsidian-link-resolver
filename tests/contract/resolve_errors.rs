@@ -3,6 +3,16 @@ use serde_json::Value;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Invoke the resolver CLI and decode the JSON payload for error-path assertions.
+///
+/// # Parameters
+///
+/// - `link`: Link string passed to the resolver CLI.
+/// - `context`: Context note path passed to `--context`.
+///
+/// # Returns
+///
+/// The raw process output and parsed JSON payload.
 fn run_resolver(link: &str, context: &str) -> (std::process::Output, Value) {
     let output = cargo_bin_cmd!("obsidian-link-resolver")
         .args([link, "--context", context, "--format", "json"])
@@ -13,6 +23,7 @@ fn run_resolver(link: &str, context: &str) -> (std::process::Output, Value) {
     (output, json)
 }
 
+/// Verifies unresolved and missing sub-target outcomes map to documented exit codes.
 #[test]
 fn reports_unresolved_and_sub_target_not_found_via_exit_codes() {
     let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
@@ -34,6 +45,7 @@ fn reports_unresolved_and_sub_target_not_found_via_exit_codes() {
         .is_some_and(|reason| !reason.is_empty()));
 }
 
+/// Verifies vault-detection failures return structured error output.
 #[test]
 fn reports_error_when_vault_cannot_be_determined() {
     let unique = SystemTime::now()
@@ -53,6 +65,7 @@ fn reports_error_when_vault_cannot_be_determined() {
         .is_some_and(|reason| !reason.is_empty()));
 }
 
+/// Verifies vault enumeration excludes unsupported names, directories, and extensions.
 #[test]
 fn ignores_unsupported_extensions_and_dot_prefixed_paths_when_enumerating_vaults() {
     let unique = SystemTime::now()

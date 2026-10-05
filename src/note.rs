@@ -479,7 +479,22 @@ fn parse_heading(line: &str) -> Option<(u8, String)> {
     }
 
     let text = after_hashes.trim();
-    Some((level as u8, text.to_string()))
+    let trailing_hash_count = text
+        .chars()
+        .rev()
+        .take_while(|character| *character == '#')
+        .count();
+    let normalized = if trailing_hash_count > 0 {
+        let prefix = &text[..text.len() - trailing_hash_count];
+        if !prefix.is_empty() && prefix.ends_with(char::is_whitespace) {
+            prefix.trim().to_string()
+        } else {
+            text.to_string()
+        }
+    } else {
+        text.to_string()
+    };
+    Some((level as u8, normalized))
 }
 
 /// Extract a trailing block identifier from a markdown line when one is present.
@@ -761,4 +776,19 @@ fn is_list_item(line: &str) -> bool {
 
     let suffix: &str = &trimmed[digit_prefix..];
     suffix.starts_with(". ") || suffix.starts_with(") ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_heading;
+
+    #[test]
+    fn parse_heading_strips_only_markdown_closing_hashes() {
+        assert_eq!(
+            parse_heading("## Example ##"),
+            Some((2, "Example".to_string()))
+        );
+        assert_eq!(parse_heading("## C#"), Some((2, "C#".to_string())));
+        assert_eq!(parse_heading("## ###"), Some((2, "###".to_string())));
+    }
 }

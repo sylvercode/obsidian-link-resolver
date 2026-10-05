@@ -2,6 +2,7 @@ use obsidian_link_resolver::link::{Link, LinkStyle};
 use obsidian_link_resolver::output::{ResolutionTarget, Status};
 use obsidian_link_resolver::vault::{ContextFile, NoteIndexEntry, Vault, VaultSource};
 
+/// Verifies foundational public types align with expected contract fields and invariants.
 #[test]
 fn foundational_types_match_phase2_contracts() {
     let link = Link {

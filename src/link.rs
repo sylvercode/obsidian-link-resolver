@@ -6,8 +6,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::vault::is_supported_linkable_name;
+use crate::vault::is_supported_link_reference_name;
 
+/// Tuple form returned by target parsing: `(folder, note, heading_path, block_id)`.
 type ParsedTarget = (Option<String>, Option<String>, Vec<String>, Option<String>);
 
 /// Error returned when parsing an Obsidian link fails.
@@ -18,6 +19,15 @@ pub struct LinkParseError {
 }
 
 impl core::fmt::Display for LinkParseError {
+    /// Format the parse error message for display surfaces.
+    ///
+    /// # Parameters
+    ///
+    /// - `f`: Formatter receiving the rendered error message.
+    ///
+    /// # Returns
+    ///
+    /// A formatting result from writing the message to `f`.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.message)
     }
@@ -114,6 +124,14 @@ impl Link {
 }
 
 /// Parse a raw Obsidian link string into the canonical [`Link`] representation.
+///
+/// # Parameters
+///
+/// - `raw`: Raw link string to parse.
+///
+/// # Returns
+///
+/// The parsed `Link` model or a parse error when syntax/target constraints are invalid.
 pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -157,11 +175,27 @@ pub fn parse_link(raw: &str) -> Result<Link, LinkParseError> {
     })
 }
 
+/// Parse a wikilink payload (`[[...]]`) into the canonical `Link` shape.
+///
+/// # Parameters
+///
+/// - `raw`: Original raw link string.
+/// - `inner`: Inner wikilink payload between `[[` and `]]`.
+/// - `is_embed`: Whether this link originated from embed syntax.
+///
+/// # Returns
+///
+/// The parsed canonical link model or a parse error.
 fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let mut parts = inner.splitn(2, '|');
-    let target = parts.next().unwrap_or_default().trim();
-    let display_text = parts
-        .next()
+    let target_part = parts.next().unwrap_or_default().trim();
+    let display_part = parts.next();
+    let target = if display_part.is_some() {
+        target_part.strip_suffix('\\').unwrap_or(target_part)
+    } else {
+        target_part
+    };
+    let display_text = display_part
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);
@@ -179,6 +213,17 @@ fn parse_wikilink(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
+/// Parse a markdown link payload (`[label](target)`) into the canonical `Link` shape.
+///
+/// # Parameters
+///
+/// - `raw`: Original raw link string.
+/// - `inner`: Markdown payload after stripping the outer wrapper.
+/// - `is_embed`: Whether this link originated from embed syntax.
+///
+/// # Returns
+///
+/// The parsed canonical link model or a parse error.
 fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkParseError> {
     let open_paren = inner.find("](").ok_or_else(|| LinkParseError {
         message: format!("unsupported markdown link syntax: {raw}"),
@@ -201,6 +246,27 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
+/// Validate each segment in a relative folder path used by a link target.
+///
+/// # Parameters
+///
+/// - `path`: Relative folder path to validate.
+///
+/// # Returns
+///
+/// `true` when every segment is a valid relative reference segment, otherwise `false`.
+fn validate_relative_path_segments(path: &str) -> bool {
+    if path.is_empty() {
+        return false;
+    }
+    for segment in path.split('/') {
+        if segment.is_empty() || !is_supported_link_reference_name(segment) {
+            return false;
+        }
+    }
+    true
+}
+
 fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
@@ -208,18 +274,28 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
             message: "link target is empty".to_string(),
         });
     }
+    let target = if target.contains('\\') {
+        target.replace('\\', "/")
+    } else {
+        target.to_string()
+    };
 
     let (note_part, subtarget_part) = if let Some(stripped) = target.strip_prefix('#') {
         (None, Some(stripped))
     } else if let Some((note, subtarget)) = target.split_once('#') {
         (Some(note), Some(subtarget))
     } else {
-        (Some(target), None)
+        (Some(target.as_str()), None)
     };
 
     let (folder_path, note_name) = match note_part.map(str::trim).filter(|value| !value.is_empty())
     {
         Some(note_part) => {
+            if note_part.starts_with('/') || note_part.ends_with('/') {
+                return Err(LinkParseError {
+                    message: format!("invalid path in link target: {target}"),
+                });
+            }
             if let Some((folder, note)) = note_part.rsplit_once('/') {
                 let folder = folder.trim();
                 let note = note.trim();
@@ -228,7 +304,12 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
                         message: format!("missing note name in link target: {target}"),
                     });
                 }
-                if !is_supported_linkable_name(note) {
+                if !validate_relative_path_segments(folder) {
+                    return Err(LinkParseError {
+                        message: format!("invalid folder path in link target: {target}"),
+                    });
+                }
+                if !is_supported_link_reference_name(note) {
                     return Err(LinkParseError {
                         message: format!("invalid note name in link target: {target}"),
                     });
@@ -238,7 +319,7 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
                     Some(note.to_string()),
                 )
             } else {
-                if !is_supported_linkable_name(note_part) {
+                if !is_supported_link_reference_name(note_part) {
                     return Err(LinkParseError {
                         message: format!("invalid note name in link target: {target}"),
                     });
@@ -256,6 +337,9 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
+        // `#` is the reserved separator for heading path segments and block ids in a target.
+        // Literal `#` characters are not valid in the note or folder name itself; the existing
+        // name validators reject them before we ever get here.
         let segments: Vec<&str> = subtarget.split('#').collect();
         for (index, segment) in segments.iter().enumerate() {
             let segment = segment.trim();
@@ -300,6 +384,15 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     Ok((folder_path, note_name, heading_path, block_id))
 }
 
+/// Percent-decode a markdown link target while preserving the original on decode errors.
+///
+/// # Parameters
+///
+/// - `input`: URL-encoded target value.
+///
+/// # Returns
+///
+/// The decoded string, or the original value if decode fails.
 fn percent_decode(input: &str) -> String {
     urlencoding::decode(input)
         .map(|value| value.into_owned())

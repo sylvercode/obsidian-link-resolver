@@ -23,7 +23,7 @@ pub enum OutputFormat {
 /// # Fields
 ///
 /// - `link`: The Obsidian link string to resolve (positional argument, required)
-/// - `context`: Absolute path of the file containing the link (`--context`, required)
+/// - `context`: Path of the file containing the link (`--context`, required; absolute or relative)
 /// - `vault`: Optional explicit vault root path (`--vault`, defaults to auto-detect)
 /// - `format`: Output format ("json" or "human"; default "json")
 /// - `verbose`: Verbosity level (`-v` is 1, `-vv` is 2, etc.; repeatable flag)
@@ -32,7 +32,7 @@ pub enum OutputFormat {
 /// # Arguments
 ///
 /// - `<LINK>` (positional): The link string to resolve
-/// - `--context <FILE>`: Absolute path to the file containing the link
+/// - `--context <FILE>`: Path to the file containing the link (absolute or relative)
 /// - `--vault <DIR>`: Optional vault root; if omitted, auto-detected from the context file
 /// - `--format <FORMAT>`: Output format ("json" or "human"; default "json")
 /// - `-v, --verbose`: Increase diagnostic verbosity (repeatable; only affects stderr, not stdout)
@@ -49,7 +49,7 @@ pub struct CliArgs {
     /// The Obsidian link string to resolve (positional argument, required).
     #[arg(value_name = "LINK")]
     pub link: String,
-    /// Absolute path of the file containing the link (`--context`, required).
+    /// Path of the file containing the link (`--context`, required; absolute or relative).
     #[arg(long)]
     pub context: String,
     /// Optional explicit vault root path (`--vault`); if `None`, vault is auto-detected.

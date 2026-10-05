@@ -7,10 +7,14 @@ use std::process::Command;
 use tempfile::tempdir;
 
 #[repr(C)]
+/// Opaque FFI session marker matching the exported ABI handle type.
 struct OlrSession;
 
+/// Signature for retrieving the library version string.
 type OlrVersionFn = unsafe extern "C" fn() -> *mut c_char;
+/// Signature for opening a resolver session.
 type OlrSessionOpenFn = unsafe extern "C" fn(*const c_char, *mut i32) -> *mut OlrSession;
+/// Signature for resolving one link through an open resolver session.
 type OlrResolveFn = unsafe extern "C" fn(
     *mut OlrSession,
     *const c_char,
@@ -18,9 +22,16 @@ type OlrResolveFn = unsafe extern "C" fn(
     i32,
     *mut i32,
 ) -> *mut c_char;
+/// Signature for releasing FFI-owned strings.
 type OlrStringFreeFn = unsafe extern "C" fn(*mut c_char);
+/// Signature for closing an open resolver session.
 type OlrSessionCloseFn = unsafe extern "C" fn(*mut OlrSession);
 
+/// Compute the expected debug-build shared-library path.
+///
+/// # Returns
+///
+/// Absolute path where the test expects the CDYLIB artifact.
 fn library_file_path() -> PathBuf {
     let filename = format!(
         "{}obsidian_link_resolver{}",
@@ -34,6 +45,11 @@ fn library_file_path() -> PathBuf {
         .join(filename)
 }
 
+/// Ensure the resolver CDYLIB exists before dynamic loading.
+///
+/// # Returns
+///
+/// Absolute path to the built CDYLIB artifact.
 fn ensure_cdylib_built() -> PathBuf {
     let library_path = library_file_path();
     if library_path.exists() {
@@ -61,11 +77,17 @@ fn ensure_cdylib_built() -> PathBuf {
     built_path
 }
 
+/// Dynamically load the resolver CDYLIB for FFI integration tests.
+///
+/// # Returns
+///
+/// A loaded dynamic library handle with exported resolver symbols.
 fn load_library() -> Library {
     let library_path = ensure_cdylib_built();
     unsafe { Library::new(library_path).expect("cdylib should be built") }
 }
 
+/// Verifies a session can resolve multiple links in sequence and return valid JSON each time.
 #[test]
 fn ffi_session_can_load_and_resolve_many_consecutive_links() {
     let library = load_library();
@@ -107,6 +129,7 @@ fn ffi_session_can_load_and_resolve_many_consecutive_links() {
     unsafe { olr_session_close(session) };
 }
 
+/// Verifies session-scoped vault indexing is reused after open instead of re-enumerating files.
 #[test]
 fn ffi_session_reuses_cached_index_after_open() {
     let library = load_library();
@@ -185,6 +208,7 @@ fn ffi_session_reuses_cached_index_after_open() {
     unsafe { olr_session_close(session) };
 }
 
+/// Verifies invalid UTF-8 vault roots are rejected by session open.
 #[test]
 fn ffi_session_open_rejects_invalid_utf8_root() {
     let library = load_library();
