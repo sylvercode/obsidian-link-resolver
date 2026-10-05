@@ -246,15 +246,19 @@ fn parse_markdown(raw: &str, inner: &str, is_embed: bool) -> Result<Link, LinkPa
     })
 }
 
-/// Parse the target portion of a link into folder, note, heading path, and block id parts.
+/// Validate each segment in a relative folder path used by a link target.
 ///
 /// # Parameters
 ///
-/// - `target`: Link target token to parse.
+/// - `path`: Relative folder path to validate.
+/// - `_kind`: Reserved for compatibility with callers that classify the path.
+/// - `_target`: Reserved for compatibility with callers that include the full raw target.
 ///
 /// # Returns
 ///
-/// A tuple `(folder_path, note_name, heading_path, block_id)` or parse failure.
+/// `Ok(true)` when every segment is a valid relative reference segment,
+/// `Ok(false)` when the path is empty or contains invalid segments, and an error
+/// if validation itself fails unexpectedly.
 fn validate_relative_path_segments(
     path: &str,
     _kind: &str,
