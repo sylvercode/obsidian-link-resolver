@@ -31,4 +31,6 @@
 
 ## Notes
 
+- [x] Optional MCP diagnostics cover lifecycle, request outcomes, operational failures, and cache activity; they are disabled by default, remain on stderr, exclude payload contents, and do not alter tool responses.
+- [x] Success criterion SC-010 verifies general operational visibility and confirms diagnostics remain absent when disabled and do not alter MCP responses.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

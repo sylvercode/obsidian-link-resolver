@@ -91,6 +91,23 @@ A user wants to enable the resolver in an AI client without manual source builds
 
 ---
 
+### User Story 6 - Inspect MCP behavior when troubleshooting (Priority: P3)
+
+A user troubleshooting the MCP server needs operational details about its lifecycle, request processing, and failures. The server offers optional diagnostic logging; cache activity is one useful example of the events it reports. Logging does not change normal tool responses.
+
+**Why this priority**: Opt-in diagnostics help users investigate server behavior and errors without adding noise to routine MCP sessions.
+
+**Independent Test**: Can be tested by running the server with diagnostics disabled and enabled, then verifying that enabled diagnostics report operational events and failures, include cache reuse and refresh outcomes, and do not change MCP responses.
+
+**Acceptance Scenarios**:
+
+1. **Given** diagnostic logging is disabled, **When** the server starts and handles requests, **Then** it emits no optional diagnostic logs.
+2. **Given** diagnostic logging is enabled, **When** the server starts, handles or completes a request, or encounters a failure, **Then** diagnostics report the relevant lifecycle, request outcome, or failure.
+3. **Given** diagnostic logging is enabled, **When** a request reuses or refreshes a vault index, **Then** diagnostics identify the cache outcome.
+4. **Given** diagnostic logging is enabled, **When** operational events are logged, **Then** logs do not include link text or note contents and do not appear in or alter the MCP protocol response.
+
+---
+
 ### Edge Cases
 
 - When the link or context is invalid, the MCP wrapper returns a clear error outcome rather than crashing or producing incomplete data.
@@ -100,6 +117,7 @@ A user wants to enable the resolver in an AI client without manual source builds
 - When the underlying resolver requires a vault root or vault detection, the MCP wrapper exposes the same behavior to callers through the tool contract.
 - When identical inputs are submitted twice, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response.
 - When a vault is queried repeatedly, the MCP wrapper keeps the cached vault index for the active session and refreshes it only when needed so repeated calls stay efficient.
+- When diagnostic logging is enabled, operational events and failures, including cache activity, are reported separately from tool results; when disabled, optional diagnostic logs are not emitted.
 
 ## Requirements *(mandatory)*
 
@@ -124,6 +142,7 @@ A user wants to enable the resolver in an AI client without manual source builds
 - **FR-017**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
 - **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics and MUST be refreshed or invalidated when relevant vault filesystem changes make the index stale.
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
+- **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text or note contents.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -146,6 +165,7 @@ A user wants to enable the resolver in an AI client without manual source builds
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
 - **SC-008**: The project publishes prebuilt MCP server binaries for all supported platforms and documents the installation and client registration flow in user-facing documentation so a user can install and configure it without source-level setup instructions.
 - **SC-009**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
+- **SC-010**: With diagnostic logging enabled, users can identify server startup, request outcomes, operational failures, and cache reuse or refresh outcomes, while MCP protocol responses remain unchanged; with logging disabled, no optional diagnostic logs are emitted.
 
 ## Assumptions
 
@@ -154,3 +174,4 @@ A user wants to enable the resolver in an AI client without manual source builds
 - MCP clients can pass structured arguments and parse structured results via the standard protocol without custom text scraping.
 - Agent workflows rely on deterministic result fields and stable outcome categories rather than human-readable prose alone.
 - The wrapper's scope is limited to exposing the current capability through MCP; it does not expand the underlying link-resolution rules beyond the current tool's contract.
+- Diagnostic logging is opt-in and limited to operational server state; request payloads, link text, and note contents are not needed in logs.
