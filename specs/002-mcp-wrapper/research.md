@@ -1,6 +1,24 @@
 # Research: Obsidian Link Resolver MCP Wrapper
 
 **Date**: 2026-10-04
+## Optional Operational Diagnostics (User Story 6)
+
+**Decision**: Add a `--diagnostics` launch flag to the MCP server; diagnostics are off unless explicitly requested. When enabled, initialize `structured-logger` 1.0.5 with `default-features = false`, an explicit `INFO` level, its synchronous JSON writer, and the fixed MCP diagnostics target routed to stderr. Route the default writer to `std::io::sink()` so unrelated dependency logs cannot leak to stderr. Do not initialize the global logger when the flag is absent. Use structured key-values for the fixed event names and failure categories defined in [the data model](data-model.md#diagnostic-configuration-and-event) and MCP contract. A resolver `error` outcome is logged as a completed request status, distinct from an MCP/request-processing failure. Use a monotonically increasing process-local request sequence where correlation is needed. Record fixed categories rather than raw error text. Never record link text, context or vault paths, note contents, or tool arguments. Keep diagnostics separate from stdout protocol messages and MCP result objects.
+
+**Rationale**: The spec requires opt-in operational visibility without changing normal results or exposing request content. `structured-logger` supplies a synchronous JSON writer, structured key-value fields, and target-specific writers, avoiding a project-maintained logging format. Explicit target routing and a sink fallback keep logs from MCP/runtime dependencies out of stderr. Disable its default `log-panic` feature because that feature writes panic messages and backtraces, which can contain sensitive data. Initialize only after parsing `--diagnostics` and use static messages/targets plus allow-listed structured values.
+
+**Alternatives considered**:
+- Always-on diagnostics: conflicts with the disabled-by-default requirement and adds noise to routine sessions.
+- Reuse the CLI's repeatable `-v` flag: less explicit for a long-running server, where one boolean switch cleanly expresses the opt-in requirement.
+- Direct `serde_json` plus stderr writes: avoids the `log` facade dependency, but requires custom serialization and write synchronization that the chosen backend already provides.
+- A general tracing stack: may be appropriate for larger services, but is not needed for this compact event set.
+
+**Validation**: Use a child-process test because the `log` facade is a process-global singleton. With diagnostics disabled, assert no optional logger records are emitted. With diagnostics enabled, parse stderr JSON-lines and verify lifecycle, request outcomes/failures, and cache outcomes; assert the fixed logger envelope and event schema, and confirm raw request data and paths are absent. Verify no unrelated target reaches stderr. Independently capture stdout and compare MCP protocol responses with diagnostics disabled/enabled to prove response parity and channel isolation. Error records use only a fixed category/stage, not raw errors that may contain paths or note text.
+
+**Sources**:
+- [`structured-logger` 1.0.5 crate documentation](https://docs.rs/structured-logger/1.0.5/structured_logger/)
+- [Builder configuration](https://docs.rs/structured-logger/1.0.5/structured_logger/struct.Builder.html) and [synchronous JSON writer](https://docs.rs/structured-logger/1.0.5/structured_logger/json/index.html)
+- [`structured-logger` 1.0.5 feature flags](https://docs.rs/crate/structured-logger/1.0.5/features)
 
 ## MCP SDK and Transport
 

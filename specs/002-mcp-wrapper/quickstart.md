@@ -34,6 +34,9 @@ Use `tests/fixtures/vault/` for repeatable cases, with `context_path` set to an 
 | Cache reuse | Call repeatedly against one vault | One index is reused; no full directory enumeration per call. |
 | Cache refresh | Add, remove, or rename a note | A watcher invalidates before the next resolution; with the watcher event suppressed, a deterministic timer test verifies the background full scan refreshes the index within 60 seconds even when no requests arrive during the interval. |
 | Multiple vaults | Resolve with two canonical roots in one process | Each root uses its own cache entry. |
+| Diagnostics disabled | Start the server without `--diagnostics`; initialize and make successful, unresolved, and failing requests | No optional diagnostic records appear on stderr; MCP responses remain the contract-defined results/errors. |
+| Diagnostics enabled | Start with `--diagnostics`; exercise server startup, request outcomes/failure, cache reuse and cache refresh | Parse the `structured-logger` JSON-lines on stderr and verify the fixed logger envelope, event names, and failure categories. A resolver `error` is logged as `request_completed` with status `error`. Assert link text, context/vault paths, note contents, serialized arguments, and raw error strings are absent. |
+| Protocol isolation | Run equivalent MCP calls with diagnostics off and on while capturing stdout | stdout contains only MCP messages and the same tool result objects in both runs; diagnostics appear only on stderr. |
 
 ## Automated Validation
 
@@ -46,7 +49,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 ```
 
-The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, cache reuse, event invalidation, request-independent periodic refresh, refresh failure behavior, and separation between vault roots. Filesystem-event correctness tests should inject invalidation deterministically; the periodic scheduler should use a controllable clock so the 60-second bound can be tested without a wall-clock delay. The cross-platform watcher smoke test checks registration without depending on event timing.
+The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, cache reuse, event invalidation, request-independent periodic refresh, refresh failure behavior, separation between vault roots, and diagnostics default/redaction/channel isolation. Use child-process tests to capture stderr and stdout because the `log` facade logger is process-global; verify unrelated targets are sent to the configured sink. Filesystem-event correctness tests should inject invalidation deterministically; the periodic scheduler should use a controllable clock so the 60-second bound can be tested without a wall-clock delay. The cross-platform watcher smoke test checks registration without depending on event timing.
 
 ## Release Validation
 

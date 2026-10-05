@@ -8,7 +8,12 @@ This contract adds one MCP stdio tool while preserving the existing resolver sem
 - Transport: MCP stdio. The client launches the local process and communicates using the standard MCP lifecycle and JSON-RPC messages over stdin/stdout.
 - stdout is reserved exclusively for protocol messages. Diagnostics and watcher warnings go to stderr.
 - Optional launch argument: `--vault <DIR>` supplies the default vault root. A `vault_root` in a tool request overrides it. Without either value, the resolver detects the nearest ancestor `.obsidian` directory from `context_path`.
+- Optional launch flag: `--diagnostics` enables structured JSON-lines operational events on stderr. Diagnostics are disabled by default. Events cover server lifecycle, request processing/outcomes/failures, and cache reuse/refresh/watcher outcomes.
 - The process remains alive for multiple tool calls and owns its vault cache until shutdown.
+
+When `--diagnostics` is present, `structured-logger` 1.0.5 emits JSON-lines records to stderr through its synchronous JSON writer. Configure it with `default-features = false` to disable panic-message/backtrace logging, an explicit `INFO` level, a fixed MCP diagnostics target routed to stderr, and a sink as the default writer for all other targets. Do not initialize the logger when the flag is absent.
+
+Each record includes the logger envelope (`timestamp`, `level`, `target`, and static `message`) plus structured diagnostic fields: `event`, optional process-local `request_seq`, optional resolver `status`, optional fixed `failure_kind`, and optional `duration_ms`. The event values are `server_started`, `server_stopped`, `request_started`, `request_completed`, `request_failed`, `cache_hit`, `cache_miss`, `cache_refresh_started`, `cache_refreshed`, `cache_refresh_failed`, and `watcher_unavailable`. Failure kinds are `invalid_arguments`, `root_selection`, `cache_refresh`, `watch_setup`, `protocol`, `transport`, and `internal`. A resolver result with status `error` is still a `request_completed` event; `request_failed` indicates the request did not produce a resolver result. Diagnostic records MUST NOT contain link text, context/vault paths, note contents, serialized tool arguments, or raw error strings. Messages and targets MUST remain fixed and MUST NOT interpolate untrusted data. Diagnostics MUST NOT be written to stdout or added to tool responses. When `--diagnostics` is absent, no optional diagnostic records are emitted.
 
 ## Tool: `resolve_obsidian_link`
 
