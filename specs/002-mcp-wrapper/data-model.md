@@ -27,7 +27,7 @@ An in-memory cache entry is owned by the MCP server process and keyed by the can
 |---|---|---|
 | `root` | canonical path | Identity key; never returned in the public resolution record. |
 | `vault` | `Vault` snapshot | Existing supported note/attachment entries used for name and path matching. |
-| `last_full_scan` | monotonic instant | Start/completion marker used to determine the 60-second full-rescan deadline. |
+| `last_full_scan` | monotonic instant | Completion marker used to schedule the next background full rescan, no more than 60 seconds later. |
 | `dirty` | boolean | Set by relevant watcher events; causes a rebuild before the next resolution. |
 | `watch_state` | internal state | Active watcher or unavailable; unavailability does not disable periodic refresh. |
 
@@ -35,12 +35,12 @@ An in-memory cache entry is owned by the MCP server process and keyed by the can
 
 - **Absent → Clean**: first request selects/canonicalizes the root, enumerates it, and registers a watcher when possible.
 - **Clean → Dirty**: a relevant filesystem event is observed; event bursts coalesce into one dirty state.
-- **Clean → Refreshing**: the 60-second full-rescan deadline is reached before a request.
+- **Clean → Refreshing**: the per-vault background timer reaches its full-rescan deadline, independently of whether a request arrives.
 - **Dirty/Refreshing → Clean**: enumeration succeeds and atomically replaces the cached snapshot and scan time.
-- **Dirty/Refreshing → Error**: enumeration fails; the current request returns a resolver `error` outcome and does not use the stale snapshot. A later request may retry.
+- **Dirty/Refreshing → Error**: enumeration fails; the cache records the refresh failure, requests return a resolver `error` outcome, and the stale snapshot is not served. A later refresh retries.
 - **Watcher Active → Watcher Unavailable**: watch registration/runtime failure; retain the cache and rely on periodic rescans.
 
-Filesystem events are hints, not an authoritative operation log. A full scan runs at least every 60 seconds even while watching. The cache exists for the server process lifetime; this is the defined active-session scope. Note file bodies are read on each resolution, so body edits are visible without a vault-index transition.
+Filesystem events are hints, not an authoritative operation log. A background full scan runs at least every 60 seconds even while watching and even when no requests arrive; this makes undetected index changes available to the next resolution within the specified bound. The cache exists for the server process lifetime; this is the defined active-session scope. Note file bodies are read on each resolution, so body edits are visible without a vault-index transition.
 
 ## MCP Tool Result
 

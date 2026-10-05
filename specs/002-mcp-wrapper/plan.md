@@ -6,13 +6,13 @@
 
 ## Summary
 
-Add a separately installable, long-running MCP server that exposes the existing resolver as one standard tool over stdio. The server delegates every request to the Rust library's existing resolution path and emits the same deterministic `ResolutionTarget` fields and five outcomes. It accepts a context file, optional vault root, and optional emplacement request; tool metadata explains when richer emplacement is useful. A process-scoped vault cache reuses indexes per canonical root, invalidates on filesystem events, and performs a full rescan at least every 60 seconds as a missed-event backstop. Publish a dedicated native executable alongside the current CLI/FFI assets, extend installers without changing their default CLI behavior, and document standard client registration.
+Add a separately installable, long-running MCP server that exposes the existing resolver as one standard tool over stdio. The server delegates every request to the Rust library's existing resolution path and emits the same deterministic `ResolutionTarget` fields and five outcomes. It accepts a context file, optional vault root, and optional emplacement request; tool metadata explains when richer emplacement is useful. A process-scoped vault cache reuses indexes per canonical root, invalidates on filesystem events, and runs a background full rescan at least every 60 seconds independently of incoming requests. Publish a dedicated native executable alongside the current CLI/FFI assets, extend installers without changing their default CLI behavior, and document standard client registration.
 
 ## Technical Context
 
 **Language/Version**: Rust 1.98.1, edition 2021 (the toolchain pinned in CI and release workflows)
 
-**Primary Dependencies**: `rmcp` 3.5.0 for MCP server/tool/stdio protocol support; Tokio runtime as required by the SDK; `notify` 8.2.0 for cross-platform vault filesystem invalidation; existing `serde`/`serde_json`, `clap`, and resolver library. Keep SDK features limited to server, tool schema, and stdio needs; do not enable HTTP transport.
+**Primary Dependencies**: `rmcp` 3.5.0 for MCP server/tool/stdio protocol support (minimal features: `server`, `macros`, `schemars`, `transport-io`); Tokio runtime as required by the SDK and periodic refresh scheduler; `notify` 8.2.0 for cross-platform vault filesystem invalidation; existing `serde`/`serde_json`, `clap`, and resolver library. Do not enable HTTP transport.
 
 **Storage**: Read-only local vault filesystem; in-memory cache of vault indexes scoped to the server process.
 
@@ -22,7 +22,7 @@ Add a separately installable, long-running MCP server that exposes the existing 
 
 **Project Type**: Single Rust crate with the existing CLI, library, and C ABI plus a dedicated MCP server binary.
 
-**Performance Goals**: Repeated requests for a vault reuse its index and do not enumerate the vault per call. Filesystem events cause refresh before the next resolution; a full rescan occurs at least every 60 seconds. Preserve the existing ≤100 ms warm-resolution p50 target on a representative ~5,000-note vault.
+**Performance Goals**: Repeated requests for a vault reuse its index and do not enumerate the vault per call. Filesystem events cause refresh before the next resolution; a background full rescan runs at least every 60 seconds per cached vault, whether or not requests arrive. Preserve the existing ≤100 ms warm-resolution p50 target on a representative ~5,000-note vault.
 
 **Constraints**: Standard MCP stdio messages only on stdout; diagnostics on stderr. No network listener. Keep resolution, paths, status, and result fields identical to the current resolver. Cache keys use canonical roots; refresh errors fail closed as `error` outcomes rather than serving known-stale index data. Note bodies are read for each resolution, so heading/block edits are observed without rebuilding the name index. New runtime/build dependencies must be reflected in `.devcontainer/devcontainer.json` and CI/release.
 
@@ -34,7 +34,7 @@ Add a separately installable, long-running MCP server that exposes the existing 
 - Expose one `resolve_obsidian_link` tool. Its required `link` and `context_path` fields and optional `vault_root` and `with_emplacement` fields map directly to existing resolver inputs. A launch-time `--vault` is a default only; an explicit per-call `vault_root` takes precedence, otherwise the resolver's existing auto-detection applies.
 - Return all resolver statuses as normal tool results, including unresolved and ambiguous. Invalid tool arguments and protocol/lifecycle failures use MCP errors. Include the result as structured content and serialized JSON text for client compatibility; the result object remains governed by the existing result schema.
 - Split vault-root selection from index enumeration as needed so each request can identify and validate its canonical root without forcing a full vault walk. Cache `Vault` snapshots by canonical root for the server process lifetime.
-- Use filesystem watcher events as dirty hints, coalesce bursts, and rebuild before the next resolution. Perform a periodic full rescan every 60 seconds even with a watcher active to bound missed-event staleness. If watcher setup fails, retain the periodic-rescan fallback. A refresh failure returns an error, not a stale resolution.
+- Use filesystem watcher events as dirty hints, coalesce bursts, and rebuild before the next resolution. Run a periodic background full rescan for each cached vault at least every 60 seconds, independent of requests, to bound missed-event staleness. If watcher setup fails, retain the periodic-rescan fallback. A refresh failure returns an error, not a stale resolution.
 - Distribute prebuilt MCP executables for the existing supported release matrix. Add an explicit installer component selection while keeping the current default as CLI-only.
 
 ## Constitution Check

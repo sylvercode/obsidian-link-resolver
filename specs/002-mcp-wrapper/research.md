@@ -13,28 +13,32 @@
 - Streamable HTTP: appropriate for remote/network services, but outside this local stdio installation requirement and adds transport/security surface.
 - A second community SDK: no requirement identified that justifies moving away from the official Rust SDK.
 
-**Compatibility notes**: `rmcp` 3.5.0 declares Rust 1.88 MSRV, below the repository's CI/release Rust 1.98.1 pin. It brings Tokio and schema support; pin through `Cargo.lock`. Verify the selected feature names and stdio lifecycle against supported clients during implementation. The MCP output schema must remain aligned with `specs/001-link-resolver/contracts/result.schema.json`; existing result types currently derive Serde, not JSON Schema.
+**Compatibility notes**: `rmcp` 3.5.0 declares Rust 1.88 MSRV, below the repository's CI/release Rust 1.98.1 pin. Its feature table names `server`, `macros`, `schemars`, and `transport-io` for server tools, typed tool macros, schema generation, and server-side stdio. Do not enable HTTP transport. Pin through `Cargo.lock` and verify the selected feature combination and stdio lifecycle against supported clients during implementation. The MCP output schema must remain aligned with `specs/001-link-resolver/contracts/result.schema.json`; existing result types currently derive Serde, not JSON Schema.
 
 **Sources**:
 - [Official Rust SDK](https://github.com/modelcontextprotocol/rust-sdk)
 - [`rmcp` 3.5.0 documentation](https://docs.rs/rmcp/3.5.0/rmcp/)
+- [`rmcp` 3.5.0 feature flags](https://docs.rs/crate/rmcp/3.5.0/features)
 - [MCP tools specification](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [MCP transport specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports)
 - [MCP versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)
 
 ## Vault Index Cache and Freshness
 
-**Decision**: Cache a `Vault` snapshot per canonical vault root for the lifetime of the MCP server process. Watch filesystem changes as invalidation hints, coalesce event bursts, and rebuild before the next resolution after invalidation. Also perform a full rescan every 60 seconds as a missed-event fallback. If watcher setup is unavailable, periodic rescans remain active. If rebuilding fails, return an error instead of resolving from known-stale index data.
+**Decision**: Cache a `Vault` snapshot per canonical vault root for the lifetime of the MCP server process. Watch filesystem changes as invalidation hints, coalesce event bursts, and rebuild before the next resolution after invalidation. Also run a background full rescan for each cached root at least every 60 seconds, independently of request arrival, as a missed-event fallback. If watcher setup is unavailable, periodic rescans remain active. If rebuilding fails, return an error instead of resolving from known-stale index data.
 
-**Rationale**: `detect_root` currently canonicalizes and enumerates the vault on each call, while `resolve_with_vault` already accepts a prebuilt index. The root-selection and enumeration boundary can be split so requests can resolve/validate a root without rewalking the vault. A watcher avoids per-request enumeration; a periodic scan bounds staleness when events are lost or unsupported. A root directory timestamp is not sufficient to detect arbitrary nested changes. The resolver reads target note content during each resolution, so edits to note contents do not require rebuilding the name/path index.
+**Rationale**: `detect_root` currently canonicalizes and enumerates the vault on each call, while `resolve_with_vault` already accepts a prebuilt index. The root-selection and enumeration boundary can be split so requests can resolve/validate a root without rewalking the vault. A watcher avoids per-request enumeration; a periodic background scan bounds staleness when events are lost or unsupported, including during idle periods. Checking the deadline only when a request arrives is insufficient: a request just before that deadline could otherwise return stale data. A root directory timestamp is not sufficient to detect arbitrary nested changes. The resolver reads target note content during each resolution, so edits to note contents do not require rebuilding the name/path index.
 
 **Alternatives considered**:
 - Watcher only: efficient but events can be unavailable or lost on network filesystems, WSL-mounted paths, resource-limited systems, and during large event bursts.
 - Full rescan on every call: simple and correct but directly violates the repeated-call cache requirement.
 - Metadata-only polling: root metadata misses nested changes; robust recursive metadata comparison still requires walking the tree and relies on platform-dependent timestamp behavior.
 - Watcher without fallback: lower scan cost but cannot bound stale state after missed notifications.
+- Expiry checks only on incoming requests: avoids background work, but cannot guarantee the 60-second freshness bound independently of request timing.
 
 **Behavior and validation**: Cache keys are canonical absolute roots and context paths outside explicit roots are rejected consistently with current behavior. Test that repeated clean calls reuse an index; create/delete/rename operations become visible after invalidation; periodic refresh recovers from a missed event; separate roots never share entries; and refresh failures do not return stale success. Use deterministic cache invalidation tests rather than timing-sensitive OS event assertions, plus cross-platform watcher smoke coverage. A note-body edit must affect heading/emplacement results without an index rebuild.
+
+**Portability**: `notify` documents that network filesystems (including some WSL-mounted paths) may emit no events, native watching can be unavailable in Docker-on-macOS environments, FSEvents may not observe unowned files, Linux watcher limits can be exhausted, and large trees can lose events. These limitations make the request-independent periodic scan a correctness mechanism, not an optional optimization. `PollWatcher` is a documented alternative if a later implementation needs event polling for a specific backend, but the periodic full scan already bounds cache staleness without making that backend the default.
 
 **Dependency notes**: `notify` 8.2.0 declares Rust 1.77 MSRV, compatible with the pinned 1.98.1 toolchain. Prefer its platform backend without an additional debouncer dependency; coalesce with a dirty flag. New dependency/tool requirements must be represented in the devcontainer and CI per Constitution VII.
 

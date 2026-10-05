@@ -32,7 +32,7 @@ Use `tests/fixtures/vault/` for repeatable cases, with `context_path` set to an 
 | Unresolved/ambiguous | Missing link or duplicate note name | Normal tool result with the matching status and existing reason/candidate fields, not a protocol error. |
 | Attachment | Link to a fixture attachment | Resolves according to existing attachment semantics without emplacement. |
 | Cache reuse | Call repeatedly against one vault | One index is reused; no full directory enumeration per call. |
-| Cache refresh | Add, remove, or rename a note, then call again | Watcher invalidates before the next call; periodic full scan recovers a missed event within the 60-second interval. |
+| Cache refresh | Add, remove, or rename a note | A watcher invalidates before the next resolution; with the watcher event suppressed, a deterministic timer test verifies the background full scan refreshes the index within 60 seconds even when no requests arrive during the interval. |
 | Multiple vaults | Resolve with two canonical roots in one process | Each root uses its own cache entry. |
 
 ## Automated Validation
@@ -46,7 +46,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 ```
 
-The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, cache reuse, event invalidation, periodic refresh, refresh failure behavior, and separation between vault roots. Filesystem-event correctness tests should inject invalidation deterministically; the cross-platform watcher smoke test checks registration without depending on event timing.
+The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, cache reuse, event invalidation, request-independent periodic refresh, refresh failure behavior, and separation between vault roots. Filesystem-event correctness tests should inject invalidation deterministically; the periodic scheduler should use a controllable clock so the 60-second bound can be tested without a wall-clock delay. The cross-platform watcher smoke test checks registration without depending on event timing.
 
 ## Release Validation
 
