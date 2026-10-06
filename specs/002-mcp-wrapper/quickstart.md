@@ -23,7 +23,7 @@ Register the installed executable in the client's standard local stdio-server co
 
 ## Tool Scenarios
 
-The scenarios below are the normative MCP conformance corpus for SC-001, SC-003, SC-006, and SC-009. Use `tests/fixtures/vault/` for repeatable cases, with `context_path` set to an existing note in that vault; include a fixture case for each listed link/outcome scenario and compare resolver outcomes with the underlying resolver for identical inputs. Test tool discovery and a valid call in the documented GitHub Copilot in VS Code and Claude Desktop configurations (2/2 configurations).
+The scenarios below are the normative MCP conformance corpus for SC-001, SC-003, SC-006, and SC-008. Use `tests/fixtures/vault/` for repeatable cases, with `context_path` set to an existing note in that vault; include a fixture case for each listed link/outcome scenario and compare resolver outcomes with the underlying resolver for identical inputs. Test tool discovery and a valid call in the documented GitHub Copilot in VS Code and Claude Desktop configurations (2/2 configurations).
 
 | Scenario | Request | Expected result |
 |---|---|---|

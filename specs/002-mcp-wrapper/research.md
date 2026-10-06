@@ -5,7 +5,7 @@
 
 **Decision**: Treat the MCP tool contract as part of the project's semantic-versioned public API. Within a major version, preserve existing argument names and requiredness, result field names and meanings, and outcome semantics; additive optional arguments and fields are allowed. A breaking contract change requires a new major version and migration notes. Keep the published MCP contract artifact as the compatibility baseline and compare each proposed release against it. The first published MCP contract establishes the baseline if no earlier MCP contract has been released.
 
-**Rationale**: FR-012 and SC-013 require compatibility to be verifiable against published contract versions and migration notes. A checked-in contract gives reviewers and automated validation a concrete schema baseline, while release notes explain intentional breaking changes. This applies the constitution's semantic-versioning and documented-migration expectations to the newly introduced MCP surface without changing the established CLI contract.
+**Rationale**: FR-012 and SC-012 require compatibility to be verifiable against published contract versions and migration notes. A checked-in contract gives reviewers and automated validation a concrete schema baseline, while release notes explain intentional breaking changes. This applies the constitution's semantic-versioning and documented-migration expectations to the newly introduced MCP surface without changing the established CLI contract.
 
 **Alternatives considered**:
 - Rely only on prose release notes: does not make argument and result schema compatibility mechanically reviewable.

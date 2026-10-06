@@ -13,7 +13,7 @@
 - [x] CHK001 - Are the required and optional tool inputs, their accepted forms, and their relationship to the resolver's existing inputs explicitly defined? [Completeness, Spec §FR-002, Spec §FR-003]
 - [x] CHK002 - Are all five resolver outcomes and the distinction between ordinary resolution outcomes and MCP-level errors clearly specified? [Completeness, Spec §FR-004, Spec §FR-006, Gap]
 - [x] CHK003 - Are result fields specified sufficiently for callers to interpret status, reason, target path, location, candidates, and optional emplacement without relying on prose? [Completeness, Spec §FR-006, Spec §FR-011, Gap]
-- [x] CHK004 - Are parity requirements complete for note-name matching, qualified paths, same-file links, heading paths, block IDs, and attachments? [Completeness, Spec §FR-005, Spec §SC-009]
+- [x] CHK004 - Are parity requirements complete for note-name matching, qualified paths, same-file links, heading paths, block IDs, and attachments? [Completeness, Spec §FR-005, Spec §SC-008]
 - [x] CHK005 - Are the metadata, argument-schema, and result-schema requirements complete enough to define what clients can discover and rely on across versions? [Completeness, Spec §FR-007, Spec §FR-012]
 - [x] CHK006 - Are installation and client-registration requirements complete for both launching the local server and connecting it to a user's vault? [Completeness, Spec §FR-015, Spec §FR-019]
 - [x] CHK007 - Are all required release platforms, architectures, and delivery expectations explicitly covered without implying unsupported targets? [Completeness, Spec §FR-016]
@@ -26,7 +26,7 @@
 - [x] CHK011 - Are the meaning and lifetime of an “active session” for cache reuse clear to users and reviewers? [Clarity, Spec §FR-017, Ambiguity]
 - [x] CHK012 - Is the 60-second freshness bound defined with a clear starting point and scope for each cached vault? [Clarity, Spec §FR-018]
 - [x] CHK013 - Are “standard client configuration,” “without custom integration,” and “without unspecified setup steps” bounded by named client/configuration examples or an explicit support boundary? [Clarity, Spec §FR-015, Spec §FR-019, Ambiguity]
-- [x] CHK014 - Are “defined test corpus,” “supported calls,” and “main agent workflows” identified with objective inclusion criteria? [Clarity, Spec §SC-001, Spec §SC-003, Spec §SC-006, Spec §SC-009]
+- [x] CHK014 - Are “defined test corpus,” “supported calls,” and “main agent workflows” identified with objective inclusion criteria? [Clarity, Spec §SC-001, Spec §SC-003, Spec §SC-006, Spec §SC-008]
 
 ## Requirement Consistency
 
@@ -38,7 +38,7 @@
 ## Acceptance Criteria Quality
 
 - [x] CHK019 - Does SC-001 define resolver parity using explicit outcome and result-field comparisons, including the absence of wrapper-only fields? [Acceptance Criteria, Spec §SC-001]
-- [x] CHK020 - Are the 100% outcome, workflow, client-configuration, and documentation success thresholds tied to a defined denominator or evaluation scope? [Measurability, Spec §SC-002, Spec §SC-003, Spec §SC-008]
+- [x] CHK020 - Are the 100% outcome, workflow, client-configuration, and documentation success thresholds tied to a defined denominator or evaluation scope? [Measurability, Spec §SC-002, Spec §SC-003, Spec §SC-007]
 - [x] CHK021 - Is the performance expectation for warm cached resolution stated as a measurable requirement with a specified measurement context? [Acceptance Criteria, Plan §Performance Goals, Gap]
 
 ## Scenario Coverage
@@ -59,7 +59,7 @@
 
 - [x] CHK030 - Are latency, warm-cache performance, and vault-size expectations stated in the specification with objective thresholds and measurement conditions? [Non-Functional, Plan §Performance Goals, Gap]
 - [x] CHK031 - Are stdout/stderr separation, disabled-by-default behavior, deterministic output, and diagnostic redaction boundaries specified consistently as externally observable requirements? [Non-Functional, Spec §Edge Cases, Spec §FR-006, Spec §FR-020]
-- [x] CHK032 - Are cross-platform compatibility and release availability requirements aligned across all named architectures and operating systems? [Non-Functional, Spec §FR-013, Spec §FR-016, Spec §SC-008]
+- [x] CHK032 - Are cross-platform compatibility and release availability requirements aligned across all named architectures and operating systems? [Non-Functional, Spec §FR-013, Spec §FR-016, Spec §SC-007]
 
 ## Dependencies & Assumptions
 

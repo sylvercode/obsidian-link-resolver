@@ -33,10 +33,10 @@
 
 - [x] Determinism is scoped to unchanged vault contents, so required cache freshness does not conflict with repeatable results.
 - [x] FR-020, the diagnostic user scenario, and edge cases agree on excluding paths, serialized request arguments, and unfiltered error messages from diagnostics.
-- [x] FR-012 and SC-013 define and make verifiable the within-major contract stability and breaking-change migration-note policy.
+- [x] FR-012 and SC-012 define and make verifiable the within-major contract stability and breaking-change migration-note policy.
 - [x] Optional MCP diagnostics cover lifecycle, request outcomes, operational failures, and cache activity; they are disabled by default, remain on stderr, exclude payload contents, and do not alter tool responses.
-- [x] Success criterion SC-010 verifies general operational visibility and confirms diagnostics remain absent when disabled and do not alter MCP responses.
-- [x] Missing or wrong-type arguments are explicitly separated from schema-valid requests that return resolver-level errors; FR-021 and SC-012 define and verify this boundary.
+- [x] Success criterion SC-009 verifies general operational visibility and confirms diagnostics remain absent when disabled and do not alter MCP responses.
+- [x] Missing or wrong-type arguments are explicitly separated from schema-valid requests that return resolver-level errors; FR-021 and SC-011 define and verify this boundary.
 - [x] SC-001 compares outcome categories and all resolver-provided result fields for every conformance case, rejects wrapper-only result fields, and compares target/location only when the underlying resolver returns them.
 - [x] Path-qualified references and vault-relative context paths are explicit in requirements, acceptance scenarios, success criteria, and parity-test scope for all five supported release targets.
 - [x] FR-004 defines preserved outcome categories while FR-021 defines the schema-validation boundary, avoiding duplicated error-conversion wording.
