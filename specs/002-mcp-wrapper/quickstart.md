@@ -12,7 +12,7 @@ The devcontainer and CI/release toolchains must include any dependencies added b
 
 ## Build and Run
 
-User-facing installation instructions for the published binary must match the existing README's latest-version install/update, pinned-version, and manual-fallback patterns. Explain how to select the MCP installer component while preserving the existing CLI-only default, then show local-stdio registration for GitHub Copilot in VS Code and Claude Desktop.
+User-facing installation instructions for the published binary must match the existing README's latest-version install/update, pinned-version, and manual-fallback patterns. Provide separate MCP installer commands alongside the existing CLI installer, preserving its CLI-only default, then show local-stdio registration for GitHub Copilot in VS Code and Claude Desktop.
 
 ```bash
 cargo build --release --bin obsidian-link-resolver-mcp
@@ -60,4 +60,4 @@ The focused suite verifies tool discovery/input schema, stdio initialize/list/ca
 
 ## Release Validation
 
-The tag release workflow must run the full tests and warm-run benchmark gate before building/staging the MCP binary for Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64. The benchmark measures end-to-end latency from tool-call receipt to response completion for 100 consecutive warm-cache calls on the approximately 5,000-note fixture, excluding startup and initial index construction; record the runner and fixture version and enforce the ≤100 ms p50 target. Verify the release asset name matches the explicit MCP installer component and that the default installer behavior still installs only the existing CLI. Windows ARM64 is not in the current release matrix.
+The tag release workflow must run the full tests and warm-run benchmark gate before building/staging the MCP binary for Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64. The benchmark measures end-to-end latency from tool-call receipt to response completion for 100 consecutive warm-cache calls on the approximately 5,000-note fixture, excluding startup and initial index construction; record the runner and fixture version and enforce the ≤100 ms p50 target. Verify the MCP installer commands refer to the MCP release asset and that the existing CLI installer still installs only the CLI by default. Windows ARM64 is not in the current release matrix.
