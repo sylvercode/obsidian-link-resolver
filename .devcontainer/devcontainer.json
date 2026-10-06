@@ -1,5 +1,6 @@
 {
 	"name": "obsidian-link-resolver",
+	// Includes Rust 1.98.1, rustfmt, and Clippy; see https://github.com/devcontainers/images/blob/main/src/rust/history/2.1.1.md
 	"image": "mcr.microsoft.com/devcontainers/rust:2.1.1-1-trixie",
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
@@ -18,40 +19,32 @@
 		},
 		"ghcr.io/devcontainers/features/powershell:2": {},
 		"ghcr.io/devcontainer-community/devcontainer-features/delta:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-		"version": "latest",
-		"moby": false
+			"version": "latest",
+			"moby": false
 		},
 		"ghcr.io/devcontainers-extra/features/starship:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers/features/git:1": {
-		"version": "latest"
-		},
-		"ghcr.io/devcontainers/features/github-cli:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers/features/copilot-cli:1": {
-		"version": "latest"
-		},
-		"ghcr.io/devcontainers/features/node:2": {
-		"version": "none",
-		"PNPMVERSION": "none",
-		"INSTALLYARNUSINGAPT": "none"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers-extra/features/eza:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers-extra/features/ripgrep:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainer-community/devcontainer-features/sxyazi-yazi:1": {
-		"version": "latest"
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers-extra/features/micro:1": {
-		"version": "latest"
+			"version": "latest"
 		}
 	},
 	"customizations": {

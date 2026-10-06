@@ -22,8 +22,8 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 **Purpose**: Add MCP dependencies and the dedicated executable target.
 
-- [ ] T001 Add `rmcp` 3.5.1 with only `server`, `macros`, `schemars`, and `transport-io` features; Tokio, `notify` 8.2.0, `structured-logger` 1.0.5 with default features disabled, and structured `log` support; declare the `obsidian-link-resolver-mcp` binary in `Cargo.toml` and refresh `Cargo.lock`.
-- [ ] T002 Pin Rust to 1.98.1 consistently in `.devcontainer/devcontainer.json`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml`; verify all three use the same explicit toolchain version and retain release-target support in the devcontainer. Keep CI's existing formatting and Clippy checks; add MCP-specific CI build/test checks only after the binary source is created.
+- [X] T001 Add `rmcp` 3.5.1 with only `server`, `macros`, `schemars`, and `transport-io` features; Tokio, `notify` 8.2.0, `structured-logger` 1.0.5 with default features disabled, and structured `log` support; declare the `obsidian-link-resolver-mcp` binary in `Cargo.toml` and refresh `Cargo.lock`.
+- [X] T002 Verify Rust 1.98.1 is consistent across the `.devcontainer/devcontainer.json` image, `.github/workflows/ci.yml`, and `.github/workflows/release.yml`; retain release-target support in the devcontainer. Keep CI's existing formatting and Clippy checks; add MCP-specific CI build/test checks only after the binary source is created.
 
 ## Phase 2: Foundational
 
@@ -47,7 +47,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 ### Implementation for User Story 1
 
 - [ ] T005 [US1] Implement the typed `resolve_obsidian_link` request handler and return the resolver record as both structured content and compact JSON text in `src/mcp.rs`, documenting new Rust symbols with Rustdoc.
-- [ ] T006 [US1] Register the MCP module and implement the `obsidian-link-resolver-mcp` startup path, optional `--vault` default, and stdio transport in `src/lib.rs` and `src/bin/obsidian-link-resolver-mcp.rs`, documenting new Rust symbols with Rustdoc.
+- [ ] T006 [US1] Register the MCP module and implement the `obsidian-link-resolver-mcp` startup path, optional `--vault` default, and stdio transport in `src/lib.rs` and `src/mcp_main.rs`, documenting new Rust symbols with Rustdoc.
 
 **Checkpoint**: The MCP server launches for a client and resolves a fixture link without changing the existing CLI.
 
@@ -149,7 +149,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 ### Implementation for User Story 6
 
-- [ ] T028 [US6] Add `--diagnostics` handling and initialize `structured-logger` only when enabled, routing the fixed MCP diagnostics target to stderr and all other targets to a sink in `src/bin/obsidian-link-resolver-mcp.rs` and `src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
+- [ ] T028 [US6] Add `--diagnostics` handling and initialize `structured-logger` only when enabled, routing the fixed MCP diagnostics target to stderr and all other targets to a sink in `src/mcp_main.rs` and `src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
 - [ ] T029 [US6] Emit only fixed event names, static messages/targets, allow-listed statuses/failure categories, process-local request sequence numbers, and durations; distinguish resolver `error` results from failed requests and redact request text, paths, note contents, serialized arguments, and unfiltered error messages in `src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
 
 **Checkpoint**: Optional diagnostics report operational outcomes on stderr only, leave MCP results unchanged, and remain absent by default.
@@ -159,7 +159,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 **Purpose**: Validate the complete feature and keep implementation guidance aligned with the code and release pipeline.
 
 - [ ] T030 Update `specs/002-mcp-wrapper/quickstart.md` with implemented binary/installer commands, release benchmark invocation, contract compatibility validation and published baseline behavior, and validated end-to-end scenarios while preserving the normative conformance corpus.
-- [ ] T031 Audit every new or modified Rust module, type, enum and variant, function, method, member, parameter, return value, and constant in `src/lib.rs`, `src/vault.rs`, `src/mcp.rs`, and `src/bin/obsidian-link-resolver-mcp.rs`; add native Rustdoc explaining purpose, constraints, semantics, and side effects, then verify documentation builds with `cargo doc --no-deps`.
+- [ ] T031 Audit every new or modified Rust module, type, enum and variant, function, method, member, parameter, return value, and constant in `src/lib.rs`, `src/vault.rs`, `src/mcp.rs`, and `src/mcp_main.rs`; add native Rustdoc explaining purpose, constraints, semantics, and side effects, then verify documentation builds with `cargo doc --no-deps`.
 - [ ] T032 After T006 creates the MCP binary, T008 adds path-parity tests, T014 defines the warm benchmark target/report format, T018 adds installer tests, and T034 defines the cold-start benchmark/report format, update `.github/workflows/ci.yml` to build/test the MCP binary, run MCP resolver-parity and installer tests on native GitHub-hosted runners for Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64, and run both benchmarks on GitHub-hosted `ubuntu-24.04`; fail the warm benchmark when p50 exceeds 100 ms and upload both machine-readable reports as workflow artifacts.
 - [ ] T033 Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, focused MCP tests including determinism with unchanged vault contents and contract compatibility, installer/release-matrix tests, `cargo test`, and both MCP benchmarks; verify both CI and release use GitHub-hosted `ubuntu-24.04`, enforce the warm p50 ≤100 ms threshold, and retain warm and cold reports with runner and `bench-vault-v1` metadata. Include both measured p50 values, sample counts, runner, fixture version, and report links in the PR benchmark summary.
 - [ ] T034 Add a cold-start benchmark for 100 fresh server processes, timing process launch through completion of the first MCP resolution against the approximately 5,000-note `bench-vault-v1` corpus, including startup and initial index construction, in `benches/mcp_cold_start.rs` and `Cargo.toml`. Depend on T006 for the executable and T014 for the shared benchmark fixture/report metadata. Emit a machine-readable report with runner image, OS, architecture, fixture version, sample count, and p50; record this as a CI/release baseline without a failure threshold until a latency budget is established.

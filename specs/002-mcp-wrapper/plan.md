@@ -91,8 +91,7 @@ src/
 ├── lib.rs                   # shared resolution API
 ├── vault.rs                 # root selection/index enumeration boundary
 ├── mcp.rs                   # MCP tool adapter, process-scoped cache, and diagnostics
-└── bin/
-    └── obsidian-link-resolver-mcp.rs
+└── mcp_main.rs              # obsidian-link-resolver-mcp binary entry point
 tests/
 ├── contract/                # tool schema, outcomes, and protocol contract
 ├── integration/             # stdio lifecycle and resolver parity
@@ -103,7 +102,7 @@ benches/
 tests/fixtures/bench_vault.rs # versioned synthetic ~5,000-note corpus generator
 ```
 
-**Structure Decision**: Keep the resolver in the existing library crate and add a thin, separately invoked MCP adapter under `src/mcp.rs` plus a `src/bin/` entry point. The adapter reuses `resolve_with_vault`; only vault root/index lifecycle belongs in the cache. Keep diagnostic event creation alongside MCP lifecycle/request/cache code and test it with a captured writer. Tests extend the existing contract, integration, and unit test directories. No second project or network service is introduced.
+**Structure Decision**: Keep the resolver in the existing library crate and add a thin, separately invoked MCP adapter under `src/mcp.rs` plus a flat `src/mcp_main.rs` entry point, matching the existing source layout. The adapter reuses `resolve_with_vault`; only vault root/index lifecycle belongs in the cache. Keep diagnostic event creation alongside MCP lifecycle/request/cache code and test it with a captured writer. Tests extend the existing contract, integration, and unit test directories. No second project or network service is introduced.
 
 ## Complexity Tracking
 
