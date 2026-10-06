@@ -21,6 +21,12 @@
 - Q: How should users choose the MCP installer component while keeping the existing CLI-only install as the default? → A: Provide separate MCP installer commands alongside the existing CLI installer (Option B).
 - Q: How should the MCP wrapper distinguish malformed tool arguments from resolver failures? → A: Missing required arguments or arguments with invalid types are MCP tool/protocol errors and do not produce a resolver result. Once arguments satisfy the MCP input schema, failures reported by the resolver—including invalid link, context, or vault values when the resolver classifies them as errors—are returned as normal tool results with the resolver's `error` outcome and reason.
 
+### Analysis refinements 2026-10-05
+
+- Deterministic results are required for identical inputs when the vault contents are unchanged; filesystem changes may legitimately change later results.
+- Diagnostic redaction excludes request text, paths, note contents, serialized arguments, and unfiltered error messages.
+- The stable MCP contract and its major-version compatibility policy must be verifiable against published versions and migration notes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Resolve links through a standard tool interface (Priority: P1)
@@ -54,6 +60,7 @@ A caller expects the MCP wrapper to behave like the current tool: the same outco
 1. **Given** a link that resolves successfully in the current resolver, **When** the same link is submitted through the MCP tool, **Then** the returned result matches the resolver's result exactly.
 2. **Given** an ambiguous note name, **When** the MCP wrapper resolves it, **Then** the returned result includes the candidate list, reason, and outcome defined by the underlying resolver.
 3. **Given** a structured emplacement request, **When** the MCP tool is called, **Then** it exposes the same heading stack and section ranges as the underlying resolver without altering the semantics.
+4. **Given** a client uses a published MCP contract, **When** a later contract version is released, **Then** its argument and result contract remains compatible within the same major version, and any breaking change is released as a new major version with migration notes.
 
 ---
 
@@ -119,7 +126,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 1. **Given** diagnostic logging is disabled, **When** the server starts and handles requests, **Then** it emits no optional diagnostic logs.
 2. **Given** diagnostic logging is enabled, **When** the server starts, handles or completes a request, or encounters a failure, **Then** diagnostics report the relevant lifecycle, request outcome, or failure.
 3. **Given** diagnostic logging is enabled, **When** a request reuses or refreshes a vault index, **Then** diagnostics identify the cache outcome.
-4. **Given** diagnostic logging is enabled, **When** operational events are logged, **Then** logs do not include link text or note contents and do not appear in or alter the MCP protocol response.
+4. **Given** diagnostic logging is enabled, **When** operational events are logged, **Then** logs exclude link text, context or vault paths, note contents, serialized request arguments, and unfiltered error messages, and do not appear in or alter the MCP protocol response.
 
 ---
 
@@ -131,9 +138,9 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - When the link references a heading or block that does not exist, the wrapper reports the sub-target-not-found result defined by the resolver.
 - When a non-markdown attachment is requested, the wrapper preserves the attachment semantics and does not invent heading or emplacement information.
 - When the underlying resolver requires a vault root or vault detection, the MCP wrapper exposes the same behavior to callers through the tool contract.
-- When identical inputs are submitted twice, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response.
+- When identical inputs are submitted twice against unchanged vault contents, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response. Results may differ after relevant vault changes are reflected.
 - When a vault is queried repeatedly, its cached index is reused; detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
-- When diagnostic logging is enabled, operational events and failures, including cache activity, are reported separately from tool results; when disabled, optional diagnostic logs are not emitted.
+- When diagnostic logging is enabled, operational events and failures, including cache activity, are reported separately from tool results and exclude link text, context or vault paths, note contents, serialized request arguments, and unfiltered error messages; when disabled, optional diagnostic logs are not emitted.
 
 ## Requirements *(mandatory)*
 
@@ -150,7 +157,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-009**: The MCP wrapper MUST allow callers to request structured emplacement information when available, while still respecting the underlying resolver's semantics for note and attachment targets.
 - **FR-010**: The wrapper MUST not silently change or reinterpret the current resolver's decisions; it must act as a faithful adapter over the existing capability.
 - **FR-011**: The MCP server MUST surface the current resolver's status and reason fields in a way that supports agent branching and retries without custom parsing.
-- **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions. Within a major release, it MUST NOT remove or rename existing arguments or result fields, change whether an argument is required, or change the meaning of existing fields or outcome categories. Additive optional arguments and result fields are permitted. Breaking changes MUST be released as a new major version and documented with migration notes.
+- **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide a stable contract of argument names, requiredness, result field names, and field meanings. Within a major version, it MUST NOT remove or rename existing arguments or result fields, change whether an argument is required, or change the meaning of existing fields or outcome categories. Additive optional arguments and result fields are permitted. Any breaking contract change MUST be released under a new major version and accompanied by migration notes.
 - **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
 - **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
 - **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the standard local-stdio MCP configuration mechanism of GitHub Copilot in VS Code or Claude Desktop, rather than requiring a custom application integration or ad hoc installation path.
@@ -158,7 +165,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-017**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
 - **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics. Each resolution MUST use one cached index generation selected when that resolution starts. If the root is invalidated while a resolution is in flight, that resolution MAY complete using its selected generation; the root MUST remain dirty and be refreshed before the next resolution for that root. Rapid filesystem events for one root MAY be coalesced, but the next resolution MUST use the latest filesystem state available at refresh time. Relevant changes MUST otherwise be reflected within 60 seconds.
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow for GitHub Copilot in VS Code and Claude Desktop, including client-specific local-stdio registration examples and separate MCP installer commands alongside the existing CLI installer. Installation guidance MUST follow the existing README's latest-version install/update, pinned-version, and manual-fallback patterns; it MUST provide an MCP-specific install/update path without changing the existing CLI installer or its CLI-only default.
-- **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text or note contents.
+- **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text, context or vault paths, note contents, serialized request arguments, or unfiltered error messages.
 - **FR-021**: The MCP interface MUST reject calls with missing required arguments or argument values of the wrong schema type as MCP tool/protocol errors without producing a resolver result. For calls that satisfy the input schema, it MUST preserve the resolver's result—including an `error` outcome and reason when the resolver rejects a link, context, or vault value—without converting it into an MCP tool/protocol error.
 
 ### Key Entities *(include if feature involves data)*
@@ -177,7 +184,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-002**: The MCP conformance suite exercises all five resolver outcomes—resolved, unresolved, sub-target-not-found, ambiguous, and error (5/5 categories)—using cases in the normative corpus, and preserves each outcome as defined by the resolver.
 - **SC-003**: Tool discovery and a valid tool call pass in both documented local-stdio client configurations—GitHub Copilot in VS Code and Claude Desktop (2/2 configurations)—without custom text parsing or shell integration. Validate against each client's latest stable release at test time and record the exact versions tested.
 - **SC-004**: The tool description explicitly tells clients when to prefer a simple target line versus a richer structured emplacement, and the guidance is verified against all applicable corpus scenarios: heading, block, and requested emplacement.
-- **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
+- **SC-005**: Identical inputs submitted against unchanged vault contents produce identical primary result records in 100% of repeated calls, with no non-deterministic fields in the main response; results may change when relevant vault contents change.
 - **SC-006**: The cache conformance suite passes all four named scenarios in the quickstart—same-root reuse without per-call enumeration, event-triggered or 60-second fallback refresh, isolation of two canonical roots, and invalidation during an in-flight resolution followed by refresh before the next resolution. Detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
 - **SC-008**: The project publishes prebuilt MCP server binaries for all five supported targets—Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64 (5/5)—and provides complete local-stdio registration guides for both supported clients—GitHub Copilot in VS Code and Claude Desktop (2/2). Installation documentation provides latest-version install/update, pinned-version, and manual-fallback instructions for separate MCP installer commands consistent with the existing README, without changing the existing CLI installer or its CLI-only default.
@@ -185,6 +192,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-010**: With diagnostic logging enabled, users can identify server startup, request outcomes, operational failures, and cache reuse or refresh outcomes, while MCP protocol responses remain unchanged; with logging disabled, no optional diagnostic logs are emitted.
 - **SC-011**: On the designated release benchmark runner, end-to-end latency from receipt of a tool call to completion of its response has a p50 of at most 100 ms across 100 consecutive warm-cache calls against the approximately 5,000-note benchmark vault. Process startup and initial index construction are excluded; the runner and fixture version are recorded with results.
 - **SC-012**: Boundary contract tests verify all three response classes: missing required arguments produce an MCP tool/protocol error; wrong-type arguments produce an MCP tool/protocol error; and schema-valid arguments rejected by the resolver produce its normal `error` result with reason. Resolver outcomes such as `unresolved` and `sub-target-not-found` remain normal tool results.
+- **SC-013**: Every published MCP contract version preserves argument names, requiredness, result field names, and field meanings within its major version; any breaking change is published under a new major version with migration notes.
 
 ## Assumptions
 
