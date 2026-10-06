@@ -84,7 +84,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 - [ ] T012 [P] [US4] Add cache unit tests for canonical-root reuse, dirty-state coalescing, separate roots, atomic refresh, failed-refresh behavior, in-flight generation consistency, and changed note contents becoming visible after refresh in `tests/unit/mcp_cache.rs`.
 - [ ] T013 [P] [US4] Add integration tests for watcher invalidation, watcher unavailability, and request-independent periodic refresh within 60 seconds in `tests/integration/mcp_cache_refresh.rs`.
-- [ ] T014 [P] [US4] Add a warm-cache benchmark for 100 consecutive end-to-end MCP calls against the approximately 5,000-note fixture in `benches/mcp_warm.rs` and `Cargo.toml`; calculate p50, record runner and fixture versions, and make the benchmark fail when p50 exceeds 100 ms on the designated release benchmark runner.
+- [ ] T014 [P] [US4] Add a warm-cache benchmark for 100 consecutive end-to-end MCP calls against the approximately 5,000-note corpus in `benches/mcp_warm.rs` and `Cargo.toml`; identify the generated corpus as `bench-vault-v1` from `tests/fixtures/bench_vault.rs`, calculate p50 excluding process startup and initial indexing, and emit a machine-readable report containing runner image, OS, architecture, fixture version, sample count, and p50; enforce p50 ≤100 ms on GitHub-hosted `ubuntu-24.04`.
 
 ### Implementation for User Story 4
 
@@ -111,7 +111,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 - [ ] T020 [P] [US5] Add explicit `--component mcp` selection to `scripts/install.sh`, preserving the default CLI component and supporting MCP asset names and executable paths.
 - [ ] T021 [P] [US5] Add explicit `-Component mcp` selection to `scripts/install.ps1`, preserving the default CLI component and supporting MCP asset names and executable paths.
-- [ ] T022 [US5] Extend `.github/workflows/release.yml` to build and stage the MCP executable for Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64; run the full test suite, the T014 benchmark threshold gate, and MCP contract compatibility validation against the latest published same-major contract before staging or publishing artifacts, then publish the current contract artifact with the release assets.
+- [ ] T022 [US5] Extend `.github/workflows/release.yml` to build and stage the MCP executable for Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64; on GitHub-hosted `ubuntu-24.04`, run the full test suite, the T014 ≤100 ms p50 benchmark gate, and MCP contract compatibility validation against the latest published same-major contract before staging or publishing release assets; retain the benchmark report as a workflow artifact and publish the current contract artifact with the release assets.
 - [ ] T023 [US5] Document latest-version install/update, pinned-version and manual-fallback MCP installer commands, plus local-stdio registration and vault configuration for GitHub Copilot in VS Code and Claude Desktop in `README.md`.
 - [ ] T024 [US5] Validate tool discovery and one valid call in the latest stable GitHub Copilot in VS Code and Claude Desktop configurations, recording exact client versions and results in `specs/002-mcp-wrapper/quickstart.md`.
 
@@ -160,7 +160,8 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 - [ ] T030 Update `specs/002-mcp-wrapper/quickstart.md` with implemented binary/installer commands, release benchmark invocation, contract compatibility validation and published baseline behavior, and validated end-to-end scenarios while preserving the normative conformance corpus.
 - [ ] T031 Audit every new or modified Rust module, type, enum and variant, function, method, member, parameter, return value, and constant in `src/lib.rs`, `src/vault.rs`, `src/mcp.rs`, and `src/bin/obsidian-link-resolver-mcp.rs`; add native Rustdoc explaining purpose, constraints, semantics, and side effects, then verify documentation builds with `cargo doc --no-deps`.
-- [ ] T032 Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, focused MCP tests including determinism with unchanged vault contents and contract compatibility, installer/release-matrix tests, `cargo test`, and the MCP warm-run benchmark; verify the designated release benchmark runner enforces the ≤100 ms p50 threshold.
+- [ ] T032 Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, focused MCP tests including determinism with unchanged vault contents and contract compatibility, installer/release-matrix tests, `cargo test`, and the MCP warm-run benchmark; verify both CI and release use GitHub-hosted `ubuntu-24.04`, enforce p50 ≤100 ms, and retain reports with runner and `bench-vault-v1` metadata.
+- [ ] T033 Add the MCP warm-run benchmark to pull-request CI in `.github/workflows/ci.yml` after T014 exists; run it on GitHub-hosted `ubuntu-24.04`, fail the job when p50 exceeds 100 ms, and upload the machine-readable report as a workflow artifact.
 
 ## Dependencies & Execution Order
 
@@ -169,7 +170,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 - **Setup (Phase 1)**: T001 establishes the MCP target and dependencies; T002 configures the development environment and CI coverage after the binary is declared.
 - **Foundational (Phase 2)**: No separate implementation tasks; MCP server bootstrap is delivered in US1.
 - **User Stories (Phases 3-8)**: US1 is the prerequisite for every other story. US2 and US4 build on the working adapter; US5 requires the MCP executable. US3 and US6 also require US1.
-- **Polish (Phase 9)**: Depends on completion of the selected user stories.
+- **Polish (Phase 9)**: Depends on completion of the selected user stories. T032 verifies the completed benchmark implementation and both workflows; T033 depends on T014 and wires the benchmark into pull-request CI only after the benchmark executable and report format exist.
 
 ### User Story Dependencies
 
@@ -184,8 +185,9 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 - T003 and T004 can be authored in parallel; both precede T005-T006.
 - T007-T009 can be authored in parallel; T010-T011 follow their tests, with T011 also depending on the US1 adapter.
-- T012-T014 can be authored in parallel; T015-T017 depend on the tests and should be coordinated because they modify the resolver/cache boundary.
+- T012-T014 can be authored in parallel; T015-T017 depend on the tests and should be coordinated because they modify the resolver/cache boundary. T033 follows T014 because CI cannot run the benchmark until its target and report format exist.
 - T018-T019 can be authored in parallel before T020-T022; T020 and T021 can then be implemented in parallel because they modify separate installer files.
+- T022 and T033 update separate workflow files and may proceed in parallel after T014 defines the benchmark target/report contract; T032 validates both completed workflows.
 - T025 and T027 can be authored separately after US1; coordinate implementation changes to `src/mcp.rs` across US2, US3, US4, and US6.
 - T031 is the final explicit constitution audit for native Rustdoc; Rustdoc should also be written alongside every implementation task that adds or modifies symbols.
 
@@ -227,4 +229,4 @@ Then: T020/T021 (installer implementations); T022 (release matrix, test, benchma
 2. Add US2 result parity/determinism, then US4 cache reuse and refresh.
 3. Add US5 installation/release support and validate both supported clients.
 4. Add US3 discoverability improvements and US6 opt-in diagnostics.
-5. Run complete quickstart, CI, release-target, documentation, and benchmark validation.
+5. Run complete quickstart, CI, release-target, documentation, and benchmark validation; verify the CI and release benchmark gates use the same runner label and report the same fixture version.
