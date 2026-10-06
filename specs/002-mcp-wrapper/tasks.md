@@ -23,7 +23,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 **Purpose**: Add MCP dependencies and the dedicated executable target.
 
 - [ ] T001 Add `rmcp` 3.5.0 with only `server`, `macros`, `schemars`, and `transport-io` features; Tokio, `notify` 8.2.0, `structured-logger` 1.0.5 with default features disabled, and structured `log` support; declare the `obsidian-link-resolver-mcp` binary in `Cargo.toml` and refresh `Cargo.lock`.
-- [ ] T002 Pin Rust to 1.98.1 and retain release-target support in `.devcontainer/devcontainer.json`; update `.github/workflows/ci.yml` to explicitly build/test the MCP binary alongside formatting and Clippy checks.
+- [ ] T002 Pin Rust to 1.98.1 consistently in `.devcontainer/devcontainer.json`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml`; verify all three use the same explicit toolchain version, retain release-target support in the devcontainer, and update CI to explicitly build/test the MCP binary alongside formatting and Clippy checks.
 
 ## Phase 2: Foundational
 
