@@ -41,8 +41,8 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Write these protocol tests first and verify they fail before implementing the tool.
 
-- [ ] T003 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional vault/emplacement arguments, and missing or wrong-type required arguments being rejected as MCP tool/protocol errors in `tests/contract/mcp_tool.rs`.
-- [ ] T004 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, a valid fixture resolution, and missing/wrong-type argument calls returning MCP errors without resolver result content in `tests/integration/mcp_stdio.rs`.
+- [ ] T003 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional `vault_root` and `with_emplacement`, and missing required or wrong-type required/optional arguments being rejected as MCP tool/protocol errors in `tests/contract/mcp_tool.rs`.
+- [ ] T004 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, a valid fixture resolution, and missing required or wrong-type required/optional argument calls returning MCP errors without resolver result content in `tests/integration/mcp_stdio.rs`.
 
 ### Implementation for User Story 1
 
@@ -161,7 +161,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 - [ ] T030 Update `specs/002-mcp-wrapper/quickstart.md` with implemented binary/installer commands, release benchmark invocation, contract compatibility validation and published baseline behavior, and validated end-to-end scenarios while preserving the normative conformance corpus.
 - [ ] T031 Audit every new or modified Rust module, type, enum and variant, function, method, member, parameter, return value, and constant in `src/lib.rs`, `src/vault.rs`, `src/mcp.rs`, and `src/bin/obsidian-link-resolver-mcp.rs`; add native Rustdoc explaining purpose, constraints, semantics, and side effects, then verify documentation builds with `cargo doc --no-deps`.
 - [ ] T032 After T006 creates the MCP binary, T008 adds path-parity tests, T014 defines the benchmark target/report format, and T018 adds installer tests, update `.github/workflows/ci.yml` to build/test the MCP binary, run MCP resolver-parity and installer tests on native GitHub-hosted runners for Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64, and run the 100-call warm-cache benchmark on GitHub-hosted `ubuntu-24.04`; fail when p50 exceeds 100 ms and upload the machine-readable report as a workflow artifact.
-- [ ] T033 Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, focused MCP tests including determinism with unchanged vault contents and contract compatibility, installer/release-matrix tests, `cargo test`, and the MCP warm-run benchmark; verify both CI and release use GitHub-hosted `ubuntu-24.04`, enforce p50 ≤100 ms, and retain reports with runner and `bench-vault-v1` metadata.
+- [ ] T033 Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, focused MCP tests including determinism with unchanged vault contents and contract compatibility, installer/release-matrix tests, `cargo test`, and the MCP warm-run benchmark; verify both CI and release use GitHub-hosted `ubuntu-24.04`, enforce p50 ≤100 ms, and retain reports with runner and `bench-vault-v1` metadata. Include a short benchmark summary in the PR description with p50, sample count, runner, fixture version, and a link to the retained report.
 
 ## Dependencies & Execution Order
 

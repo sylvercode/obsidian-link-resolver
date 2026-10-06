@@ -37,7 +37,7 @@
 
 ## Acceptance Criteria Quality
 
-- [x] CHK019 - Can “same target path and location” and “matches the underlying resolver” be assessed against explicit result fields and comparison rules? [Acceptance Criteria, Spec §SC-001, Spec §SC-007, Gap]
+- [x] CHK019 - Does SC-001 define resolver parity using explicit outcome and result-field comparisons, including the absence of wrapper-only fields? [Acceptance Criteria, Spec §SC-001]
 - [x] CHK020 - Are the 100% outcome, workflow, client-configuration, and documentation success thresholds tied to a defined denominator or evaluation scope? [Measurability, Spec §SC-002, Spec §SC-003, Spec §SC-008]
 - [x] CHK021 - Is the performance expectation for warm cached resolution stated as a measurable requirement with a specified measurement context? [Acceptance Criteria, Plan §Performance Goals, Gap]
 
