@@ -19,6 +19,7 @@
 
 - Q: Which version baseline should installation guidance and compatibility tests use for GitHub Copilot in VS Code and Claude Desktop? → A: Use each client's latest stable release at validation time and record the exact tested versions.
 - Q: How should users choose the MCP installer component while keeping the existing CLI-only install as the default? → A: Provide separate MCP installer commands alongside the existing CLI installer (Option B).
+- Q: How should the MCP wrapper distinguish malformed tool arguments from resolver failures? → A: Missing required arguments or arguments with invalid types are MCP tool/protocol errors and do not produce a resolver result. Once arguments satisfy the MCP input schema, failures reported by the resolver—including invalid link, context, or vault values when the resolver classifies them as errors—are returned as normal tool results with the resolver's `error` outcome and reason.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -35,6 +36,8 @@ An AI assistant or another tool client needs to resolve an Obsidian link without
 1. **Given** a valid Obsidian wikilink such as `[[Project Plan#Milestones]]` and a context file in the vault, **When** the MCP tool is called, **Then** it returns the target file path and target location in a structured response.
 2. **Given** a same-file link such as `[[#Overview]]`, **When** the MCP tool is called, **Then** it resolves the target relative to the context file and returns the correct path and line.
 3. **Given** a broken or missing link target, **When** the MCP tool is called, **Then** it returns a non-success outcome with a clear reason rather than silently inventing a result.
+4. **Given** required arguments are missing or have values of the wrong type, **When** the MCP tool is called, **Then** it returns an MCP tool/protocol error without a resolver result.
+5. **Given** all arguments satisfy the MCP input schema but the resolver rejects a link, context, or vault value as invalid, **When** the MCP tool is called, **Then** it returns the resolver's normal result with `error` status and reason.
 
 ---
 
@@ -122,7 +125,8 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 
 ### Edge Cases
 
-- When the link or context is invalid, the MCP wrapper returns a clear error outcome rather than crashing or producing incomplete data.
+- When required arguments are missing or have the wrong types, the MCP wrapper returns an MCP tool/protocol error and does not invoke the resolver or fabricate a resolver result.
+- When schema-valid arguments contain a link, context, or vault value that the resolver rejects as invalid, the wrapper returns the resolver's normal `error` outcome and reason. Other resolver outcomes, such as `unresolved` or `sub-target-not-found`, remain normal results and are not converted into MCP tool errors.
 - When the underlying resolver reports ambiguous note matches, the wrapper preserves the candidate list and reason in the MCP response.
 - When the link references a heading or block that does not exist, the wrapper reports the sub-target-not-found result defined by the resolver.
 - When a non-markdown attachment is requested, the wrapper preserves the attachment semantics and does not invent heading or emplacement information.
@@ -138,7 +142,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-001**: The system MUST provide an MCP interface that exposes the current Obsidian Link Resolver as a standard tool for AI clients and automation workflows.
 - **FR-002**: The MCP tool MUST accept the same minimal inputs required by the resolver: the Obsidian link string and the path of the context file that contains the link.
 - **FR-003**: The MCP tool MUST support the same optional configuration the resolver already supports, including explicit vault root selection and structured emplacement requests when applicable.
-- **FR-004**: The MCP wrapper MUST return the same semantic outcome categories as the resolver: resolved, unresolved, sub-target-not-found, ambiguous, and error.
+- **FR-004**: For tool calls whose arguments satisfy the MCP input schema, the MCP wrapper MUST return the same semantic outcome categories as the resolver: resolved, unresolved, sub-target-not-found, ambiguous, and error. It MUST NOT convert resolver outcomes into MCP tool/protocol errors.
 - **FR-005**: The MCP tool MUST preserve the current resolver behavior for note-name matching, path-qualified references, same-file links, heading paths, block ids, and attachment handling.
 - **FR-006**: The MCP wrapper MUST expose a deterministic machine-readable result schema so clients can parse tool output without scraping human-readable text.
 - **FR-007**: The MCP wrapper MUST provide tool metadata that clearly describes what it resolves, which inputs it expects, and how the result should be interpreted.
@@ -155,6 +159,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics. Each resolution MUST use one cached index generation selected when that resolution starts. If the root is invalidated while a resolution is in flight, that resolution MAY complete using its selected generation; the root MUST remain dirty and be refreshed before the next resolution for that root. Rapid filesystem events for one root MAY be coalesced, but the next resolution MUST use the latest filesystem state available at refresh time. Relevant changes MUST otherwise be reflected within 60 seconds.
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow for GitHub Copilot in VS Code and Claude Desktop, including client-specific local-stdio registration examples and separate MCP installer commands alongside the existing CLI installer. Installation guidance MUST follow the existing README's latest-version install/update, pinned-version, and manual-fallback patterns; it MUST provide an MCP-specific install/update path without changing the existing CLI installer or its CLI-only default.
 - **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text or note contents.
+- **FR-021**: The MCP interface MUST reject calls with missing required arguments or argument values of the wrong schema type as MCP tool/protocol errors without producing a resolver result. For calls that satisfy the input schema, it MUST preserve the resolver's result—including an `error` outcome and reason when the resolver rejects a link, context, or vault value—without converting it into an MCP tool/protocol error.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -179,6 +184,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-009**: The tool supports same-file, heading, block, and attachment references, plus unresolved, missing-sub-target, and ambiguous outcomes, as represented by the normative quickstart conformance corpus and the underlying resolver's behavior.
 - **SC-010**: With diagnostic logging enabled, users can identify server startup, request outcomes, operational failures, and cache reuse or refresh outcomes, while MCP protocol responses remain unchanged; with logging disabled, no optional diagnostic logs are emitted.
 - **SC-011**: On the designated release benchmark runner, end-to-end latency from receipt of a tool call to completion of its response has a p50 of at most 100 ms across 100 consecutive warm-cache calls against the approximately 5,000-note benchmark vault. Process startup and initial index construction are excluded; the runner and fixture version are recorded with results.
+- **SC-012**: Boundary contract tests verify all three response classes: missing required arguments produce an MCP tool/protocol error; wrong-type arguments produce an MCP tool/protocol error; and schema-valid arguments rejected by the resolver produce its normal `error` result with reason. Resolver outcomes such as `unresolved` and `sub-target-not-found` remain normal tool results.
 
 ## Assumptions
 
