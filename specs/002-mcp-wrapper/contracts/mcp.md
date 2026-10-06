@@ -50,7 +50,7 @@ The five resolver statuses are normal tool outcomes. `unresolved`, `sub_target_n
 ### Stable Semantics
 
 - Link parsing, note matching, path-qualified references, same-file links, heading paths, block IDs, and attachments are delegated to the existing resolver.
-- Paths remain vault-relative and forward-slash normalized. Candidate order and primary result fields remain deterministic.
+- Paths remain vault-relative and forward-slash normalized. Candidate order and primary result fields remain deterministic. Path-qualified references and vault-relative context paths are covered by native parity tests on all five supported release targets.
 - `with_emplacement` requests the existing structured emplacement. Attachments do not gain heading/emplacement data.
 - Repeated requests for the same canonical vault root reuse the process cache. Watch events mark it dirty for refresh before the next resolution; a background full rescan runs at least every 60 seconds per cached root, independently of requests. If watcher setup is unavailable, periodic scans still run. A failed refresh returns an error rather than a result from a known-stale index.
 - Identical requests produce identical primary result records while the relevant vault contents remain unchanged. Results may change after relevant filesystem changes are reflected by cache invalidation or periodic refresh.

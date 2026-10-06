@@ -35,6 +35,19 @@
 
 **Validation**: Repeat identical requests against unchanged fixture contents and compare complete primary result records. Mutate relevant fixture contents and verify subsequent results can reflect the mutation after invalidation/refresh. Exercise diagnostics with unique sentinel strings in all prohibited input and failure fields, then assert none occur in stderr while protocol output remains unchanged.
 
+## Cross-Platform Path Parity
+
+**Decision**: Treat path-qualified references and vault-relative context paths as explicit resolver-parity scenarios. Run platform-appropriate fixtures natively on all five supported release targets: Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64. Compare outcome categories on every case and compare target/location fields only when supplied by the underlying resolver.
+
+**Rationale**: The resolver remains the source of truth for path interpretation, while separators, canonicalization, and path handling differ by host platform. Explicit native-target coverage makes the portability requirement verifiable rather than relying on generic resolver tests or cross-compilation alone.
+
+**Alternatives considered**:
+- Test only on Linux x86_64: does not validate host-specific path behavior on the other supported targets.
+- Cross-compile without running tests: verifies compilation but not runtime path semantics.
+- Compare target path/location on every outcome: invalid for outcomes where the resolver does not provide target fields.
+
+**Validation**: Include path-qualified and vault-relative context fixtures in MCP-vs-resolver parity tests; execute those tests on all five native target runners and compare only result fields present in the direct resolver result.
+
 ## Optional Operational Diagnostics (User Story 6)
 
 **Decision**: Add a `--diagnostics` launch flag to the MCP server; diagnostics are off unless explicitly requested. When enabled, initialize `structured-logger` 1.0.5 with `default-features = false`, an explicit `INFO` level, its synchronous JSON writer, and the fixed MCP diagnostics target routed to stderr. Route the default writer to `std::io::sink()` so unrelated dependency logs cannot leak to stderr. Do not initialize the global logger when the flag is absent. Use structured key-values for the fixed event names and failure categories defined in [the data model](data-model.md#diagnostic-configuration-and-event) and MCP contract. A resolver `error` outcome is logged as a completed request status, distinct from an MCP/request-processing failure. Use a monotonically increasing process-local request sequence where correlation is needed. Record fixed categories rather than raw error text. Never record link text, context or vault paths, note contents, or tool arguments. Keep diagnostics separate from stdout protocol messages and MCP result objects.
@@ -56,7 +69,7 @@
 
 ## MCP SDK and Transport
 
-**Decision**: Use the official Rust MCP SDK, `rmcp` 3.5.0, for a standalone server binary using stdio transport and one typed resolver tool. Keep enabled SDK features limited to server, tool/schema, and stdio support; do not add an HTTP listener.
+**Decision**: Use the official Rust MCP SDK, `rmcp` 3.5.1, for a standalone server binary using stdio transport and one typed resolver tool. Explicitly enable only `server`, `macros`, `schemars`, and `transport-io`; do not add an HTTP listener.
 
 **Rationale**: The feature requires a local client-launched server, and MCP stdio transport is designed for a subprocess communicating over stdin/stdout. The SDK supplies protocol framing, lifecycle, tool discovery/calls, and structured tool results, avoiding a project-maintained JSON-RPC implementation. The current library already exposes `resolve_with_vault`, so the adapter can preserve the existing resolver as its source of truth. Keep status outcomes such as unresolved and ambiguous in tool result content rather than converting them into protocol errors.
 
@@ -65,12 +78,13 @@
 - Streamable HTTP: appropriate for remote/network services, but outside this local stdio installation requirement and adds transport/security surface.
 - A second community SDK: no requirement identified that justifies moving away from the official Rust SDK.
 
-**Compatibility notes**: `rmcp` 3.5.0 declares Rust 1.88 MSRV, below the repository's CI/release Rust 1.98.1 pin. Its feature table names `server`, `macros`, `schemars`, and `transport-io` for server tools, typed tool macros, schema generation, and server-side stdio. Do not enable HTTP transport. Pin through `Cargo.lock` and verify the selected feature combination and stdio lifecycle against supported clients during implementation. The MCP output schema must remain aligned with `specs/001-link-resolver/contracts/result.schema.json`; existing result types currently derive Serde, not JSON Schema.
+**Compatibility notes**: `rmcp` 3.5.1 declares Rust 1.88 MSRV, below the repository's CI/release Rust 1.98.1 pin. The release published 2026-10-05 retains the selected feature graph and includes a fix to keep handler-generated invalid-params errors in-band, which aligns with the malformed-input response requirement. `transport-io` must be explicitly enabled; it supplies the Tokio stdio I/O support not enabled by `server` alone. Pin through `Cargo.lock` and verify the selected feature combination and stdio lifecycle against supported clients during implementation. The MCP output schema must remain aligned with `specs/001-link-resolver/contracts/result.schema.json`; existing result types currently derive Serde, not JSON Schema.
 
 **Sources**:
 - [Official Rust SDK](https://github.com/modelcontextprotocol/rust-sdk)
-- [`rmcp` 3.5.0 documentation](https://docs.rs/rmcp/3.5.0/rmcp/)
-- [`rmcp` 3.5.0 feature flags](https://docs.rs/crate/rmcp/3.5.0/features)
+- [`rmcp` 3.5.1 documentation](https://docs.rs/rmcp/3.5.1/rmcp/)
+- [`rmcp` 3.5.1 feature flags](https://docs.rs/crate/rmcp/3.5.1/features)
+- [`rmcp` 3.5.1 release notes](https://github.com/modelcontextprotocol/rust-sdk/releases/tag/rmcp-v3.5.1)
 - [MCP tools specification](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [MCP transport specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports)
 - [MCP versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)

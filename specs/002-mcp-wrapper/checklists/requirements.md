@@ -37,4 +37,8 @@
 - [x] Optional MCP diagnostics cover lifecycle, request outcomes, operational failures, and cache activity; they are disabled by default, remain on stderr, exclude payload contents, and do not alter tool responses.
 - [x] Success criterion SC-010 verifies general operational visibility and confirms diagnostics remain absent when disabled and do not alter MCP responses.
 - [x] Missing or wrong-type arguments are explicitly separated from schema-valid requests that return resolver-level errors; FR-021 and SC-012 define and verify this boundary.
+- [x] SC-001 compares outcome categories for every conformance case and compares target/location fields only when the underlying resolver returns them.
+- [x] Path-qualified references and vault-relative context paths are explicit in requirements, acceptance scenarios, success criteria, and parity-test scope for all five supported release targets.
+- [x] FR-004 defines preserved outcome categories while FR-021 defines the schema-validation boundary, avoiding duplicated error-conversion wording.
+- [x] MCP-specific CI checks depend on the MCP binary source and benchmark target existing before they are added.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
