@@ -10,66 +10,66 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Are the required and optional tool inputs, their accepted forms, and their relationship to the resolver's existing inputs explicitly defined? [Completeness, Spec §FR-002, Spec §FR-003]
-- [ ] CHK002 - Are all five resolver outcomes and the distinction between ordinary resolution outcomes and MCP-level errors clearly specified? [Completeness, Spec §FR-004, Spec §FR-006, Gap]
-- [ ] CHK003 - Are result fields specified sufficiently for callers to interpret status, reason, target path, location, candidates, and optional emplacement without relying on prose? [Completeness, Spec §FR-006, Spec §FR-011, Gap]
-- [ ] CHK004 - Are parity requirements complete for note-name matching, qualified paths, same-file links, heading paths, block IDs, and attachments? [Completeness, Spec §FR-005, Spec §SC-009]
-- [ ] CHK005 - Are the metadata, argument-schema, and result-schema requirements complete enough to define what clients can discover and rely on across versions? [Completeness, Spec §FR-007, Spec §FR-012]
-- [ ] CHK006 - Are installation and client-registration requirements complete for both launching the local server and connecting it to a user's vault? [Completeness, Spec §FR-015, Spec §FR-019]
-- [ ] CHK007 - Are all required release platforms, architectures, and delivery expectations explicitly covered without implying unsupported targets? [Completeness, Spec §FR-016]
-- [ ] CHK008 - Do diagnostics requirements name the event classes and cache outcomes that users need, while defining their channel and effect on tool responses? [Completeness, Spec §FR-020]
+- [x] CHK001 - Are the required and optional tool inputs, their accepted forms, and their relationship to the resolver's existing inputs explicitly defined? [Completeness, Spec §FR-002, Spec §FR-003]
+- [x] CHK002 - Are all five resolver outcomes and the distinction between ordinary resolution outcomes and MCP-level errors clearly specified? [Completeness, Spec §FR-004, Spec §FR-006, Gap]
+- [x] CHK003 - Are result fields specified sufficiently for callers to interpret status, reason, target path, location, candidates, and optional emplacement without relying on prose? [Completeness, Spec §FR-006, Spec §FR-011, Gap]
+- [x] CHK004 - Are parity requirements complete for note-name matching, qualified paths, same-file links, heading paths, block IDs, and attachments? [Completeness, Spec §FR-005, Spec §SC-009]
+- [ ] CHK005 - Are the metadata, argument-schema, and result-schema requirements complete enough to define what clients can discover and rely on across versions? [Completeness, Spec §FR-007, Spec §FR-012] — Gap: stable names and fields are promised, but compatibility/version-evolution rules are not defined.
+- [x] CHK006 - Are installation and client-registration requirements complete for both launching the local server and connecting it to a user's vault? [Completeness, Spec §FR-015, Spec §FR-019]
+- [x] CHK007 - Are all required release platforms, architectures, and delivery expectations explicitly covered without implying unsupported targets? [Completeness, Spec §FR-016]
+- [x] CHK008 - Do diagnostics requirements name the event classes and cache outcomes that users need, while defining their channel and effect on tool responses? [Completeness, Spec §FR-020]
 
 ## Requirement Clarity
 
-- [ ] CHK009 - Are terms such as “same semantic outcome,” “same resolver behavior,” and “same path behavior” defined in terms of the result properties callers must receive? [Clarity, Spec §FR-004, Spec §FR-005, Spec §FR-010, Spec §FR-013]
-- [ ] CHK010 - Is the choice between a simple target line and structured emplacement explained with unambiguous criteria for when each is appropriate? [Clarity, Spec §FR-008, Spec §FR-009]
-- [ ] CHK011 - Are the meaning and lifetime of an “active session” for cache reuse clear to users and reviewers? [Clarity, Spec §FR-017, Ambiguity]
-- [ ] CHK012 - Is the 60-second freshness bound defined with a clear starting point and scope for each cached vault? [Clarity, Spec §FR-018]
-- [ ] CHK013 - Are “standard client configuration,” “without custom integration,” and “without unspecified setup steps” bounded by named client/configuration examples or an explicit support boundary? [Clarity, Spec §FR-015, Spec §FR-019, Ambiguity]
-- [ ] CHK014 - Are “defined test corpus,” “supported calls,” and “main agent workflows” identified with objective inclusion criteria? [Clarity, Spec §SC-001, Spec §SC-003, Spec §SC-006, Spec §SC-009]
+- [x] CHK009 - Are terms such as “same semantic outcome,” “same resolver behavior,” and “same path behavior” defined in terms of the result properties callers must receive? [Clarity, Spec §FR-004, Spec §FR-005, Spec §FR-010, Spec §FR-013]
+- [x] CHK010 - Is the choice between a simple target line and structured emplacement explained with unambiguous criteria for when each is appropriate? [Clarity, Spec §FR-008, Spec §FR-009]
+- [x] CHK011 - Are the meaning and lifetime of an “active session” for cache reuse clear to users and reviewers? [Clarity, Spec §FR-017, Ambiguity]
+- [x] CHK012 - Is the 60-second freshness bound defined with a clear starting point and scope for each cached vault? [Clarity, Spec §FR-018]
+- [ ] CHK013 - Are “standard client configuration,” “without custom integration,” and “without unspecified setup steps” bounded by named client/configuration examples or an explicit support boundary? [Clarity, Spec §FR-015, Spec §FR-019, Ambiguity] — Gap: registration is described generically and client-specific configuration is explicitly deferred; no supported client list or scope boundary is stated.
+- [ ] CHK014 - Are “defined test corpus,” “supported calls,” and “main agent workflows” identified with objective inclusion criteria? [Clarity, Spec §SC-001, Spec §SC-003, Spec §SC-006, Spec §SC-009] — Gap: the test corpus and tested-client set are not enumerated; the workflow list is only partly bounded by examples.
 
 ## Requirement Consistency
 
-- [ ] CHK015 - Do the requirements consistently preserve the existing resolver as the source of truth while also defining stable MCP argument and result fields? [Consistency, Spec §FR-005, Spec §FR-010, Spec §FR-012]
-- [ ] CHK016 - Are the stated path portability and vault-relative semantics consistent with context-path and explicit-vault-root requirements? [Consistency, Spec §FR-002, Spec §FR-003, Spec §FR-013]
-- [ ] CHK017 - Are the cache reuse and freshness requirements consistent with the promise that cached results preserve current resolver semantics? [Consistency, Spec §FR-017, Spec §FR-018, Spec §SC-006]
-- [ ] CHK018 - Are the requirements for deterministic primary results consistent with optional diagnostics that must not alter tool responses? [Consistency, Spec §Edge Cases, Spec §FR-020, Spec §SC-005]
+- [x] CHK015 - Do the requirements consistently preserve the existing resolver as the source of truth while also defining stable MCP argument and result fields? [Consistency, Spec §FR-005, Spec §FR-010, Spec §FR-012]
+- [x] CHK016 - Are the stated path portability and vault-relative semantics consistent with context-path and explicit-vault-root requirements? [Consistency, Spec §FR-002, Spec §FR-003, Spec §FR-013]
+- [x] CHK017 - Are the cache reuse and freshness requirements consistent with the promise that cached results preserve current resolver semantics? [Consistency, Spec §FR-017, Spec §FR-018, Spec §SC-006]
+- [x] CHK018 - Are the requirements for deterministic primary results consistent with optional diagnostics that must not alter tool responses? [Consistency, Spec §Edge Cases, Spec §FR-020, Spec §SC-005]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK019 - Can “same target path and location” and “matches the underlying resolver” be assessed against explicit result fields and comparison rules? [Acceptance Criteria, Spec §SC-001, Spec §SC-007, Gap]
-- [ ] CHK020 - Are the 100% outcome, workflow, client-configuration, and documentation success thresholds tied to a defined denominator or evaluation scope? [Measurability, Spec §SC-002, Spec §SC-003, Spec §SC-008]
-- [ ] CHK021 - Is the performance expectation for warm cached resolution stated as a measurable requirement with a specified measurement context? [Acceptance Criteria, Plan §Performance Goals, Gap]
+- [x] CHK019 - Can “same target path and location” and “matches the underlying resolver” be assessed against explicit result fields and comparison rules? [Acceptance Criteria, Spec §SC-001, Spec §SC-007, Gap]
+- [ ] CHK020 - Are the 100% outcome, workflow, client-configuration, and documentation success thresholds tied to a defined denominator or evaluation scope? [Measurability, Spec §SC-002, Spec §SC-003, Spec §SC-008] — Gap: the specification does not enumerate the supported-call set, client configurations, or documentation scenarios that form these denominators.
+- [x] CHK021 - Is the performance expectation for warm cached resolution stated as a measurable requirement with a specified measurement context? [Acceptance Criteria, Plan §Performance Goals, Gap]
 
 ## Scenario Coverage
 
-- [ ] CHK022 - Are primary, alternate, and failure scenarios covered for valid, same-file, unresolved, ambiguous, sub-target, and attachment references? [Coverage, Spec §User Stories 1-2, Spec §Edge Cases]
-- [ ] CHK023 - Are requirements defined for tool discovery, schema interpretation, and clients that need either point-target or section-oriented results? [Coverage, Spec §User Story 3, Spec §FR-007–FR-009]
-- [ ] CHK024 - Are the vault-root selection scenarios—including explicit per-call root, launch-time default, and automatic detection—specified consistently for callers? [Coverage, Spec §FR-003, Plan §Design Decisions, Gap]
-- [ ] CHK025 - Are installation requirements scoped to the supported client registration flows and the supported binary platform matrix? [Coverage, Spec §User Story 5, Spec §FR-015–FR-019]
+- [x] CHK022 - Are primary, alternate, and failure scenarios covered for valid, same-file, unresolved, ambiguous, sub-target, and attachment references? [Coverage, Spec §User Stories 1-2, Spec §Edge Cases]
+- [x] CHK023 - Are requirements defined for tool discovery, schema interpretation, and clients that need either point-target or section-oriented results? [Coverage, Spec §User Story 3, Spec §FR-007–FR-009]
+- [x] CHK024 - Are the vault-root selection scenarios—including explicit per-call root, launch-time default, and automatic detection—specified consistently for callers? [Coverage, Spec §FR-003, Plan §Design Decisions, Gap]
+- [ ] CHK025 - Are installation requirements scoped to the supported client registration flows and the supported binary platform matrix? [Coverage, Spec §User Story 5, Spec §FR-015–FR-019] — Gap: the release platform matrix is explicit, but supported MCP clients/configuration shapes are not identified.
 
 ## Edge Case Coverage
 
-- [ ] CHK026 - Are invalid link/context inputs, missing targets, missing headings or blocks, and ambiguous matches each assigned an unambiguous outcome and required response information? [Edge Case, Spec §Edge Cases, Spec §FR-004, Spec §FR-011]
-- [ ] CHK027 - Are cache refresh failure and watcher-unavailable scenarios covered, including whether stale data may ever be served? [Edge Case, Spec §FR-018, Plan §Design Decisions, Gap]
-- [ ] CHK028 - Are requirements defined for multiple vault roots, rapid successive changes, and changes that occur during a resolution? [Edge Case, Spec §FR-017–FR-018, Gap]
-- [ ] CHK029 - Are diagnostics requirements explicit about sensitive paths, raw errors, arguments, and other request-derived data, not only link text and note contents? [Edge Case, Spec §FR-020, Plan §Constraints, Gap]
+- [x] CHK026 - Are invalid link/context inputs, missing targets, missing headings or blocks, and ambiguous matches each assigned an unambiguous outcome and required response information? [Edge Case, Spec §Edge Cases, Spec §FR-004, Spec §FR-011]
+- [x] CHK027 - Are cache refresh failure and watcher-unavailable scenarios covered, including whether stale data may ever be served? [Edge Case, Spec §FR-018, Plan §Design Decisions, Gap]
+- [ ] CHK028 - Are requirements defined for multiple vault roots, rapid successive changes, and changes that occur during a resolution? [Edge Case, Spec §FR-017–FR-018, Gap] — Gap: per-root entries and event-burst coalescing are defined, but the consistency contract for changes concurrent with an in-flight resolution is not.
+- [x] CHK029 - Are diagnostics requirements explicit about sensitive paths, raw errors, arguments, and other request-derived data, not only link text and note contents? [Edge Case, Spec §FR-020, Plan §Constraints, Gap]
 
 ## Non-Functional Requirements
 
-- [ ] CHK030 - Are latency, warm-cache performance, and vault-size expectations stated in the specification with objective thresholds and measurement conditions? [Non-Functional, Plan §Performance Goals, Gap]
-- [ ] CHK031 - Are stdout/stderr separation, disabled-by-default behavior, deterministic output, and diagnostic redaction boundaries specified consistently as externally observable requirements? [Non-Functional, Spec §Edge Cases, Spec §FR-006, Spec §FR-020]
-- [ ] CHK032 - Are cross-platform compatibility and release availability requirements aligned across all named architectures and operating systems? [Non-Functional, Spec §FR-013, Spec §FR-016, Spec §SC-008]
+- [ ] CHK030 - Are latency, warm-cache performance, and vault-size expectations stated in the specification with objective thresholds and measurement conditions? [Non-Functional, Plan §Performance Goals, Gap] — Gap: the plan gives a ≤100 ms warm-resolution p50 target for an approximately 5,000-note vault, but the specification itself has no measurable performance requirement.
+- [x] CHK031 - Are stdout/stderr separation, disabled-by-default behavior, deterministic output, and diagnostic redaction boundaries specified consistently as externally observable requirements? [Non-Functional, Spec §Edge Cases, Spec §FR-006, Spec §FR-020]
+- [x] CHK032 - Are cross-platform compatibility and release availability requirements aligned across all named architectures and operating systems? [Non-Functional, Spec §FR-013, Spec §FR-016, Spec §SC-008]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK033 - Are assumptions about MCP clients accepting structured arguments/results and supporting local stdio server registration validated or bounded? [Assumption, Spec §Assumptions, Spec §FR-015]
-- [ ] CHK034 - Are dependencies on existing resolver semantics, vault detection, filesystem change observation, and client configuration documented with clear ownership and fallback expectations? [Dependency, Spec §Assumptions, Spec §FR-003, Spec §FR-018, Plan §Design Decisions]
+- [ ] CHK033 - Are assumptions about MCP clients accepting structured arguments/results and supporting local stdio server registration validated or bounded? [Assumption, Spec §Assumptions, Spec §FR-015] — Gap: compatibility is asserted for standard MCP clients, but no supported-client boundary or validation set is documented.
+- [x] CHK034 - Are dependencies on existing resolver semantics, vault detection, filesystem change observation, and client configuration documented with clear ownership and fallback expectations? [Dependency, Spec §Assumptions, Spec §FR-003, Spec §FR-018, Plan §Design Decisions]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK035 - Is the exact contract for invalid tool arguments and protocol/lifecycle failures clear relative to the five resolver outcome categories? [Ambiguity, Spec §FR-004, Plan §Design Decisions]
-- [ ] CHK036 - Do all references to “session,” “same active session,” and “cached vault state” use a consistent lifecycle boundary? [Ambiguity, Spec §FR-017–FR-018, Spec §SC-006]
+- [x] CHK035 - Is the exact contract for invalid tool arguments and protocol/lifecycle failures clear relative to the five resolver outcome categories? [Ambiguity, Spec §FR-004, Plan §Design Decisions]
+- [x] CHK036 - Do all references to “session,” “same active session,” and “cached vault state” use a consistent lifecycle boundary? [Ambiguity, Spec §FR-017–FR-018, Spec §SC-006]
 
 ## Notes
 
