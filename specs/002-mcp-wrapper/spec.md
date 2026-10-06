@@ -82,19 +82,19 @@ An AI client or automation workflow often resolves many links in the same vault 
 
 ---
 
-### User Story 5 - Install the MCP server through a standard client registration flow (Priority: P2)
+### User Story 5 - Install the MCP server in supported clients (Priority: P2)
 
-A user wants to enable the resolver in an AI client without manual source builds or unfamiliar setup steps. The delivery mechanism is a locally installed MCP server that a client can register through standard configuration, with clear installation guidance in the user documentation and a straightforward path for connecting the server to the user's vault.
+A user wants to enable the resolver in GitHub Copilot in VS Code or Claude Desktop without manual source builds or unfamiliar setup steps. The delivery mechanism is a locally installed MCP server that the supported client can register through its standard local-stdio configuration, with clear installation guidance and a straightforward path for connecting the server to the user's vault.
 
-**Why this priority**: Without a clear installation story, the capability is difficult to adopt even if the underlying resolver works correctly. Users need a predictable, low-friction setup path that fits the common MCP client model.
+**Why this priority**: Without a clear installation story for the supported clients, the capability is difficult to adopt even if the underlying resolver works correctly. Users need a predictable, low-friction setup path that fits each client's standard MCP registration flow.
 
-**Independent Test**: Can be tested by reviewing the installation documentation and verifying that it describes the supported local server delivery model, configuration path, and vault setup steps in a way a non-expert user can follow.
+**Independent Test**: Can be tested by reviewing the installation documentation and verifying that it describes the supported local server delivery model, each client's configuration path, and vault setup steps in a way a non-expert user can follow.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user wants to install the resolver in a local MCP client, **When** they follow the documentation, **Then** they can register the server in the standard client configuration flow without custom integration steps.
+1. **Given** a user wants to install the resolver in either supported client, **When** they follow that client's documented steps, **Then** they can register the server in its standard local-stdio configuration flow without custom integration steps.
 2. **Given** the user has a vault path available, **When** they configure the server, **Then** the documentation explains how to point the server to the target vault and how the client will launch the local server process.
-3. **Given** a user is evaluating the feature, **When** they read the docs, **Then** they understand the recommended delivery model and the rationale for using a local server with the client’s standard MCP registration configuration.
+3. **Given** a user is evaluating the feature, **When** they read the docs for either supported client, **Then** they understand the recommended delivery model and the rationale for using a local server with that client's standard MCP registration configuration.
 
 ---
 
@@ -141,14 +141,14 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-009**: The MCP wrapper MUST allow callers to request structured emplacement information when available, while still respecting the underlying resolver's semantics for note and attachment targets.
 - **FR-010**: The wrapper MUST not silently change or reinterpret the current resolver's decisions; it must act as a faithful adapter over the existing capability.
 - **FR-011**: The MCP server MUST surface the current resolver's status and reason fields in a way that supports agent branching and retries without custom parsing.
-- **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions.
+- **FR-012**: The MCP interface MUST be discoverable by standard MCP clients and provide stable argument names and result fields across versions. Within a major release, it MUST NOT remove or rename existing arguments or result fields, change whether an argument is required, or change the meaning of existing fields or outcome categories. Additive optional arguments and result fields are permitted. Breaking changes MUST be released as a new major version and documented with migration notes.
 - **FR-013**: The system MUST support the same cross-platform and vault-relative path behavior as the underlying resolver so that the wrapper remains portable and consistent across environments.
 - **FR-014**: The wrapper MUST be usable for both interactive agent workflows and programmatic automation without requiring the caller to spawn a shell or parse CLI output.
-- **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the client’s standard MCP configuration mechanism, rather than requiring a custom application integration or ad hoc installation path.
+- **FR-015**: The MCP delivery model MUST use a locally installed server process registered through the standard local-stdio MCP configuration mechanism of GitHub Copilot in VS Code or Claude Desktop, rather than requiring a custom application integration or ad hoc installation path.
 - **FR-016**: The project MUST publish or otherwise make available prebuilt MCP server binaries for Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64 so the installation flow is reliable for ordinary users and does not depend on local source builds.
 - **FR-017**: The MCP wrapper MUST cache the vault index for repeated lookups in the same active session so multiple resolutions against the same vault do not require re-enumerating the entire vault on every request.
-- **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics. Relevant filesystem changes MUST be reflected before the next resolution when detected, and otherwise within 60 seconds.
-- **FR-019**: The project MUST document the MCP installation and client-configuration flow in user-facing documentation so a user can install and register the server without consulting source code or unspecified setup steps.
+- **FR-018**: The cached vault state MUST remain logically consistent with the current resolver semantics. Each resolution MUST use one cached index generation selected when that resolution starts. If the root is invalidated while a resolution is in flight, that resolution MAY complete using its selected generation; the root MUST remain dirty and be refreshed before the next resolution for that root. Rapid filesystem events for one root MAY be coalesced, but the next resolution MUST use the latest filesystem state available at refresh time. Relevant changes MUST otherwise be reflected within 60 seconds.
+- **FR-019**: The project MUST document the MCP installation and client-configuration flow for GitHub Copilot in VS Code and Claude Desktop, including client-specific local-stdio registration examples and an explicit MCP installer component. Installation guidance MUST follow the existing README's latest-version install/update, pinned-version, and manual-fallback patterns; it MUST explain how to install the MCP component without changing the existing CLI-only default.
 - **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text or note contents.
 
 ### Key Entities *(include if feature involves data)*
@@ -163,22 +163,23 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 
 ### Measurable Outcomes
 
-- **SC-001**: An MCP client can resolve a valid Obsidian link through the wrapper and receive the same target path and location as the underlying resolver in 100% of a defined test corpus.
-- **SC-002**: The MCP wrapper preserves all five resolver outcomes — resolved, unresolved, sub-target-not-found, ambiguous, and error — in 100% of supported calls.
-- **SC-003**: An agent can discover the resolver tool through standard MCP tooling and invoke it without custom text parsing or shell integration in 100% of tested client configurations.
-- **SC-004**: The tool description explicitly tells clients when to prefer a simple target line versus a richer emplacement result, and that guidance aligns with the supported agent workflow for sharded section reads in 100% of the documented scenarios.
+- **SC-001**: For every fixture case in the normative quickstart conformance corpus—resolved note, same-file, heading, block, attachment, unresolved link, missing sub-target, ambiguous link, resolver error, and requested emplacement—the MCP wrapper returns the same target path, location, and resolver outcome as the underlying resolver.
+- **SC-002**: The MCP conformance suite exercises all five resolver outcomes—resolved, unresolved, sub-target-not-found, ambiguous, and error (5/5 categories)—using cases in the normative corpus, and preserves each outcome as defined by the resolver.
+- **SC-003**: Tool discovery and a valid tool call pass in both documented local-stdio client configurations—GitHub Copilot in VS Code and Claude Desktop (2/2 configurations)—without custom text parsing or shell integration.
+- **SC-004**: The tool description explicitly tells clients when to prefer a simple target line versus a richer structured emplacement, and the guidance is verified against all applicable corpus scenarios: heading, block, and requested emplacement.
 - **SC-005**: Identical inputs submitted through the MCP wrapper produce identical primary result records in 100% of cases, with no non-deterministic fields in the main response.
-- **SC-006**: The MCP wrapper reuses a cached vault index for repeated lookups in the same active session and avoids unnecessary vault re-enumeration for repeated calls in 100% of supported scenarios. Detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
+- **SC-006**: The cache conformance suite passes all four named scenarios in the quickstart—same-root reuse without per-call enumeration, event-triggered or 60-second fallback refresh, isolation of two canonical roots, and invalidation during an in-flight resolution followed by refresh before the next resolution. Detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
 - **SC-007**: The MCP wrapper adds no functional ambiguity beyond the underlying resolver: callers can interpret the result using the same semantics as the current tool, with no hidden behavior changes.
-- **SC-008**: The project publishes prebuilt MCP server binaries for Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64, and documents the installation and client registration flow in user-facing documentation so a user can install and configure it without source-level setup instructions.
-- **SC-009**: The tool supports the main agent workflows needed for Obsidian link resolution, including same-file, heading, block, and attachment references, across the supported set defined by the underlying resolver.
+- **SC-008**: The project publishes prebuilt MCP server binaries for all five supported targets—Linux x86_64 and aarch64, macOS x86_64 and arm64, and Windows x86_64 (5/5)—and provides complete local-stdio registration guides for both supported clients—GitHub Copilot in VS Code and Claude Desktop (2/2). Installation documentation provides latest-version install/update, pinned-version, and manual-fallback instructions consistent with the existing README, and explains explicit MCP-component installation without changing the CLI-only default.
+- **SC-009**: The tool supports same-file, heading, block, and attachment references, plus unresolved, missing-sub-target, and ambiguous outcomes, as represented by the normative quickstart conformance corpus and the underlying resolver's behavior.
 - **SC-010**: With diagnostic logging enabled, users can identify server startup, request outcomes, operational failures, and cache reuse or refresh outcomes, while MCP protocol responses remain unchanged; with logging disabled, no optional diagnostic logs are emitted.
+- **SC-011**: On the designated release benchmark runner, end-to-end latency from receipt of a tool call to completion of its response has a p50 of at most 100 ms across 100 consecutive warm-cache calls against the approximately 5,000-note benchmark vault. Process startup and initial index construction are excluded; the runner and fixture version are recorded with results.
 
 ## Assumptions
 
 - The MCP wrapper is a compatibility layer over the existing Obsidian Link Resolver rather than a second implementation of resolution logic.
 - The current resolver's semantics and edge cases remain the authoritative contract for link interpretation.
-- MCP clients can pass structured arguments and parse structured results via the standard protocol without custom text scraping.
+- Supported-client compatibility is limited to GitHub Copilot in VS Code and Claude Desktop using the documented local-stdio configurations; each configuration must pass tool discovery and a valid tool call. No compatibility claim is made for other clients.
 - Agent workflows rely on deterministic result fields and stable outcome categories rather than human-readable prose alone.
 - The wrapper's scope is limited to exposing the current capability through MCP; it does not expand the underlying link-resolution rules beyond the current tool's contract.
 - Diagnostic logging is opt-in and limited to operational server state; request payloads, link text, and note contents are not needed in logs.
