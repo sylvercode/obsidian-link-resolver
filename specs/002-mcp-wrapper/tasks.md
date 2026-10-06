@@ -41,8 +41,8 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Write these protocol tests first and verify they fail before implementing the tool.
 
-- [ ] T003 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional vault/emplacement arguments, and malformed arguments in `tests/contract/mcp_tool.rs`.
-- [ ] T004 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, and a valid fixture resolution in `tests/integration/mcp_stdio.rs`.
+- [ ] T003 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional vault/emplacement arguments, and missing or wrong-type required arguments being rejected as MCP tool/protocol errors in `tests/contract/mcp_tool.rs`.
+- [ ] T004 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, a valid fixture resolution, and missing/wrong-type argument calls returning MCP errors without resolver result content in `tests/integration/mcp_stdio.rs`.
 
 ### Implementation for User Story 1
 
@@ -62,11 +62,11 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 > Write parity and determinism tests first and verify they fail before changing result mapping.
 
 - [ ] T007 [P] [US2] Add a contract test that submits identical requests repeatedly and asserts identical primary result records with no nondeterministic fields in `tests/contract/mcp_determinism.rs`.
-- [ ] T008 [P] [US2] Add parity cases for resolved, unresolved, missing sub-target, ambiguous, resolver error, same-file, heading, block, attachment, and emplacement results in `tests/integration/mcp_resolver_parity.rs`.
+- [ ] T008 [P] [US2] Add parity cases for resolved, unresolved, missing sub-target, ambiguous, and resolver error outcomes—including schema-valid link, context, and vault values rejected by the resolver—plus same-file, heading, block, attachment, and emplacement results in `tests/integration/mcp_resolver_parity.rs`; assert resolver `error` outcomes remain normal tool results with their reason fields.
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Preserve all `ResolutionTarget` fields and five resolver outcome categories without wrapper-only result fields in `src/mcp.rs`, using existing resolver APIs and `specs/001-link-resolver/contracts/result.schema.json`; document new or modified Rust symbols with Rustdoc.
+- [ ] T009 [US2] Preserve all `ResolutionTarget` fields and five resolver outcome categories without wrapper-only result fields, keeping resolver `error` outcomes as normal tool results rather than MCP errors, in `src/mcp.rs` using existing resolver APIs and `specs/001-link-resolver/contracts/result.schema.json`; document new or modified Rust symbols with Rustdoc.
 
 **Checkpoint**: Each conformance-corpus request produces the same resolver outcome through MCP as through the existing resolver.
 
