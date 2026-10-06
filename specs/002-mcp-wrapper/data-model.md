@@ -15,6 +15,20 @@ One `resolve_obsidian_link` invocation.
 
 The request is not persisted. It is passed to the resolver with no alternate parsing or matching rules.
 
+## MCP Contract Version
+
+The public MCP tool contract is versioned with the project's semantic version.
+
+| Element | Compatibility rule |
+|---|---|
+| Argument names and requiredness | Must remain unchanged within a major version. |
+| Result field names and meanings | Must remain unchanged within a major version. |
+| Outcome categories and semantics | Must remain unchanged within a major version. |
+| Additions | New optional arguments and result fields may be added compatibly. |
+| Breaking changes | Require a new major version and migration notes. |
+
+The first published MCP contract is the baseline if no MCP contract has yet been released. Later releases are compared with the latest published contract in their major version.
+
 ## Resolver Capability
 
 The existing Rust library capability parses a link, validates/detects its vault, resolves against the vault index, and reads the target note as needed. MCP requests delegate to `resolve_with_vault` after obtaining the cached index. Root selection, index enumeration, and resolution remain conceptually separate so cached requests can validate/select a root without rebuilding its index.

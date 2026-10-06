@@ -1,6 +1,27 @@
 # Research: Obsidian Link Resolver MCP Wrapper
 
-**Date**: 2026-10-04
+**Date**: 2026-10-05
+## Contract Compatibility and Analysis Refinements
+
+**Decision**: Treat the MCP tool contract as part of the project's semantic-versioned public API. Within a major version, preserve existing argument names and requiredness, result field names and meanings, and outcome semantics; additive optional arguments and fields are allowed. A breaking contract change requires a new major version and migration notes. Keep the published MCP contract artifact as the compatibility baseline and compare each proposed release against it. The first published MCP contract establishes the baseline if no earlier MCP contract has been released.
+
+**Rationale**: FR-012 and SC-013 require compatibility to be verifiable against published contract versions and migration notes. A checked-in contract gives reviewers and automated validation a concrete schema baseline, while release notes explain intentional breaking changes. This applies the constitution's semantic-versioning and documented-migration expectations to the newly introduced MCP surface without changing the established CLI contract.
+
+**Alternatives considered**:
+- Rely only on prose release notes: does not make argument and result schema compatibility mechanically reviewable.
+- Freeze the MCP contract permanently: prevents compatible additive evolution and is stricter than the spec.
+- Use the MCP protocol's negotiated protocol version as the product contract version: conflates protocol compatibility with this server's tool arguments and result schema.
+
+**Validation**: Compare the candidate contract's argument names, requiredness, result fields, and outcome semantics with the latest published contract in the same project major version. Fail compatibility checks for removed/renamed fields or arguments, changed requiredness, or changed meanings; verify additive optional changes remain permitted. For an identified breaking change, require a major-version release and migration notes. With no previously published MCP contract, record the first released contract as the baseline.
+
+## Analysis Refinements
+
+**Decision**: Scope deterministic-result assertions to identical requests while vault contents remain unchanged. Permit later results to differ after relevant filesystem changes are reflected under the specified watcher/periodic-refresh policy. Make the diagnostic redaction boundary explicit: no request text, context or vault paths, note contents, serialized request arguments, or unfiltered error messages.
+
+**Rationale**: These boundaries reconcile stable primary results with the required cache freshness behavior and prevent the diagnostics feature from exposing request-derived content.
+
+**Validation**: Repeat identical requests against unchanged fixture contents and compare complete primary result records. Mutate relevant fixture contents and verify subsequent results can reflect the mutation after invalidation/refresh. Exercise diagnostics with unique sentinel strings in all prohibited input and failure fields, then assert none occur in stderr while protocol output remains unchanged.
+
 ## Optional Operational Diagnostics (User Story 6)
 
 **Decision**: Add a `--diagnostics` launch flag to the MCP server; diagnostics are off unless explicitly requested. When enabled, initialize `structured-logger` 1.0.5 with `default-features = false`, an explicit `INFO` level, its synchronous JSON writer, and the fixed MCP diagnostics target routed to stderr. Route the default writer to `std::io::sink()` so unrelated dependency logs cannot leak to stderr. Do not initialize the global logger when the flag is absent. Use structured key-values for the fixed event names and failure categories defined in [the data model](data-model.md#diagnostic-configuration-and-event) and MCP contract. A resolver `error` outcome is logged as a completed request status, distinct from an MCP/request-processing failure. Use a monotonically increasing process-local request sequence where correlation is needed. Record fixed categories rather than raw error text. Never record link text, context or vault paths, note contents, or tool arguments. Keep diagnostics separate from stdout protocol messages and MCP result objects.

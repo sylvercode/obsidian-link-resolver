@@ -2,6 +2,10 @@
 
 This contract adds one MCP stdio tool while preserving the existing resolver semantics and [result schema](../../001-link-resolver/contracts/result.schema.json).
 
+## Contract Versioning
+
+The MCP tool contract follows the project's semantic version. Within one major version, releases preserve argument names and requiredness, result field names and meanings, and outcome semantics. Additive optional arguments and fields are compatible. Any breaking contract change requires a new major version and migration notes. The first published MCP contract establishes the comparison baseline if no MCP contract has previously shipped; subsequent changes are checked against the latest published contract in the same major version.
+
 ## Server
 
 - Executable: `obsidian-link-resolver-mcp`.
@@ -49,6 +53,7 @@ The five resolver statuses are normal tool outcomes. `unresolved`, `sub_target_n
 - Paths remain vault-relative and forward-slash normalized. Candidate order and primary result fields remain deterministic.
 - `with_emplacement` requests the existing structured emplacement. Attachments do not gain heading/emplacement data.
 - Repeated requests for the same canonical vault root reuse the process cache. Watch events mark it dirty for refresh before the next resolution; a background full rescan runs at least every 60 seconds per cached root, independently of requests. If watcher setup is unavailable, periodic scans still run. A failed refresh returns an error rather than a result from a known-stale index.
+- Identical requests produce identical primary result records while the relevant vault contents remain unchanged. Results may change after relevant filesystem changes are reflected by cache invalidation or periodic refresh.
 
 ## Client Registration Shape
 
