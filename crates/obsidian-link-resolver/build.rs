@@ -13,7 +13,8 @@ fn main() {
 
     std::fs::create_dir_all(header_path.parent().unwrap()).unwrap();
 
-    let config = cbindgen::Config::from_file("cbindgen.toml").unwrap_or_default();
+    let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
+    let config = cbindgen::Config::from_file(config_path.to_str().unwrap()).unwrap_or_default();
     cbindgen::Builder::new()
         .with_config(config)
         .with_crate(crate_dir)

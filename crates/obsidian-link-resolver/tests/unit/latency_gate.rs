@@ -4,7 +4,7 @@ use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve_with_vault;
 use obsidian_link_resolver::vault::{enumerate_vault, Vault, VaultSource};
 
-#[path = "../fixtures/bench_vault.rs"]
+#[path = "../../../../tests/fixtures/bench_vault.rs"]
 mod bench_vault;
 
 /// Verifies warm-run median latency stays within the documented 100ms performance gate.

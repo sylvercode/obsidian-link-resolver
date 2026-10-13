@@ -1,0 +1,18 @@
+[package]
+name = "obsidian-link-resolver-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "obsidian-link-resolver-mcp"
+path = "src/main.rs"
+
+[dependencies]
+log = { version = "0.4", features = ["kv"] }
+notify = "8.2.0"
+obsidian-link-resolver = { path = "../obsidian-link-resolver" }
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "macros", "schemars", "transport-io"] }
+structured-logger = { version = "1.0.5", default-features = false }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

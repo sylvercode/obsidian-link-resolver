@@ -40,7 +40,6 @@
 //! - JSON output is compact, single-line, with fixed field order
 //! - No non-deterministic fields (timestamps, etc.) in primary result objects
 
-pub mod cli;
 pub mod ffi;
 pub mod link;
 pub mod note;

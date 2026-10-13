@@ -1,7 +1,9 @@
 //! Command-line entry point for the Obsidian Link Resolver binary.
 
+mod cli;
+
 use clap::Parser;
-use obsidian_link_resolver::cli::{CliArgs, OutputFormat};
+use cli::{CliArgs, OutputFormat};
 
 /// Parse CLI arguments, resolve one link, render output, and exit with the mapped status code.
 fn main() {

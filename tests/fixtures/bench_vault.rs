@@ -4,8 +4,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Root directory where the generated benchmark vault is created.
-const BENCH_ROOT: &str = "tests/fixtures/bench-vault";
 /// Canonical link resolved repeatedly by benchmark and latency-gate tests.
 const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 
@@ -20,7 +18,7 @@ const TARGET_LINK: &str = "[[Target Note#Target Heading]]";
 ///
 /// A tuple `(vault_root, context_path, target_link)` used by latency benchmarks.
 pub fn ensure_bench_vault() -> io::Result<(PathBuf, PathBuf, &'static str)> {
-    let root = PathBuf::from(BENCH_ROOT);
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/bench-vault");
     let metadata_dir = root.join(".obsidian");
     let sentinel = metadata_dir.join(".bench-vault-ready");
     let lock_path = metadata_dir.join(".bench-vault.lock");
@@ -150,6 +148,7 @@ fn write_file(path: &Path, contents: &str) -> io::Result<()> {
             )
         })?;
     }
+
     fs::write(path, contents).map_err(|error| {
         io::Error::new(
             error.kind(),

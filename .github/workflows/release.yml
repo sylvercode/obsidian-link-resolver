@@ -38,7 +38,7 @@ jobs:
           CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
         run: |
           cargo test
-          cargo bench --bench resolve -- --warm-up-time 0.1
+          cargo bench -p obsidian-link-resolver --bench resolve -- --warm-up-time 0.1
           cargo build --release
           cargo build --release --target x86_64-unknown-linux-gnu
           cargo build --release --target aarch64-unknown-linux-gnu
@@ -67,7 +67,7 @@ jobs:
           cp target/aarch64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-aarch64"
           cp target/aarch64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-aarch64.dylib"
 
-          cp include/obsidian_link_resolver.h "dist/obsidian_link_resolver-${RELEASE_TAG}.h"
+          cp crates/obsidian-link-resolver/include/obsidian_link_resolver.h "dist/obsidian_link_resolver-${RELEASE_TAG}.h"
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v3
         with:

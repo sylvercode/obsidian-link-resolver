@@ -26,7 +26,7 @@ fn run_resolver(link: &str, context: &str, extra_args: &[&str]) -> (std::process
 /// Verifies canonical link forms resolve and emit single-line JSON.
 #[test]
 fn resolves_primary_link_forms_to_single_line_json() {
-    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let fixture_root = format!("{}/../../tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let context = format!("{}/notes/a.md", fixture_root);
 
     let cases = [
@@ -71,7 +71,7 @@ fn resolves_primary_link_forms_to_single_line_json() {
 /// Verifies heading and block links return the expected target line ranges.
 #[test]
 fn returns_target_range_for_heading_and_block_targets() {
-    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let fixture_root = format!("{}/../../tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let context = format!("{}/notes/a.md", fixture_root);
 
     let (output, json) = run_resolver("[[Project Plan#Milestones]]", &context, &[]);

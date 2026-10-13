@@ -15,7 +15,8 @@
 //!
 //! All strings are NUL-terminated UTF-8, and the caller owns the returned pointers.
 //! Detailed signatures and semantics are documented in `contracts/ffi.md`
-//! and the generated C header `include/obsidian_link_resolver.h` (auto-generated via `cbindgen`).
+//! and the generated C header `crates/obsidian-link-resolver/include/obsidian_link_resolver.h`
+//! (auto-generated via `cbindgen`).
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
