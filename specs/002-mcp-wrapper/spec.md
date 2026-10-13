@@ -21,6 +21,10 @@
 - Q: How should users choose the MCP installer component while keeping the existing CLI-only install as the default? → A: Provide separate MCP installer commands alongside the existing CLI installer (Option B).
 - Q: How should the MCP wrapper distinguish malformed tool arguments from resolver failures? → A: Missing required arguments or arguments with invalid types are MCP tool/protocol errors and do not produce a resolver result. Once arguments satisfy the MCP input schema, failures reported by the resolver—including invalid link, context, or vault values when the resolver classifies them as errors—are returned as normal tool results with the resolver's `error` outcome and reason.
 
+### Session 2026-10-12
+
+- Q: How should releases version the library, CLI binary, and MCP server when they live in the same repository? → A: Keep one repository, but version and release each component independently (Option B).
+
 ### Analysis refinements 2026-10-05
 
 - Deterministic results are required for identical inputs when the vault contents are unchanged; filesystem changes may legitimately change later results.
@@ -168,6 +172,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow for GitHub Copilot in VS Code and Claude Desktop, including client-specific local-stdio registration examples and separate MCP installer commands alongside the existing CLI installer. Installation guidance MUST follow the existing README's latest-version install/update, pinned-version, and manual-fallback patterns; it MUST provide an MCP-specific install/update path without changing the existing CLI installer or its CLI-only default.
 - **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text, context or vault paths, note contents, serialized request arguments, or unfiltered error messages.
 - **FR-021**: The MCP interface MUST reject calls with missing required arguments or argument values of the wrong schema type as MCP tool/protocol errors without producing a resolver result. For calls that satisfy the input schema, it MUST preserve the resolver's result—including an `error` outcome and reason when the resolver rejects a link, context, or vault value—without converting it into an MCP tool/protocol error.
+- **FR-022**: The library, CLI binary, and MCP server MUST remain in one repository and MUST have independently assignable semantic versions and component-scoped release tags. Releasing one component MUST NOT require incrementing the versions or publishing new artifacts for the other components.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -193,6 +198,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-010**: On the designated release benchmark runner, end-to-end latency from receipt of a tool call to completion of its response has a p50 of at most 100 ms across 100 consecutive warm-cache calls against the approximately 5,000-note benchmark vault. Process startup and initial index construction are excluded; the runner and fixture version are recorded with results.
 - **SC-011**: Boundary contract tests verify all three response classes: missing required arguments and wrong-type required or optional arguments produce an MCP tool/protocol error; schema-valid arguments rejected by the resolver produce its normal `error` result with reason. Resolver outcomes such as `unresolved` and `sub-target-not-found` remain normal tool results.
 - **SC-012**: Every published MCP contract version preserves argument names, requiredness, result field names, and field meanings within its major version; any breaking change is published under a new major version with migration notes.
+- **SC-013**: Release CI can publish each of the library, CLI binary, and MCP server from a component-scoped tag without changing the other components' versions or publishing their artifacts.
 
 ## Assumptions
 
