@@ -95,16 +95,20 @@ impl ResolverServer {
         if request.link.is_empty() || request.context_path.is_empty() {
             return Err("link and context_path must not be empty".to_owned());
         }
-        let vault_root = request
-            .vault_root
-            .as_deref()
-            .or(self.default_vault.as_deref());
-        let result = resolve(
-            &request.link,
-            &request.context_path,
-            vault_root,
-            request.with_emplacement,
-        );
+        let vault_root = request.vault_root.or_else(|| self.default_vault.clone());
+        let link = request.link;
+        let context_path = request.context_path;
+        let with_emplacement = request.with_emplacement;
+        let result = tokio::task::spawn_blocking(move || {
+            resolve(
+                &link,
+                &context_path,
+                vault_root.as_deref(),
+                with_emplacement,
+            )
+        })
+        .await
+        .map_err(|error| format!("resolver task failed: {error}"))?;
         let structured = serde_json::to_value(result).map_err(|error| error.to_string())?;
         Ok(CallToolResult::structured(structured))
     }
