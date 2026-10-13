@@ -36,6 +36,3 @@ include/obsidian_link_resolver.h
 # OS metadata
 .DS_Store
 Thumbs.db
-
-# Cargo lock is usually committed for binaries, but keep it out if this project is treated as a library-only package.
-Cargo.lock

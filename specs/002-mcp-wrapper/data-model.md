@@ -17,7 +17,7 @@ The request is not persisted. It is passed to the resolver with no alternate par
 
 ## MCP Contract Version
 
-The public MCP tool contract is versioned with the project's semantic version.
+The public MCP tool contract is versioned with the shared Cargo package's semantic version.
 
 | Element | Compatibility rule |
 |---|---|
@@ -27,7 +27,7 @@ The public MCP tool contract is versioned with the project's semantic version.
 | Additions | New optional arguments and result fields may be added compatibly. |
 | Breaking changes | Require a new major version and migration notes. |
 
-The first published MCP contract is the baseline if no MCP contract has yet been released. Later releases are compared with the latest published contract in their major version.
+The first published MCP contract is the baseline if no MCP contract has yet been released. Later MCP releases are compared with the latest published contract in the same major version.
 
 ## Resolver Capability
 
@@ -87,3 +87,38 @@ When present, `failure_kind` is one of `invalid_arguments`, `root_selection`, `c
 - Each request produces one resolver result from that request plus the selected `Vault` snapshot and current target note contents.
 - The tool result schema is the existing result schema, not an MCP-specific fork.
 - Diagnostic events are an opt-in operational side channel; they do not affect request processing or result serialization.
+
+## Shared-Version Component Release
+
+A GitHub release triggered by one semantic version tag and containing distinct assets for the library/FFI, CLI, and MCP server.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `component` | enum | One of `library`, `cli`, or `mcp`; identifies an asset family, not a distinct release version or installer parameter. |
+| `version` | semantic version | Shared Cargo package version applied to all component assets. |
+| `tag` | string | `vX.Y.Z`, matching the shared Cargo package version. |
+| `artifacts` | component-specific list | Distinct library/FFI release assets, CLI binaries, and MCP server binaries, all attached to this shared-tag release. |
+| `publication_channel` | enum | `github_release`; crates.io publication is not part of this feature. |
+
+### Release State Transitions
+
+- **Tagged → Validated**: the release workflow accepts a semantic `vX.Y.Z` tag and verifies that it matches the shared package version.
+- **Validated → Tested**: the full repository test suite and MCP warm-run benchmark pass.
+- **Tested → Published**: library/FFI, CLI, and MCP assets are staged with distinct names and published together under the shared version.
+- A malformed tag or failed test/performance gate blocks artifact publication.
+
+The CLI installer installs only the CLI binary. A separate MCP installer installs only the MCP binary without requiring a component-selection parameter. Library/FFI assets are distributed separately and are not installed by either executable installer.
+
+## Workspace Crates
+
+The repository is organized as a Cargo workspace with three member crates sharing a synchronized version:
+
+| Crate | Path | Responsibility | Dependencies |
+|---|---|---|---|
+| `obsidian-link-resolver` | `crates/obsidian-link-resolver` | Core link resolution engine, vault indexing, and C ABI / FFI | `serde`, `serde_json`, `walkdir`, `urlencoding`, `cbindgen` |
+| `obsidian-link-resolver-cli` | `crates/obsidian-link-resolver-cli` | Command-line interface executable (`obsidian-link-resolver`) | `obsidian-link-resolver`, `clap` |
+| `obsidian-link-resolver-mcp` | `crates/obsidian-link-resolver-mcp` | MCP stdio server executable (`obsidian-link-resolver-mcp`) | `obsidian-link-resolver`, `rmcp`, `notify`, `structured-logger`, `tokio`, `clap` |
+
+All crates inherit the workspace semantic version (`[workspace.package.version]`). Separate CLI and MCP installer commands let users install either executable without installing the other or passing a component-selection parameter.
+
+CLI argument parsing and formatting types reside in the CLI crate; the resolver library has no `cli` module and does not depend on `clap`. The MCP executable may use `clap` for its separate server launch options. Moving the existing module removes the public `obsidian_link_resolver::cli` API, including `CliArgs` and `OutputFormat`. The first release of the split workspace must therefore be `2.0.0` from the current `1.1.0` line, and its migration notes must document the breaking removal. No compatibility re-export or shim is provided; the resolver and FFI APIs are unchanged.

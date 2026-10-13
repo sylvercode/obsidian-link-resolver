@@ -3,7 +3,7 @@
 **Date**: 2026-10-05
 ## Contract Compatibility and Analysis Refinements
 
-**Decision**: Treat the MCP tool contract as part of the project's semantic-versioned public API. Within a major version, preserve existing argument names and requiredness, result field names and meanings, and outcome semantics; additive optional arguments and fields are allowed. A breaking contract change requires a new major version and migration notes. Keep the published MCP contract artifact as the compatibility baseline and compare each proposed release against it. The first published MCP contract establishes the baseline if no earlier MCP contract has been released.
+**Decision**: Treat the MCP tool contract as part of the shared Cargo package's semantic-versioned public API. Within a major version, preserve existing argument names and requiredness, result field names and meanings, and outcome semantics; additive optional arguments and fields are allowed. A breaking contract change requires a new major version and migration notes. Keep the published MCP contract artifact as the compatibility baseline and compare each proposed MCP release against it. The first published MCP contract establishes the baseline if no earlier MCP contract has been released.
 
 **Rationale**: FR-012 and SC-012 require compatibility to be verifiable against published contract versions and migration notes. A checked-in contract gives reviewers and automated validation a concrete schema baseline, while release notes explain intentional breaking changes. This applies the constitution's semantic-versioning and documented-migration expectations to the newly introduced MCP surface without changing the established CLI contract.
 
@@ -12,7 +12,7 @@
 - Freeze the MCP contract permanently: prevents compatible additive evolution and is stricter than the spec.
 - Use the MCP protocol's negotiated protocol version as the product contract version: conflates protocol compatibility with this server's tool arguments and result schema.
 
-**Validation**: Compare the candidate contract's argument names, requiredness, result fields, and outcome semantics with the latest published contract in the same project major version. Fail compatibility checks for removed/renamed fields or arguments, changed requiredness, or changed meanings; verify additive optional changes remain permitted. For an identified breaking change, require a major-version release and migration notes. With no previously published MCP contract, record the first released contract as the baseline.
+**Validation**: Compare the candidate contract's argument names, requiredness, result fields, and outcome semantics with the latest published contract in the same major version. Fail compatibility checks for removed/renamed fields or arguments, changed requiredness, or changed meanings; verify additive optional changes remain permitted. For an identified breaking change, require a new major-version release and migration notes. With no previously published MCP contract, record the first released contract as the baseline.
 
 ## MCP Warm-Run Performance Gate
 
@@ -116,7 +116,7 @@
 
 ## Distribution and Client Setup
 
-**Decision**: Publish a distinct `obsidian-link-resolver-mcp` executable in the existing GitHub release assets for the current supported targets: Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64. Add explicit `--component mcp` selection to the existing installer flows while retaining CLI-only behavior as the default. Document a client-launched stdio server configuration and vault selection.
+**Decision**: Publish a distinct `obsidian-link-resolver-mcp` executable in the existing GitHub release assets for the current supported targets: Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64. Retain the existing CLI installer and add separate parameterless MCP installer commands/scripts. Document a client-launched stdio server configuration and vault selection.
 
 **Rationale**: Existing release workflows already cross-compile native executables for those targets, and both installers already select assets by OS/architecture. A separate binary does not disturb the current CLI argument contract. The current PowerShell installer recognizes Windows ARM64, but the release workflow does not build that target; do not imply that MCP Windows ARM64 is supported until an artifact exists.
 
@@ -125,6 +125,23 @@
 - Require source builds: conflicts with the requirement for ordinary users to install prebuilt binaries.
 - Introduce a package-manager launcher: adds a distribution/runtime path when existing native release/install mechanisms are available.
 
-**Implementation implications**: Extend `Cargo.toml`, CI, tag-release tests/builds/staging, both installers, and README client configuration docs. Release tests and the existing benchmark gate must pass before MCP assets are staged/published. Installer defaults remain compatible; MCP installation is explicitly selectable and installs the MCP executable name required by client configuration.
+**Implementation implications**: Extend `Cargo.toml`, CI, tag-release tests/builds/staging, add separate Bash and PowerShell MCP installer scripts, and update README client configuration docs. Release tests and the existing benchmark gate must pass before MCP assets are staged/published. Existing CLI installer behavior remains unchanged; the dedicated MCP installer installs the MCP executable required by client configuration without a component-selection parameter.
 
 **Sources**: Repository [release workflow](../../.github/workflows/release.yml), [CI workflow](../../.github/workflows/ci.yml), [Bash installer](../../scripts/install.sh), [PowerShell installer](../../scripts/install.ps1), and [README](../../README.md).
+
+## Workspace Crate Separation with Synchronized Releases
+
+**Decision**: Split the repository into three separate crates in a Cargo workspace under `crates/`: `obsidian-link-resolver` (library and C ABI), `obsidian-link-resolver-cli` (CLI binary), and `obsidian-link-resolver-mcp` (MCP server binary). Manage a shared semantic version across all member crates at the workspace level (`[workspace.package]`). Continue using `vX.Y.Z` GitHub release tags. Each tag triggers one release workflow that runs the full workspace test suite (`cargo test --workspace`) and MCP warm-run benchmark, then publishes distinct library/FFI, CLI, and MCP assets carrying the same version. Preserve the existing CLI and MCP executable names. The existing CLI installer and a separate parameterless MCP installer each install only their respective executable; library/FFI assets are distributed separately.
+
+**Rationale**: Separating the components into dedicated crates provides clean modular boundaries and keeps build and test targets focused. `rmcp`, `notify`, and `structured-logger` belong to the MCP crate. The existing `src/cli.rs` is moved to `crates/obsidian-link-resolver-cli/src/cli.rs`; the resolver library does not expose or depend on CLI argument types or `clap`. `clap` may also be used by the MCP executable for its distinct server launch options. Moving the existing module removes the public `obsidian_link_resolver::cli` API, so the first synchronized workspace release MUST be `2.0.0` rather than a compatible `1.x` release. The release must include migration notes stating that `CliArgs` and `OutputFormat` are no longer exported by the resolver library and have no library compatibility shim; callers that used the CLI types must migrate to the executable's command-line interface or provide their own parsing. Resolver and FFI APIs remain unchanged. Using Cargo workspace-level versioning keeps all three crates synchronized under a single version, so the project avoids the complexity of per-component release tags or multi-release orchestration while still gaining the software architecture benefits of modular crates.
+
+**Alternatives considered**:
+- Keep a single monolithic package: simpler Cargo setup, but mixes MCP dependencies, CLI dependencies, and library code in one manifest with shared binary declarations.
+- Independently versioned crates with component-scoped tags (`cli-v1.0.0`, etc.): adds multi-tag release workflows and separate version tracking when the team prefers unified releases.
+- Publish only one selected component per tag: creates fragmented releases where components at the same version cannot be obtained together.
+
+**Compatibility and implementation implications**: Convert root `Cargo.toml` into a workspace manifest with `[workspace]` and `[workspace.package]`, setting the first workspace version to `2.0.0` to account for the removal of `obsidian_link_resolver::cli`. Move existing library and FFI code to `crates/obsidian-link-resolver/`, CLI code (including `cli.rs`) to `crates/obsidian-link-resolver-cli/`, and MCP code to `crates/obsidian-link-resolver-mcp/`. The CLI and MCP crates declare path dependencies on the library crate (`obsidian-link-resolver = { path = "../obsidian-link-resolver", version = "..." }`); the CLI crate owns the existing CLI parser, while the MCP crate may declare `clap` for its own launch options. Do not re-export CLI types or retain `clap` in the resolver crate for compatibility. Release notes for the `2.0.0` workspace release document the breaking module removal; the resolver and FFI APIs remain compatible. Release staging builds each crate's binary/library targets and publishes them with distinct names carrying `RELEASE_TAG`. Preserve the CLI installers and add separate parameterless MCP installer scripts. No crates.io publication is required.
+
+**Validation**: Run `cargo test --workspace` and `cargo check --workspace` to ensure all crates build cleanly. Verify that release staging packages each component's distinct assets under the shared `vX.Y.Z` tag. Confirm that the existing CLI installer downloads only the CLI binary and the separate MCP installer downloads only the MCP binary without requiring a component-selection parameter.
+
+**Sources**: Repository [Cargo manifest](../../Cargo.toml), [release workflow](../../.github/workflows/release.yml), [CI workflow](../../.github/workflows/ci.yml), [Bash installer](../../scripts/install.sh), and [PowerShell installer](../../scripts/install.ps1).

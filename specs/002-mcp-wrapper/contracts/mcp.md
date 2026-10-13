@@ -4,7 +4,7 @@ This contract adds one MCP stdio tool while preserving the existing resolver sem
 
 ## Contract Versioning
 
-The MCP tool contract follows the project's semantic version. Within one major version, releases preserve argument names and requiredness, result field names and meanings, and outcome semantics. Additive optional arguments and fields are compatible. Any breaking contract change requires a new major version and migration notes. The first published MCP contract establishes the comparison baseline if no MCP contract has previously shipped; subsequent changes are checked against the latest published contract in the same major version.
+The MCP tool contract follows the shared Cargo package's semantic version. Within one major version, releases preserve argument names and requiredness, result field names and meanings, and outcome semantics. Additive optional arguments and fields are compatible. Any breaking contract change requires a new major version and migration notes. The first published MCP contract establishes the comparison baseline if no MCP contract has previously shipped; subsequent changes are checked against the latest published contract in the same major version.
 
 ## Server
 
