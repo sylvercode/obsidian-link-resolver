@@ -10,7 +10,7 @@ One `resolve_obsidian_link` invocation.
 |---|---|---:|---|
 | `link` | string | Yes | Non-empty raw Obsidian link text accepted by the existing resolver parser. |
 | `context_path` | string | Yes | Non-empty path to the file containing the link; relative and absolute paths follow existing resolver behavior. |
-| `vault_root` | string | No | Non-empty explicit vault root. Per-call value overrides a server launch-time default; if neither is supplied, existing nearest-`.obsidian` detection applies. |
+| `vault_root` | string | No | Non-empty explicit vault root, which must canonicalize to one of the launch-time allowed roots. If omitted, the server selects the configured root containing `context_path`; requests outside configured roots are rejected. |
 | `with_emplacement` | boolean | No | Defaults to `false`; requests the existing structured heading/section/block result when available. Attachments retain existing no-emplacement behavior. |
 
 The request is not persisted. It is passed to the resolver with no alternate parsing or matching rules.

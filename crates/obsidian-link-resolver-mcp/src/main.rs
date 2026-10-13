@@ -9,9 +9,9 @@ mod mcp;
 #[derive(Debug, Parser)]
 #[command(name = "obsidian-link-resolver-mcp")]
 struct Args {
-    /// Default vault root; a per-call `vault_root` takes precedence.
-    #[arg(long, value_name = "DIR")]
-    vault: Option<String>,
+    /// Allowed vault root; repeat to allow multiple vaults.
+    #[arg(long, value_name = "DIR", required = true, action = clap::ArgAction::Append)]
+    vault: Vec<String>,
 }
 
 /// Start the MCP stdio server and wait until the client disconnects.
@@ -22,7 +22,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let server = mcp::ResolverServer::new(args.vault);
+    let server = mcp::ResolverServer::new(args.vault)?;
     let service = server.serve(stdio()).await?;
     service.waiting().await?;
     Ok(())

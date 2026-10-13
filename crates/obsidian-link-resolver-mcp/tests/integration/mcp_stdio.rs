@@ -1,7 +1,9 @@
 //! End-to-end MCP lifecycle and resolver calls over child-process stdio.
 
-use super::mcp_client::{context_file, StdioClient};
+use super::mcp_client::{context_file, fixture_root, StdioClient};
 use serde_json::{json, Value};
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Initialize a server, discover its tool, and resolve a known fixture link.
 #[test]
@@ -71,4 +73,50 @@ fn returns_mcp_errors_for_missing_and_wrong_type_arguments() {
         assert!(response["result"].get("structuredContent").is_none());
         assert_ne!(response["result"]["structuredContent"]["status"], "error");
     }
+}
+
+/// Verify repeated launch-time roots permit resolution in either configured vault.
+#[test]
+fn resolves_from_each_configured_vault() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after Unix epoch")
+        .as_nanos();
+    let second_root = std::env::temp_dir().join(format!(
+        "obsidian-link-resolver-mcp-{}-{unique}",
+        std::process::id()
+    ));
+    fs::create_dir_all(second_root.join(".obsidian")).expect("second vault should be created");
+    let context = second_root.join("Context.md");
+    fs::write(&context, "# Context\n").expect("second vault context should be written");
+    fs::write(second_root.join("Project Plan.md"), "# Plan\n")
+        .expect("second vault target should be written");
+
+    let mut client = StdioClient::with_vaults(vec![
+        fixture_root(),
+        second_root.to_string_lossy().into_owned(),
+    ]);
+    assert!(client.initialize().get("result").is_some());
+    client.notify_initialized();
+
+    let response = client.call_tool(
+        2,
+        json!({
+            "link": "[[Project Plan]]",
+            "context_path": context.to_string_lossy(),
+            "vault_root": second_root.to_string_lossy()
+        }),
+    );
+    assert_eq!(response["result"]["isError"], false);
+    assert_eq!(
+        response["result"]["structuredContent"]["status"],
+        "resolved"
+    );
+    assert_eq!(
+        response["result"]["structuredContent"]["target_path"],
+        "Project Plan.md"
+    );
+
+    drop(client);
+    fs::remove_dir_all(second_root).expect("temporary vault should be removed");
 }

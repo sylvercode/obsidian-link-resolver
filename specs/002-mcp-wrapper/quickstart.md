@@ -28,7 +28,7 @@ cargo build --release -p obsidian-link-resolver-mcp
 target/release/obsidian-link-resolver-mcp --help
 ```
 
-Register the installed executable in the client's standard local stdio-server configuration. The command is `obsidian-link-resolver-mcp`; optionally pass `--vault /absolute/path/to/vault` as a default. The process uses stdin/stdout for MCP only. Do not wrap or redirect its stdout. A per-call `vault_root` overrides the launch default.
+Register the installed executable in the client's standard local stdio-server configuration. The command is `obsidian-link-resolver-mcp`; pass `--vault /absolute/path/to/vault` to configure an allowed vault root, repeating `--vault` for each permitted vault. At least one root is required. A per-call `vault_root` can select only one of those configured roots, and `context_path` must be inside the selected root. The process uses stdin/stdout for MCP only. Do not wrap or redirect its stdout.
 
 ## Tool Scenarios
 

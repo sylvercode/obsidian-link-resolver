@@ -8,6 +8,8 @@ use rmcp::{
     tool, tool_handler, tool_router, ServerHandler,
 };
 use serde::Deserialize;
+use std::fs;
+use std::path::PathBuf;
 
 /// Typed arguments accepted by the `resolve_obsidian_link` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -19,7 +21,7 @@ struct ResolveRequest {
     /// Path to the note containing the link.
     #[schemars(length(min = 1))]
     context_path: String,
-    /// Optional vault root, overriding the launch-time default.
+    /// Optional vault root, which must be one of the launch-time allowed roots.
     #[serde(default, deserialize_with = "deserialize_non_empty_vault_root")]
     #[schemars(with = "String", length(min = 1))]
     vault_root: Option<String>,
@@ -51,25 +53,39 @@ where
 /// MCP server implementation for the resolver tool.
 #[derive(Debug, Clone)]
 pub(crate) struct ResolverServer {
-    default_vault: Option<String>,
+    allowed_vaults: Vec<PathBuf>,
     tool_router: ToolRouter<Self>,
 }
 
 impl ResolverServer {
-    /// Create a resolver server with an optional default vault root.
+    /// Create a resolver server with the vault roots it is permitted to access.
     ///
     /// # Parameters
     ///
-    /// - `default_vault`: Launch-time vault root used when a request omits `vault_root`.
+    /// - `allowed_vaults`: Launch-time vault roots available to requests.
     ///
     /// # Returns
     ///
     /// A server with the resolver tool registered.
-    pub(crate) fn new(default_vault: Option<String>) -> Self {
-        Self {
-            default_vault,
-            tool_router: Self::tool_router(),
+    pub(crate) fn new(allowed_vaults: Vec<String>) -> Result<Self, String> {
+        if allowed_vaults.is_empty() {
+            return Err("at least one allowed vault root is required".to_owned());
         }
+        let allowed_vaults = allowed_vaults
+            .iter()
+            .map(|root| {
+                let canonical_root = fs::canonicalize(root)
+                    .map_err(|_| "an allowed vault root could not be accessed".to_owned())?;
+                if !canonical_root.is_dir() {
+                    return Err("an allowed vault root must be a directory".to_owned());
+                }
+                Ok(canonical_root)
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Self {
+            allowed_vaults,
+            tool_router: Self::tool_router(),
+        })
     }
 }
 
@@ -95,7 +111,11 @@ impl ResolverServer {
         if request.link.is_empty() || request.context_path.is_empty() {
             return Err("link and context_path must not be empty".to_owned());
         }
-        let vault_root = request.vault_root.or_else(|| self.default_vault.clone());
+        let vault_root = select_allowed_vault(
+            &request.context_path,
+            request.vault_root.as_deref(),
+            &self.allowed_vaults,
+        )?;
         let link = request.link;
         let context_path = request.context_path;
         let with_emplacement = request.with_emplacement;
@@ -103,7 +123,7 @@ impl ResolverServer {
             resolve(
                 &link,
                 &context_path,
-                vault_root.as_deref(),
+                Some(vault_root.to_string_lossy().as_ref()),
                 with_emplacement,
             )
         })
@@ -112,6 +132,38 @@ impl ResolverServer {
         let structured = serde_json::to_value(result).map_err(|error| error.to_string())?;
         Ok(CallToolResult::structured(structured))
     }
+}
+
+/// Select an allowed vault containing the context and validate any requested root.
+fn select_allowed_vault(
+    context_path: &str,
+    requested_root: Option<&str>,
+    allowed_vaults: &[PathBuf],
+) -> Result<PathBuf, String> {
+    let context_path = fs::canonicalize(context_path)
+        .map_err(|_| "context_path must be inside a configured vault".to_owned())?;
+    let containing_roots = allowed_vaults
+        .iter()
+        .filter(|root| context_path.starts_with(root.as_path()))
+        .collect::<Vec<_>>();
+
+    if let Some(requested_root) = requested_root {
+        let requested_root = fs::canonicalize(requested_root)
+            .map_err(|_| "vault_root is not an allowed configured vault".to_owned())?;
+        if !allowed_vaults.contains(&requested_root) {
+            return Err("vault_root is not an allowed configured vault".to_owned());
+        }
+        if !context_path.starts_with(&requested_root) {
+            return Err("context_path must be inside the selected vault".to_owned());
+        }
+        return Ok(requested_root);
+    }
+
+    containing_roots
+        .into_iter()
+        .max_by_key(|root| root.components().count())
+        .map(|root| (*root).clone())
+        .ok_or_else(|| "context_path must be inside a configured vault".to_owned())
 }
 
 #[tool_handler(router = self.tool_router)]

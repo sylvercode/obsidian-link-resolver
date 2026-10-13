@@ -76,6 +76,24 @@ fn rejects_missing_or_wrong_type_arguments_without_resolver_result() {
     }
 }
 
+/// Ensure a request cannot widen the launch-time vault boundary to an ancestor.
+#[test]
+fn rejects_unconfigured_ancestor_vault_root() {
+    let mut client = StdioClient::new();
+    assert!(client.initialize().get("result").is_some());
+    client.notify_initialized();
+
+    let response = client.call_tool(
+        2,
+        json!({
+            "link": "[[Project Plan]]",
+            "context_path": super::mcp_client::context_file(),
+            "vault_root": "/"
+        }),
+    );
+    assert_tool_error(&response);
+}
+
 /// Assert that a tool response is an MCP-level error without resolver content.
 ///
 /// # Parameters

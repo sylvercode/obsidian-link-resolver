@@ -18,8 +18,16 @@ impl StdioClient {
     ///
     /// A client connected to the server's stdin and stdout pipes.
     pub fn new() -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_obsidian-link-resolver-mcp"))
-            .args(["--vault", &fixture_root()])
+        Self::with_vaults(vec![fixture_root()])
+    }
+
+    /// Start the MCP server with the supplied allowed vault roots.
+    pub fn with_vaults(vaults: Vec<String>) -> Self {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_obsidian-link-resolver-mcp"));
+        for vault in &vaults {
+            command.args(["--vault", vault]);
+        }
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

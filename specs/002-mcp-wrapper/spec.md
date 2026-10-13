@@ -138,11 +138,11 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 ### Edge Cases
 
 - When a required argument is missing or any argument has the wrong schema type, the MCP wrapper returns an MCP tool/protocol error and does not invoke the resolver or fabricate a resolver result.
-- When schema-valid arguments contain a link, context, or vault value that the resolver rejects as invalid, the wrapper returns the resolver's normal `error` outcome and reason. Other resolver outcomes, such as `unresolved` or `sub-target-not-found`, remain normal results and are not converted into MCP tool errors.
+- When a request passes configured-root validation and the resolver rejects its link or vault contents, the wrapper returns the resolver's normal `error` outcome and reason. Requests with an unconfigured root or a context path that cannot be verified inside an allowed root are rejected as MCP tool errors before resolver invocation. Other resolver outcomes, such as `unresolved` or `sub-target-not-found`, remain normal results.
 - When the underlying resolver reports ambiguous note matches, the wrapper preserves the candidate list and reason in the MCP response.
 - When the link references a heading or block that does not exist, the wrapper reports the sub-target-not-found result defined by the resolver.
 - When a non-markdown attachment is requested, the wrapper preserves the attachment semantics and does not invent heading or emplacement information.
-- When the underlying resolver requires a vault root or vault detection, the MCP wrapper exposes the same behavior to callers through the tool contract.
+- The MCP process requires one or more launch-time allowed vault roots. A tool request may select only one of those roots, and its context path must be inside the selected root; omitting `vault_root` selects the configured root containing the context.
 - When identical inputs are submitted twice against unchanged vault contents, the wrapper produces the same structured result; no non-deterministic fields are included in the primary response. Results may differ after relevant vault changes are reflected.
 - When a vault is queried repeatedly, its cached index is reused; detected filesystem changes are reflected before the next resolution, and changes not detected sooner are reflected within 60 seconds.
 - When diagnostic logging is enabled, operational events and failures, including cache activity, are reported separately from tool results and exclude link text, context or vault paths, note contents, serialized request arguments, and unfiltered error messages; when disabled, optional diagnostic logs are not emitted.
@@ -153,7 +153,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 
 - **FR-001**: The system MUST provide an MCP interface that exposes the current Obsidian Link Resolver as a standard tool for AI clients and automation workflows.
 - **FR-002**: The MCP tool MUST accept the same minimal inputs required by the resolver: the Obsidian link string and the path of the context file that contains the link.
-- **FR-003**: The MCP tool MUST support the same optional configuration the resolver already supports, including explicit vault root selection and structured emplacement requests when applicable.
+- **FR-003**: The MCP tool MUST support optional explicit vault-root selection and structured emplacement requests when applicable. The server MUST require one or more launch-time allowed vault roots, MUST reject request roots outside that allow-list, and MUST reject context paths outside the selected allowed root.
 - **FR-004**: For tool calls whose arguments satisfy the MCP input schema, the MCP wrapper MUST preserve the resolver's semantic outcome categories: resolved, unresolved, sub-target-not-found, ambiguous, and error. Contract compatibility across published versions is governed by FR-012.
 - **FR-005**: The MCP tool MUST preserve the current resolver behavior for note-name matching, path-qualified references, vault-relative paths, same-file links, heading paths, block ids, and attachment handling.
 - **FR-006**: The MCP wrapper MUST expose a deterministic machine-readable result schema so clients can parse tool output without scraping human-readable text.

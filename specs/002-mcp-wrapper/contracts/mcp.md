@@ -11,7 +11,7 @@ The MCP tool contract follows the shared Cargo package's semantic version. Withi
 - Executable: `obsidian-link-resolver-mcp`.
 - Transport: MCP stdio. The client launches the local process and communicates using the standard MCP lifecycle and JSON-RPC messages over stdin/stdout.
 - stdout is reserved exclusively for protocol messages. Diagnostics and watcher warnings go to stderr.
-- Optional launch argument: `--vault <DIR>` supplies the default vault root. A `vault_root` in a tool request overrides it. Without either value, the resolver detects the nearest ancestor `.obsidian` directory from `context_path`.
+- Required launch argument: `--vault <DIR>` configures an allowed vault root; repeat the option to allow multiple vaults. Requests without `vault_root` select the configured root containing `context_path`. A request `vault_root` must canonicalize to one of the configured roots, and `context_path` must be inside that root. Requests cannot widen the launch-time filesystem scope.
 - Optional launch flag: `--diagnostics` enables structured JSON-lines operational events on stderr. Diagnostics are disabled by default. Events cover server lifecycle, request processing/outcomes/failures, and cache reuse/refresh/watcher outcomes.
 - The process remains alive for multiple tool calls and owns its vault cache until shutdown.
 
@@ -39,7 +39,7 @@ Each record includes the logger envelope (`timestamp`, `level`, `target`, and st
 }
 ```
 
-`link` and `context_path` are required. `vault_root` and `with_emplacement` are optional. Relative/absolute path interpretation and vault containment checks follow the current resolver.
+`link` and `context_path` are required. `vault_root` and `with_emplacement` are optional. The server returns an MCP tool error before resolver invocation when the context cannot be verified inside an allowed root or the requested root is not in the launch-time allow-list. Relative and absolute path interpretation within an allowed root follows the current resolver.
 
 ### Output
 
@@ -57,4 +57,4 @@ The five resolver statuses are normal tool outcomes. `unresolved`, `sub_target_n
 
 ## Client Registration Shape
 
-Client configuration uses its standard local stdio server registration mechanism and launches the installed `obsidian-link-resolver-mcp` executable. The exact JSON nesting is client-specific; the command and arguments are the executable path and optional `--vault` default. The request-level `vault_root` remains available for clients that reuse one process across vaults.
+Client configuration uses its standard local stdio server registration mechanism and launches the installed `obsidian-link-resolver-mcp` executable. The exact JSON nesting is client-specific; pass one `--vault` argument for every permitted vault. The request-level `vault_root` selects among those configured roots when a client reuses one process across vaults.
