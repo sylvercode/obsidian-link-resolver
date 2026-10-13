@@ -17,7 +17,7 @@ The request is not persisted. It is passed to the resolver with no alternate par
 
 ## MCP Contract Version
 
-The public MCP tool contract is versioned with the project's semantic version.
+The public MCP tool contract is versioned with the shared Cargo package's semantic version.
 
 | Element | Compatibility rule |
 |---|---|
@@ -27,7 +27,7 @@ The public MCP tool contract is versioned with the project's semantic version.
 | Additions | New optional arguments and result fields may be added compatibly. |
 | Breaking changes | Require a new major version and migration notes. |
 
-The first published MCP contract is the baseline if no MCP contract has yet been released. Later releases are compared with the latest published contract in their major version.
+The first published MCP contract is the baseline if no MCP contract has yet been released. Later MCP releases are compared with the latest published contract in the same major version.
 
 ## Resolver Capability
 
@@ -87,3 +87,36 @@ When present, `failure_kind` is one of `invalid_arguments`, `root_selection`, `c
 - Each request produces one resolver result from that request plus the selected `Vault` snapshot and current target note contents.
 - The tool result schema is the existing result schema, not an MCP-specific fork.
 - Diagnostic events are an opt-in operational side channel; they do not affect request processing or result serialization.
+
+## Shared-Version Component Release
+
+A GitHub release triggered by one semantic version tag and containing distinct assets for the library/FFI, CLI, and MCP server.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `component` | enum | One of `library`, `cli`, or `mcp`; asset/installer selection value, not a distinct release version. |
+| `version` | semantic version | Shared Cargo package version applied to all component assets. |
+| `tag` | string | `vX.Y.Z`, matching the shared Cargo package version. |
+| `artifacts` | component-specific list | Distinct library/FFI release assets, CLI binaries, and MCP server binaries, all attached to this shared-tag release. |
+| `publication_channel` | enum | `github_release`; crates.io publication is not part of this feature. |
+
+### Release State Transitions
+
+- **Tagged → Validated**: the release workflow accepts a semantic `vX.Y.Z` tag and verifies that it matches the shared package version.
+- **Validated → Tested**: the full repository test suite and MCP warm-run benchmark pass.
+- **Tested → Published**: library/FFI, CLI, and MCP assets are staged with distinct names and published together under the shared version.
+- A malformed tag or failed test/performance gate blocks artifact publication.
+
+Installers allow selection among component assets within the shared-tag release. The CLI installer remains the default and installs only the CLI binary unless another component is explicitly selected.
+
+## Workspace Crates
+
+The repository is organized as a Cargo workspace with three member crates sharing a synchronized version:
+
+| Crate | Path | Responsibility | Dependencies |
+|---|---|---|---|
+| `obsidian-link-resolver` | `crates/obsidian-link-resolver` | Core link resolution engine, vault indexing, and C ABI / FFI | `serde`, `serde_json`, `walkdir`, `urlencoding`, `cbindgen` |
+| `obsidian-link-resolver-cli` | `crates/obsidian-link-resolver-cli` | Command-line interface executable (`obsidian-link-resolver`) | `obsidian-link-resolver`, `clap` |
+| `obsidian-link-resolver-mcp` | `crates/obsidian-link-resolver-mcp` | MCP stdio server executable (`obsidian-link-resolver-mcp`) | `obsidian-link-resolver`, `rmcp`, `notify`, `structured-logger`, `tokio`, `clap` |
+
+All crates inherit the workspace semantic version (`[workspace.package.version]`). Installers retain component selection, so a user can install either executable without installing the other.

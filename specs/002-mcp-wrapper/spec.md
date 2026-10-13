@@ -23,7 +23,7 @@
 
 ### Session 2026-10-12
 
-- Q: How should releases version the library, CLI binary, and MCP server when they live in the same repository? → A: Keep one repository, but version and release each component independently (Option B).
+- Q: How should releases version and publish the library, CLI binary, and MCP server when they live in the same repository? → A: Split the repository into three separate crates in a Cargo workspace (library, CLI, and MCP), sharing a synchronized semantic version and released under a single `vX.Y.Z` tag with distinct component-specific assets.
 
 ### Analysis refinements 2026-10-05
 
@@ -172,7 +172,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **FR-019**: The project MUST document the MCP installation and client-configuration flow for GitHub Copilot in VS Code and Claude Desktop, including client-specific local-stdio registration examples and separate MCP installer commands alongside the existing CLI installer. Installation guidance MUST follow the existing README's latest-version install/update, pinned-version, and manual-fallback patterns; it MUST provide an MCP-specific install/update path without changing the existing CLI installer or its CLI-only default.
 - **FR-020**: The server MUST provide optional diagnostic logging, disabled by default, for server lifecycle events, request processing and outcomes, and operational failures. Diagnostics MUST include cache reuse, refresh, and refresh-failure events; MUST be written to stderr; MUST NOT alter MCP responses; and MUST NOT include link text, context or vault paths, note contents, serialized request arguments, or unfiltered error messages.
 - **FR-021**: The MCP interface MUST reject calls with missing required arguments or argument values of the wrong schema type as MCP tool/protocol errors without producing a resolver result. For calls that satisfy the input schema, it MUST preserve the resolver's result—including an `error` outcome and reason when the resolver rejects a link, context, or vault value—without converting it into an MCP tool/protocol error.
-- **FR-022**: The library, CLI binary, and MCP server MUST remain in one repository and MUST have independently assignable semantic versions and component-scoped release tags. Releasing one component MUST NOT require incrementing the versions or publishing new artifacts for the other components.
+- **FR-022**: The library, CLI binary, and MCP server MUST be organized as three separate crates in a Cargo workspace within one repository (`obsidian-link-resolver` library, `obsidian-link-resolver-cli`, and `obsidian-link-resolver-mcp`). All crates MUST share a synchronized semantic version and release under a single `vX.Y.Z` tag. Each release MUST publish distinct library/FFI, CLI, and MCP assets; users and installers MUST be able to select a component without installing the other component binaries.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -198,7 +198,7 @@ A user troubleshooting the MCP server needs operational details about its lifecy
 - **SC-010**: On the designated release benchmark runner, end-to-end latency from receipt of a tool call to completion of its response has a p50 of at most 100 ms across 100 consecutive warm-cache calls against the approximately 5,000-note benchmark vault. Process startup and initial index construction are excluded; the runner and fixture version are recorded with results.
 - **SC-011**: Boundary contract tests verify all three response classes: missing required arguments and wrong-type required or optional arguments produce an MCP tool/protocol error; schema-valid arguments rejected by the resolver produce its normal `error` result with reason. Resolver outcomes such as `unresolved` and `sub-target-not-found` remain normal tool results.
 - **SC-012**: Every published MCP contract version preserves argument names, requiredness, result field names, and field meanings within its major version; any breaking change is published under a new major version with migration notes.
-- **SC-013**: Release CI can publish each of the library, CLI binary, and MCP server from a component-scoped tag without changing the other components' versions or publishing their artifacts.
+- **SC-013**: Pushing a valid `vX.Y.Z` tag runs the workspace release gates and publishes distinct library/FFI, CLI, and MCP assets built from their respective crates, all identified with the same synchronized version; each installer installs only its selected component, and the default installer remains CLI-only.
 
 ## Assumptions
 

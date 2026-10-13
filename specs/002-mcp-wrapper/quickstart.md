@@ -15,7 +15,7 @@ The devcontainer and CI/release toolchains must include any dependencies added b
 User-facing installation instructions for the published binary must match the existing README's latest-version install/update, pinned-version, and manual-fallback patterns. Provide separate MCP installer commands alongside the existing CLI installer, preserving its CLI-only default, then show local-stdio registration for GitHub Copilot in VS Code and Claude Desktop.
 
 ```bash
-cargo build --release --bin obsidian-link-resolver-mcp
+cargo build --release -p obsidian-link-resolver-mcp
 target/release/obsidian-link-resolver-mcp --help
 ```
 
@@ -47,24 +47,33 @@ The scenarios below are the normative MCP conformance corpus for SC-001, SC-003,
 | Diagnostics enabled | Start with `--diagnostics`; exercise server startup, request outcomes/failure, cache reuse and cache refresh | Parse the `structured-logger` JSON-lines on stderr and verify the fixed logger envelope, event names, and failure categories. A resolver `error` is logged as `request_completed` with status `error`. Assert link text, context/vault paths, note contents, serialized arguments, and raw error strings are absent. |
 | Protocol isolation | Run equivalent MCP calls with diagnostics off and on while capturing stdout | stdout contains only MCP messages and the same tool result objects in both runs; diagnostics appear only on stderr. |
 | Determinism boundary | Repeat an identical call while fixture contents are unchanged, then mutate a relevant note and refresh the cache | Primary result records are identical before the mutation; a later result may reflect the changed vault contents after invalidation or periodic refresh. |
-| Contract compatibility | Compare the proposed public MCP contract with the latest published contract in the same project major version | Argument names/requiredness, result field names/meanings, and outcome semantics are preserved; compatible additions are optional. Breaking changes require a new major version and migration notes. The first published MCP contract establishes the baseline if no earlier one exists. |
+| Contract compatibility | Compare the proposed public MCP contract with the latest published contract in the same shared package major version | Argument names/requiredness, result field names/meanings, and outcome semantics are preserved; compatible additions are optional. Breaking changes require a new major version and migration notes. The first published MCP contract establishes the baseline if no earlier one exists. |
 
 ## Automated Validation
 
 Run the focused MCP tests first during implementation, then the repository gates:
 
 ```bash
-cargo test mcp
+cargo test -p obsidian-link-resolver-mcp
 cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-cargo bench --bench mcp_warm
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace
+cargo bench -p obsidian-link-resolver-mcp --bench mcp_warm
 ```
 
 The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, path-qualified and vault-relative context path parity, cache reuse, event invalidation, request-independent periodic refresh, refresh failure behavior, separation between vault roots, and diagnostics default/redaction/channel isolation. Run path parity fixtures natively on Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64. Compare outcome categories for every case and compare target/location fields only when present in the direct resolver result. Determinism tests hold vault contents fixed; mutation tests separately verify that cache freshness can legitimately change subsequent results. Contract compatibility validation checks the published schema baseline and verifies major-version/migration-note handling for breaking changes. Use child-process tests to capture stderr and stdout because the `log` facade logger is process-global; verify unrelated targets are sent to the configured sink. Filesystem-event correctness tests should inject invalidation deterministically; the periodic scheduler should use a controllable clock so the 60-second bound can be tested without a wall-clock delay. The cross-platform watcher smoke test checks registration without depending on event timing.
 
 The warm-run benchmark is a performance gate in both pull-request CI and tag-release validation. Both workflows run it on GitHub-hosted `ubuntu-24.04`; it measures 100 consecutive end-to-end MCP calls against the deterministic, generated `bench-vault-v1` corpus from `tests/fixtures/bench_vault.rs`, excluding process startup and initial index construction. The p50 must be ≤100 ms. The benchmark emits a machine-readable report with runner image/OS/architecture, fixture version, sample count, and p50; the workflow retains that report as an artifact. Run the same command locally for a diagnostic measurement, but interpret the enforced threshold on the named CI/release runner.
 
-## Release Validation
+## Shared-Version Release Validation
 
-The tag release workflow must run the full tests and warm-run benchmark gate before building/staging the MCP binary for Linux x86_64/aarch64, macOS x86_64/aarch64, and Windows x86_64. Use the same GitHub-hosted `ubuntu-24.04` runner label as pull-request CI. The benchmark measures end-to-end latency from tool-call receipt to response completion for 100 consecutive warm-cache calls on `bench-vault-v1` (approximately 5,000 notes), excluding startup and initial index construction; emit and retain the runner image/OS/architecture, fixture version, sample count, and p50 in the report, and enforce p50 ≤100 ms. Verify the MCP installer commands refer to the MCP release asset and that the existing CLI installer still installs only the CLI by default. Windows ARM64 is not in the current release matrix.
+The release model is defined in the [shared-version release contract](contracts/releases.md). Validate the workspace and shared-tag flow:
+
+```bash
+cargo test --workspace
+cargo build --release -p obsidian-link-resolver-cli
+cargo build --release -p obsidian-link-resolver-mcp
+cargo build --release -p obsidian-link-resolver
+```
+
+Every `vX.Y.Z` tag release must run the full workspace test suite and MCP warm-run benchmark before publishing distinct library/FFI, CLI, and MCP asset families under the same tag. Run both gates on the same GitHub-hosted `ubuntu-24.04` runner label as pull-request CI. The benchmark measures 100 consecutive end-to-end warm-cache calls on `bench-vault-v1` (approximately 5,000 notes), excluding startup and initial indexing; emit and retain runner image/OS/architecture, fixture version, sample count, and p50, and enforce p50 ≤100 ms. A failed gate must prevent publication of all assets. Exercise latest and pinned installation for CLI and MCP selections; confirm the existing no-selection behavior installs only the CLI. Component-specific assets remain separately selectable despite sharing a release version. Windows ARM64 is not in the current release matrix.
