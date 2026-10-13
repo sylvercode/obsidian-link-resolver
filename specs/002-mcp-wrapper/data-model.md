@@ -120,3 +120,5 @@ The repository is organized as a Cargo workspace with three member crates sharin
 | `obsidian-link-resolver-mcp` | `crates/obsidian-link-resolver-mcp` | MCP stdio server executable (`obsidian-link-resolver-mcp`) | `obsidian-link-resolver`, `rmcp`, `notify`, `structured-logger`, `tokio`, `clap` |
 
 All crates inherit the workspace semantic version (`[workspace.package.version]`). Separate CLI and MCP installer commands let users install either executable without installing the other or passing a component-selection parameter.
+
+CLI argument parsing and formatting types reside in the CLI crate; the resolver library has no `cli` module and does not depend on `clap`. The MCP executable may use `clap` for its separate server launch options. Moving the existing module removes the public `obsidian_link_resolver::cli` API, including `CliArgs` and `OutputFormat`. The first release of the split workspace must therefore be `2.0.0` from the current `1.1.0` line, and its migration notes must document the breaking removal. No compatibility re-export or shim is provided; the resolver and FFI APIs are unchanged.

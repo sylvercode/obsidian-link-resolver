@@ -29,7 +29,7 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 **Purpose**: Establish prerequisites shared by the stories.
 
-- [ ] T003 Migrate the root Cargo package into the three-member workspace defined in `specs/002-mcp-wrapper/plan.md`: move the resolver library/FFI and its tests/build script into `crates/obsidian-link-resolver/`, the existing CLI and its tests into `crates/obsidian-link-resolver-cli/`, and the MCP server into `crates/obsidian-link-resolver-mcp/`; declare all three workspace members and `workspace.package.version` in the root `Cargo.toml`, set each member manifest to inherit `version.workspace = true`, move dependencies to their owning crate manifests, preserve existing targets, and refresh the root `Cargo.lock`.
+- [ ] T003 Migrate the root Cargo package into the three-member workspace defined in `specs/002-mcp-wrapper/plan.md`: move the resolver library/FFI and its tests/build script into `crates/obsidian-link-resolver/`, the existing CLI (including `src/cli.rs`) and its tests into `crates/obsidian-link-resolver-cli/`, and the MCP server into `crates/obsidian-link-resolver-mcp/`; declare all three workspace members and `workspace.package.version = "2.0.0"` in the root `Cargo.toml`, set each member manifest to inherit `version.workspace = true`, move dependencies to their owning crate manifests while keeping `clap` out of the resolver library, preserve existing executable behavior, record the breaking removal of the public `obsidian_link_resolver::cli` API in migration notes, and refresh the root `Cargo.lock`.
 
 **Checkpoint**: Complete Phase 1 and T003 before story implementation. All three crates build from the root workspace and share the root workspace version.
 

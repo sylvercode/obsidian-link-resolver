@@ -12,7 +12,7 @@ Add a separately installable, long-running MCP server that exposes the existing 
 
 **Language/Version**: Rust 1.98.1, edition 2021, pinned consistently in the devcontainer, CI workflow, and `vX.Y.Z` release workflow.
 
-**Primary Dependencies**: `rmcp` 3.5.1 for MCP server/tool/stdio protocol support (explicitly enable only `server`, `macros`, `schemars`, and `transport-io`); Tokio runtime as required by the SDK and periodic refresh scheduler; `notify` 8.2.0 for cross-platform vault filesystem invalidation; `structured-logger` 1.0.5 with default features disabled for synchronous JSON diagnostics and `log` 0.4 with structured key-value support; existing `serde`/`serde_json`, `clap`, and resolver library. Do not enable HTTP transport.
+**Primary Dependencies**: `rmcp` 3.5.1 for MCP server/tool/stdio protocol support (explicitly enable only `server`, `macros`, `schemars`, and `transport-io`); Tokio runtime as required by the SDK and periodic refresh scheduler; `notify` 8.2.0 for cross-platform vault filesystem invalidation; `structured-logger` 1.0.5 with default features disabled for synchronous JSON diagnostics and `log` 0.4 with structured key-value support; existing `serde`/`serde_json` and resolver library. Keep `clap` out of the resolver library; the CLI crate owns its argument parser, and the MCP executable may use `clap` for its own launch options. Do not enable HTTP transport.
 
 **Storage**: Read-only local vault filesystem; in-memory cache of vault indexes scoped to the server process.
 
@@ -102,7 +102,6 @@ crates/
 │   ├── include/              # generated C header
 │   ├── src/
 │   │   ├── lib.rs            # library root and public API
-│   │   ├── cli.rs            # shared CLI argument/format types used by CLI crate
 │   │   ├── ffi.rs            # C ABI functions
 │   │   ├── link.rs           # link parsing
 │   │   ├── note.rs           # note parsing / emplacement
@@ -113,7 +112,8 @@ crates/
 ├── obsidian-link-resolver-cli/ # CLI binary crate
 │   ├── Cargo.toml            # depends on path = "../obsidian-link-resolver"
 │   ├── src/
-│   │   └── main.rs           # CLI binary entry point (obsidian-link-resolver)
+│   │   ├── main.rs           # CLI binary entry point (obsidian-link-resolver)
+│   │   └── cli.rs            # CLI argument/format types; uses clap in this crate
 │   └── tests/                # CLI integration and contract tests
 └── obsidian-link-resolver-mcp/ # MCP server binary crate
     ├── Cargo.toml            # depends on path = "../obsidian-link-resolver", rmcp, notify, structured-logger
@@ -128,7 +128,7 @@ crates/
 tests/fixtures/bench_vault.rs # versioned synthetic ~5,000-note corpus generator
 ```
 
-**Structure Decision**: Separate each component into its own crate within a Cargo workspace under `crates/`: `obsidian-link-resolver` (library and C ABI), `obsidian-link-resolver-cli` (CLI binary), and `obsidian-link-resolver-mcp` (MCP server binary). The workspace manages a shared version (`workspace.package.version`) so all crates advance in lockstep under a single `vX.Y.Z` tag. Each crate has clear boundaries and dependencies: CLI and MCP crates depend on the library crate. Tests and benchmarks are co-located with their respective crates. Release CI builds each crate's artifacts independently and publishes distinct assets under the shared tag.
+**Structure Decision**: Separate each component into its own crate within a Cargo workspace under `crates/`: `obsidian-link-resolver` (library and C ABI), `obsidian-link-resolver-cli` (CLI binary), and `obsidian-link-resolver-mcp` (MCP server binary). The workspace manages a shared version (`workspace.package.version`) so all crates advance in lockstep under a single `vX.Y.Z` tag. Each executable crate depends on the library crate. The existing CLI argument parsing and format types move into the CLI crate; the resolver library has no CLI module or `clap` dependency. The MCP executable may use `clap` for its separate server launch options. Since moving the existing module removes the public `obsidian_link_resolver::cli` API, the first release of the split workspace MUST be version `2.0.0` (from the current `1.1.0` line), with migration notes documenting the removal. Do not retain a library compatibility shim, since it would restore the CLI dependency to the library. Tests and benchmarks are co-located with their respective crates. Release CI builds each crate's artifacts independently and publishes distinct assets under the shared tag.
 
 ## Complexity Tracking
 

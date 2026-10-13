@@ -11,7 +11,14 @@ This contract defines one versioned GitHub release containing distinct assets fo
 
 ## Release Gates and Assets
 
-Before publishing, the workflow MUST run the full workspace test suite (`cargo test --workspace`) and the MCP warm-run performance gate. Failure of either gate MUST prevent publication.
+Before staging or publishing any component assets, the workflow MUST pass all four release gates:
+
+1. **Workspace tests**: Run the full workspace test suite (`cargo test --workspace`).
+2. **Warm-run performance**: Run the MCP warm-run benchmark and enforce its p50 threshold.
+3. **Cold-start baseline (SC-014)**: Run the MCP cold-start benchmark for 100 fresh server processes and produce the required machine-readable report. Until a latency budget is established, this gate records a baseline without a p50 failure threshold.
+4. **Contract compatibility (FR-012)**: Validate the MCP contract against the latest published contract in the same major version; breaking changes MUST use a new major version and include migration notes.
+
+Failure of any gate MUST prevent staging and publication of every component asset.
 
 After the gates pass, the workflow publishes three distinct component asset families under the same GitHub release:
 
