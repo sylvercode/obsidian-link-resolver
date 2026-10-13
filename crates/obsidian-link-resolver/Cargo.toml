@@ -22,6 +22,7 @@ tempfile = "3"
 
 [[bench]]
 name = "resolve"
+path = "../../benches/resolve.rs"
 harness = false
 
 [build-dependencies]
