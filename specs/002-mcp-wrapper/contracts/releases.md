@@ -21,11 +21,11 @@ After the gates pass, the workflow publishes three distinct component asset fami
 
 Asset names MUST distinguish component, version/tag, operating system, and architecture as needed. A release MUST NOT replace component-specific assets with one undifferentiated binary or package. GitHub Releases are the publication channel; crates.io publication is not part of this feature.
 
-## Installer Selection
+## Installer Commands
 
-Installers MUST retain latest, pinned-version, and manual-fallback behavior. Users can select the CLI, MCP, or library/FFI component as applicable. The existing default installation remains CLI-only; requesting one component MUST NOT install the other component's executable.
+Installers MUST retain latest, pinned-version, and manual-fallback behavior. The existing CLI installer installs only the CLI binary. A separate MCP installer command installs only the MCP server binary and MUST NOT require a component-selection parameter. Library/FFI assets are published separately and are not installed by either executable installer.
 
-Latest and pinned component selection resolves the same shared `vX.Y.Z` release and downloads only the requested component's asset. The MCP install/update path is distinct from the CLI path and MUST NOT change the CLI installer default.
+The CLI and MCP installer commands resolve the same shared `vX.Y.Z` release and download only their respective executable assets. The MCP install/update path is distinct from the CLI path and MUST NOT change the CLI installer behavior.
 
 ## Compatibility and Validation
 
@@ -34,5 +34,5 @@ Existing executable names remain `obsidian-link-resolver` and `obsidian-link-res
 1. A valid `vX.Y.Z` tag triggers the release workflow and its full test/performance gates.
 2. Library/FFI, CLI, and MCP assets are all published with the same version and distinct names.
 3. A failed gate blocks publication of every asset.
-4. CLI, MCP, and library/FFI installer selection downloads only the selected component's assets.
-5. The no-option CLI installer remains CLI-only.
+4. The CLI installer downloads only the CLI asset, and the separate MCP installer downloads only the MCP asset without a component-selection parameter.
+5. Library/FFI assets are published separately and are not installed by either executable installer.

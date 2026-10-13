@@ -21,7 +21,7 @@ Validate against the latest stable release of each supported client available wh
 
 ## Build and Run
 
-User-facing installation instructions for the published binary must match the existing README's latest-version install/update, pinned-version, and manual-fallback patterns. Provide separate MCP installer commands alongside the existing CLI installer, preserving its CLI-only default, then show local-stdio registration for GitHub Copilot in VS Code and Claude Desktop.
+User-facing installation instructions for the published binary must match the existing README's latest-version install/update, pinned-version, and manual-fallback patterns. Provide separate parameterless MCP installer commands alongside the existing CLI installer, preserving its CLI-only behavior, then show local-stdio registration for GitHub Copilot in VS Code and Claude Desktop.
 
 ```bash
 cargo build --release -p obsidian-link-resolver-mcp
@@ -85,4 +85,4 @@ cargo build --release -p obsidian-link-resolver-mcp
 cargo build --release -p obsidian-link-resolver
 ```
 
-Every `vX.Y.Z` tag release must run the full workspace test suite and MCP warm-run benchmark before publishing distinct library/FFI, CLI, and MCP asset families under the same tag. Run both gates on the same GitHub-hosted `ubuntu-24.04` runner label as pull-request CI. The benchmark measures 100 consecutive end-to-end warm-cache calls on `bench-vault-v1` (approximately 5,000 notes), excluding startup and initial indexing; emit and retain runner image/OS/architecture, fixture version, sample count, and p50, and enforce p50 ≤100 ms. A failed gate must prevent publication of all assets. Exercise latest and pinned installation for CLI and MCP selections; confirm the existing no-selection behavior installs only the CLI. Component-specific assets remain separately selectable despite sharing a release version. Windows ARM64 is not in the current release matrix.
+Every `vX.Y.Z` tag release must run the full workspace test suite and MCP warm-run benchmark before publishing distinct library/FFI, CLI, and MCP asset families under the same tag. Run both gates on the same GitHub-hosted `ubuntu-24.04` runner label as pull-request CI. The benchmark measures 100 consecutive end-to-end warm-cache calls on `bench-vault-v1` (approximately 5,000 notes), excluding startup and initial indexing; emit and retain runner image/OS/architecture, fixture version, sample count, and p50, and enforce p50 ≤100 ms. A failed gate must prevent publication of all assets. Exercise latest and pinned installation using the existing CLI installer and the separate MCP installer; verify that each installs only its corresponding executable and that the MCP installer requires no component-selection parameter. Library/FFI assets are distributed separately. Windows ARM64 is not in the current release matrix.

@@ -94,7 +94,7 @@ A GitHub release triggered by one semantic version tag and containing distinct a
 
 | Field | Type | Meaning |
 |---|---|---|
-| `component` | enum | One of `library`, `cli`, or `mcp`; asset/installer selection value, not a distinct release version. |
+| `component` | enum | One of `library`, `cli`, or `mcp`; identifies an asset family, not a distinct release version or installer parameter. |
 | `version` | semantic version | Shared Cargo package version applied to all component assets. |
 | `tag` | string | `vX.Y.Z`, matching the shared Cargo package version. |
 | `artifacts` | component-specific list | Distinct library/FFI release assets, CLI binaries, and MCP server binaries, all attached to this shared-tag release. |
@@ -107,7 +107,7 @@ A GitHub release triggered by one semantic version tag and containing distinct a
 - **Tested → Published**: library/FFI, CLI, and MCP assets are staged with distinct names and published together under the shared version.
 - A malformed tag or failed test/performance gate blocks artifact publication.
 
-Installers allow selection among component assets within the shared-tag release. The CLI installer remains the default and installs only the CLI binary unless another component is explicitly selected.
+The CLI installer installs only the CLI binary. A separate MCP installer installs only the MCP binary without requiring a component-selection parameter. Library/FFI assets are distributed separately and are not installed by either executable installer.
 
 ## Workspace Crates
 
@@ -119,4 +119,4 @@ The repository is organized as a Cargo workspace with three member crates sharin
 | `obsidian-link-resolver-cli` | `crates/obsidian-link-resolver-cli` | Command-line interface executable (`obsidian-link-resolver`) | `obsidian-link-resolver`, `clap` |
 | `obsidian-link-resolver-mcp` | `crates/obsidian-link-resolver-mcp` | MCP stdio server executable (`obsidian-link-resolver-mcp`) | `obsidian-link-resolver`, `rmcp`, `notify`, `structured-logger`, `tokio`, `clap` |
 
-All crates inherit the workspace semantic version (`[workspace.package.version]`). Installers retain component selection, so a user can install either executable without installing the other.
+All crates inherit the workspace semantic version (`[workspace.package.version]`). Separate CLI and MCP installer commands let users install either executable without installing the other or passing a component-selection parameter.
