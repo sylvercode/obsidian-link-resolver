@@ -111,13 +111,13 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 ### Implementation for User Story 5
 
-- [ ] T021 [P] [US5] Add a dedicated parameterless Bash MCP installer at `scripts/install-mcp.sh`, leaving `scripts/install.sh` as the CLI-only installer and supporting MCP asset names, latest/pinned versions, and executable paths.
-- [ ] T022 [P] [US5] Add a dedicated parameterless PowerShell MCP installer at `scripts/install-mcp.ps1`, leaving `scripts/install.ps1` as the CLI-only installer and supporting MCP asset names, latest/pinned versions, and executable paths.
+- [ ] T021 [P] [US5] Add a dedicated Bash MCP installer at `scripts/install-mcp.sh`, leaving `scripts/install.sh` as the CLI-only installer; support MCP asset names, latest/pinned versions via `--version`, installation paths via `--install-dir`, and executable paths, without a component-selection parameter.
+- [ ] T022 [P] [US5] Add a dedicated PowerShell MCP installer at `scripts/install-mcp.ps1`, leaving `scripts/install.ps1` as the CLI-only installer; support MCP asset names, latest/pinned versions via `--version`, installation paths via `--install-dir`, and executable paths, without a component-selection parameter.
 - [ ] T023 [US5] Extend `.github/workflows/release.yml` to build and stage distinct library/FFI, CLI, and MCP assets from their respective crates under the shared `vX.Y.Z` version, including the MCP executable for `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, and `x86_64-pc-windows-gnu`; on GitHub-hosted `ubuntu-24.04`, run the full workspace test suite, the T015 ≤100 ms p50 benchmark gate, the T035/SC-014 cold-start baseline, and MCP contract compatibility validation under FR-012 against the latest published same-major contract before staging or publishing any component assets; retain both benchmark reports as workflow artifacts and publish the current contract artifact with the release assets.
 - [ ] T024 [US5] Document latest-version install/update, pinned-version and manual-fallback MCP installer commands, plus local-stdio registration and vault configuration for GitHub Copilot in VS Code and Claude Desktop in `README.md`.
 - [ ] T025 [US5] Validate tool discovery and one valid call against the latest stable GitHub Copilot in VS Code and Claude Desktop releases available when validation is performed; record each exact client version, validation date, operating system, and result in the Client Validation Record in `specs/002-mcp-wrapper/quickstart.md`. A later client release requires a new validation record to claim support for that release.
 
-**Checkpoint**: MCP assets exist for all five release targets; the existing CLI installers remain CLI-only; dedicated parameterless MCP installer commands install only the MCP server; and both supported clients can launch and call the tool.
+**Checkpoint**: MCP assets exist for all five release targets; the existing CLI installers remain CLI-only; dedicated MCP installer commands install only the MCP server, support `--version` and `--install-dir`, and do not accept a component-selection parameter; and both supported clients can launch and call the tool.
 
 ## Phase 7: User Story 3 - Offer discoverable, agent-friendly tool metadata (Priority: P3)
 
@@ -215,7 +215,7 @@ Then: T016 (root/index boundary) → T017-T018 (cache lifecycle and request cons
 
 ```text
 In parallel: T019 (installer tests) and T020 (release-matrix tests)
-Then: T021/T022 (separate parameterless MCP installers); T023 (release matrix, test, benchmark, and compatibility gates); T024-T025 (docs and client validation)
+Then: T021/T022 (separate MCP installers without a component-selection parameter); T023 (release matrix, test, benchmark, and compatibility gates); T024-T025 (docs and client validation)
 ```
 
 ## Implementation Strategy
