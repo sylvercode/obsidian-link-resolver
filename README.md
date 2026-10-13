@@ -123,9 +123,12 @@ The same result contract is exposed through three surfaces:
 The FFI session API loads a vault once and reuses the index across many
 consecutive resolutions.
 
+Version 2.0.0 moves CLI argument types out of the resolver library. Consumers
+that used `obsidian_link_resolver::cli` should see [MIGRATION.md](MIGRATION.md).
+
 ## Benchmark Corpus
 
-`cargo bench` uses a synthetic ~5,000-note vault generated under
+`cargo bench -p obsidian-link-resolver` uses a synthetic ~5,000-note vault generated under
 `tests/fixtures/bench-vault/` on demand. The corpus is produced by the bench
 helper module in `tests/fixtures/bench_vault.rs` and is designed for the warm
 run latency gate described in the feature quickstart.

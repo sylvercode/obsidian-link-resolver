@@ -26,7 +26,7 @@ fn run_resolver(link: &str, context: &str) -> (std::process::Output, Value) {
 /// Verifies unresolved and missing sub-target outcomes map to documented exit codes.
 #[test]
 fn reports_unresolved_and_sub_target_not_found_via_exit_codes() {
-    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let fixture_root = format!("{}/../../tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let context = format!("{}/notes/a.md", fixture_root);
 
     let (output, json) = run_resolver("[[No Such Note]]", &context);

@@ -12,7 +12,10 @@ use tempfile::TempDir;
 ///
 /// Absolute fixture vault path used by unit tests.
 fn fixture_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/vault")
+        .canonicalize()
+        .expect("fixture vault should exist")
 }
 
 /// Verifies vault detection and case-insensitive name resolution on fixture data.

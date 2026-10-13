@@ -40,7 +40,7 @@ fn library_file_path() -> PathBuf {
     );
 
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
+        .join("../../target")
         .join("debug")
         .join(filename)
 }
@@ -104,7 +104,7 @@ fn ffi_session_can_load_and_resolve_many_consecutive_links() {
     assert!(!version.is_empty());
     unsafe { olr_string_free(version_ptr) };
 
-    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let fixture_root = format!("{}/../../tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let vault_root = CString::new(format!("{}/", fixture_root)).unwrap();
     let context_path = format!("{}/notes/a.md", fixture_root);
 

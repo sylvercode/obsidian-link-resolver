@@ -8,7 +8,7 @@ use std::path::PathBuf;
 ///
 /// Absolute fixture vault path used by integration tests.
 fn fixture_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/vault")
 }
 
 /// Resolve a fixture-case link while controlling whether emplacement data is requested.

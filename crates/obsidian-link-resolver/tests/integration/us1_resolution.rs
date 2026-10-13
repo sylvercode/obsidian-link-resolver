@@ -10,7 +10,7 @@ use tempfile::TempDir;
 ///
 /// Absolute fixture vault path used by integration tests.
 fn fixture_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/vault")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/vault")
 }
 
 /// Resolve one fixture-case link with optional explicit vault override.

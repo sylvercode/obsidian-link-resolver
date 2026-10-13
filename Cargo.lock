@@ -781,24 +781,40 @@ dependencies = [
 
 [[package]]
 name = "obsidian-link-resolver"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
- "assert_cmd",
  "cbindgen",
- "clap",
  "criterion",
  "libloading",
- "log",
- "notify",
- "predicates",
- "rmcp",
  "serde",
  "serde_json",
- "structured-logger",
  "tempfile",
- "tokio",
  "urlencoding",
  "walkdir",
+]
+
+[[package]]
+name = "obsidian-link-resolver-cli"
+version = "2.0.0"
+dependencies = [
+ "assert_cmd",
+ "clap",
+ "obsidian-link-resolver",
+ "predicates",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "obsidian-link-resolver-mcp"
+version = "2.0.0"
+dependencies = [
+ "log",
+ "notify",
+ "obsidian-link-resolver",
+ "rmcp",
+ "structured-logger",
+ "tokio",
 ]
 
 [[package]]

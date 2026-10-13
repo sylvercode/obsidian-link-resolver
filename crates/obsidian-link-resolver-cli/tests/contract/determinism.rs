@@ -23,7 +23,7 @@ fn resolve_once(link: &str, context: &str) -> String {
 /// Verifies identical inputs produce byte-identical machine JSON output.
 #[test]
 fn machine_mode_stdout_is_byte_stable_for_identical_inputs() {
-    let fixture_root = format!("{}/tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
+    let fixture_root = format!("{}/../../tests/fixtures/vault", env!("CARGO_MANIFEST_DIR"));
     let context = format!("{}/notes/a.md", fixture_root);
 
     let first = resolve_once("[[Project Plan#Milestones]]", &context);
