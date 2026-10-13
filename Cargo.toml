@@ -13,10 +13,6 @@ crate-type = ["rlib", "cdylib"]
 name = "obsidian-link-resolver"
 path = "src/main.rs"
 
-[[bin]]
-name = "obsidian-link-resolver-mcp"
-path = "src/mcp_main.rs"
-
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 log = { version = "0.4", features = ["kv"] }
