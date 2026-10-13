@@ -203,6 +203,7 @@ When enabled, diagnostics are newline-delimited JSON records written only to std
 - **SC-011**: Boundary contract tests verify all three response classes: missing required arguments and wrong-type required or optional arguments produce an MCP tool/protocol error; schema-valid arguments rejected by the resolver produce its normal `error` result with reason. Resolver outcomes such as `unresolved` and `sub-target-not-found` remain normal tool results.
 - **SC-012**: For each published MCP contract compared under FR-012, the compatibility check passes within the same major version and rejects a breaking change unless it uses a new major version and includes migration notes.
 - **SC-013**: Pushing a valid `vX.Y.Z` tag runs the workspace release gates and publishes distinct library/FFI, CLI, and MCP assets built from their respective crates, all identified with the same synchronized version; each installer installs only its selected component, and the default installer remains CLI-only.
+- **SC-014**: On GitHub-hosted `ubuntu-24.04`, the project measures 100 fresh MCP server processes from process launch through completion of the first resolution against the approximately 5,000-note `bench-vault-v1` corpus, including startup and initial index construction. The resulting machine-readable cold-start report records the runner image, operating system, architecture, fixture version, sample count, and p50 as a CI and release baseline without a failure threshold until a latency budget is established.
 
 ## Assumptions
 

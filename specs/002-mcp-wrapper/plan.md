@@ -37,6 +37,7 @@ Add a separately installable, long-running MCP server that exposes the existing 
 - Implement canonical compatibility requirement FR-012 by versioning the MCP contract with the shared Cargo package semantic version. Release validation compares published contract artifacts and verifies migration notes for breaking changes.
 - Keep the existing `vX.Y.Z` GitHub release tag and root Cargo package version shared across the library, CLI, and MCP server. Each tagged release passes the full test suite and MCP warm-run benchmark, then publishes distinct library/FFI, CLI, and MCP assets carrying the same version. Installers support latest and pinned versions while selecting the requested component's asset; the existing default remains CLI-only. Publish GitHub release assets only; crates.io publication is out of scope.
 - Split vault-root selection from index enumeration as needed so each request can identify and validate its canonical root without forcing a full vault walk. Cache `Vault` snapshots by canonical root for the server process lifetime.
+- Keep cache ownership explicit: `cache.rs` owns canonical-root entries, watcher state, dirty flags, index generations, refresh scheduling, and atomic replacement; `mcp.rs` selects the cache generation for each request, invokes the resolver with that generation, and maps resolver results to MCP responses.
 - Use filesystem watcher events as per-root dirty hints and coalesce bursts. Each in-flight resolution uses the index generation selected when it starts; if that root is invalidated during the call, the call may complete on its selected generation, but refresh before the next resolution for that root and use the latest state available at refresh time. Run a periodic background full rescan for each cached vault at least every 60 seconds, independent of requests, to bound missed-event staleness. If watcher setup fails, retain the periodic-rescan fallback. A refresh failure returns an error, not a stale resolution.
 - Add an opt-in server `--diagnostics` launch flag, disabled by default. When enabled, use `structured-logger`'s synchronous JSON writer for one JSON-lines event per log call to stderr. Initialize with an explicit level and only the MCP diagnostics target routed to stderr; route all other targets to a sink. Use only the fixed fields and allow-listed event/failure values defined in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`. Never log user-supplied link text, context/vault paths, note contents, serialized arguments, or unfiltered error strings. Use only static messages and targets. Disable the default `log-panic` feature and keep optional diagnostics out of MCP stdout and tool result objects.
 - Distribute prebuilt MCP executables for the existing supported release matrix. Add an explicit installer component selection while keeping the current default as CLI-only.
@@ -115,8 +116,8 @@ crates/
     ├── Cargo.toml            # depends on path = "../obsidian-link-resolver", rmcp, notify, structured-logger
     ├── src/
     │   ├── main.rs           # MCP binary entry point (obsidian-link-resolver-mcp)
-    │   ├── mcp.rs            # MCP tool handler, cache, and diagnostics
-    │   └── cache.rs          # vault index cache and watcher management
+    │   ├── mcp.rs            # MCP tool handler, request generation selection, result mapping, and diagnostics
+    │   └── cache.rs          # canonical-root cache entries, generations, refresh, and watcher management
     ├── tests/                # MCP protocol contract, parity, cache, and diagnostics tests
     └── benches/
         ├── mcp_warm.rs       # 100-call warm-cache benchmark and report
