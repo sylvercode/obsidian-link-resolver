@@ -43,13 +43,13 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Write these protocol tests first and verify they fail before implementing the tool.
 
-- [ ] T004 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional `vault_root` and `with_emplacement`, and missing required or wrong-type required/optional arguments being rejected as MCP tool/protocol errors in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool.rs`.
-- [ ] T005 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, a valid fixture resolution, and missing required or wrong-type required/optional argument calls returning MCP errors without resolver result content in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_stdio.rs`.
+- [X] T004 [P] [US1] Add MCP tool discovery and input-schema contract tests for required `link` and `context_path`, optional `vault_root` and `with_emplacement`, and missing required or wrong-type required/optional arguments being rejected as MCP tool/protocol errors in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool.rs`.
+- [X] T005 [P] [US1] Add child-process stdio integration tests for MCP initialize, tool listing, a valid fixture resolution, and missing required or wrong-type required/optional argument calls returning MCP errors without resolver result content in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_stdio.rs`.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement the typed `resolve_obsidian_link` request handler and return the resolver record as both structured content and compact JSON text in `crates/obsidian-link-resolver-mcp/src/mcp.rs`, documenting new Rust symbols with Rustdoc.
-- [ ] T007 [US1] Implement the `obsidian-link-resolver-mcp` startup path, optional `--vault` default, module registration, and stdio transport in `crates/obsidian-link-resolver-mcp/src/main.rs`, documenting new Rust symbols with Rustdoc.
+- [X] T006 [US1] Implement the typed `resolve_obsidian_link` request handler and return the resolver record as both structured content and compact JSON text in `crates/obsidian-link-resolver-mcp/src/mcp.rs`, documenting new Rust symbols with Rustdoc.
+- [X] T007 [US1] Implement the `obsidian-link-resolver-mcp` startup path, optional `--vault` default, module registration, and stdio transport in `crates/obsidian-link-resolver-mcp/src/main.rs`, documenting new Rust symbols with Rustdoc.
 
 **Checkpoint**: The MCP server launches for a client and resolves a fixture link without changing the existing CLI.
 

@@ -809,10 +809,14 @@ dependencies = [
 name = "obsidian-link-resolver-mcp"
 version = "2.0.0"
 dependencies = [
+ "clap",
  "log",
  "notify",
  "obsidian-link-resolver",
  "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
  "structured-logger",
  "tokio",
 ]
