@@ -111,7 +111,7 @@ The cold-start benchmark measures 100 fresh processes from launch through the fi
 
 The compatibility command compares the candidate with the latest published MCP contract in the same major version. It requires an authenticated GitHub CLI session and repository access when using `published`. If no published MCP contract asset exists, the candidate establishes the initial baseline; breaking changes in later releases require a new major version and matching migration notes in `MIGRATION.md`.
 
-The automated end-to-end scenarios are exercised by the MCP stdio, resolver-parity, cache-refresh, diagnostics, installer, and release-asset integration tests, along with the contract and determinism tests. Interactive validation in the two supported clients remains outstanding as recorded above.
+The automated end-to-end scenarios are exercised by the MCP stdio, resolver-parity, cache-refresh, diagnostics, installer, and release-asset integration tests, along with the contract and determinism tests. CI runs the mocked installer integration tests on `ubuntu-24.04`; injected platform probes cover the supported asset mappings, but this does not test native shell or filesystem behavior on macOS or Windows. CI does not claim native installer coverage on those platforms. Interactive validation in the two supported clients remains outstanding as recorded above.
 
 ## Shared-Version Release Validation
 

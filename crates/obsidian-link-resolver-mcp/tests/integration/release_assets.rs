@@ -36,23 +36,52 @@ fn release_gates_precede_component_asset_staging() {
 /// The release maps every supported target to distinct CLI, MCP, and FFI assets.
 #[test]
 fn release_maps_all_targets_to_distinct_component_assets() {
-    for target in RELEASE_TARGETS {
+    let expected_mappings = [
+        (
+            RELEASE_TARGETS[0],
+            r#"cp target/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-linux-x86_64""#,
+            r#"cp target/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-linux-x86_64""#,
+            r#"cp target/release/libobsidian_link_resolver.so "dist/libobsidian_link_resolver-${RELEASE_TAG}-linux-x86_64.so""#,
+        ),
+        (
+            RELEASE_TARGETS[1],
+            r#"cp target/aarch64-unknown-linux-gnu/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-linux-aarch64""#,
+            r#"cp target/aarch64-unknown-linux-gnu/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-linux-aarch64""#,
+            r#"cp target/aarch64-unknown-linux-gnu/release/libobsidian_link_resolver.so "dist/libobsidian_link_resolver-${RELEASE_TAG}-linux-aarch64.so""#,
+        ),
+        (
+            RELEASE_TARGETS[2],
+            r#"cp target/x86_64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-x86_64""#,
+            r#"cp target/x86_64-apple-darwin/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-x86_64""#,
+            r#"cp target/x86_64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-x86_64.dylib""#,
+        ),
+        (
+            RELEASE_TARGETS[3],
+            r#"cp target/aarch64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-aarch64""#,
+            r#"cp target/aarch64-apple-darwin/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-aarch64""#,
+            r#"cp target/aarch64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-aarch64.dylib""#,
+        ),
+        (
+            RELEASE_TARGETS[4],
+            r#"cp target/x86_64-pc-windows-gnu/release/obsidian-link-resolver.exe "dist/obsidian-link-resolver-${RELEASE_TAG}-windows-x86_64.exe""#,
+            r#"cp target/x86_64-pc-windows-gnu/release/obsidian-link-resolver-mcp.exe "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-windows-x86_64.exe""#,
+            r#"cp target/x86_64-pc-windows-gnu/release/obsidian_link_resolver.dll "dist/libobsidian_link_resolver-${RELEASE_TAG}-windows-x86_64.dll""#,
+        ),
+    ];
+
+    for (target, cli_mapping, mcp_mapping, ffi_mapping) in expected_mappings {
         assert!(
             RELEASE_WORKFLOW.contains(target),
             "release workflow is missing target {target}"
         );
+        for mapping in [cli_mapping, mcp_mapping, ffi_mapping] {
+            assert!(
+                RELEASE_WORKFLOW.contains(mapping),
+                "release workflow is missing mapping for {target}: {mapping}"
+            );
+        }
     }
 
-    for asset_family in [
-        "obsidian-link-resolver-${RELEASE_TAG}",
-        "obsidian-link-resolver-mcp-${RELEASE_TAG}",
-        "libobsidian_link_resolver-${RELEASE_TAG}",
-    ] {
-        assert!(
-            RELEASE_WORKFLOW.contains(asset_family),
-            "release workflow is missing asset family {asset_family}"
-        );
-    }
     for artifact in [
         "mcp-contract.json",
         "obsidian_link_resolver-${RELEASE_TAG}.h",
