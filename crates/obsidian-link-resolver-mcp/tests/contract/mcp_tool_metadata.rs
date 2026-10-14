@@ -48,7 +48,7 @@ fn describes_tool_arguments_outcomes_and_emplacement_choice() {
         .expect("tool schema should define properties");
     for (name, guidance) in [
         ("link", "raw Obsidian link"),
-        ("context_path", "file containing"),
+        ("context_path", "working directory"),
         ("vault_root", "allowed vault root"),
         ("with_emplacement", "structured emplacement"),
     ] {

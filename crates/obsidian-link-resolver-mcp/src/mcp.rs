@@ -21,7 +21,7 @@ struct ResolveRequest {
     /// Raw Obsidian link text to resolve.
     #[schemars(length(min = 1))]
     link: String,
-    /// Path to the file containing the link; may be absolute or vault-relative.
+    /// Path to the file containing the link; may be absolute or relative to the server's working directory.
     #[schemars(length(min = 1))]
     context_path: String,
     /// Optional allowed vault root, which must match a launch-time `--vault` root.
