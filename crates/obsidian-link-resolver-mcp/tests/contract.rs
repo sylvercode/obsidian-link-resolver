@@ -8,3 +8,5 @@ mod mcp_compatibility;
 mod mcp_determinism;
 #[path = "contract/mcp_tool.rs"]
 mod mcp_tool;
+#[path = "contract/mcp_tool_metadata.rs"]
+mod mcp_tool_metadata;

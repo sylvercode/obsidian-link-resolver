@@ -21,14 +21,14 @@ struct ResolveRequest {
     /// Raw Obsidian link text to resolve.
     #[schemars(length(min = 1))]
     link: String,
-    /// Path to the note containing the link.
+    /// Path to the file containing the link; may be absolute or vault-relative.
     #[schemars(length(min = 1))]
     context_path: String,
-    /// Optional vault root, which must be one of the launch-time allowed roots.
+    /// Optional allowed vault root, which must match a launch-time `--vault` root.
     #[serde(default, deserialize_with = "deserialize_non_empty_vault_root")]
     #[schemars(with = "String", length(min = 1))]
     vault_root: Option<String>,
-    /// Whether to include the resolver's structured emplacement details.
+    /// Whether to include structured emplacement details when available; defaults to false.
     #[serde(default)]
     with_emplacement: bool,
 }
@@ -108,7 +108,7 @@ impl ResolverServer {
     /// The resolver record as MCP structured content and compact JSON text.
     #[tool(
         name = "resolve_obsidian_link",
-        description = "Resolve an Obsidian link from its containing note using the existing resolver."
+        description = "Resolve an Obsidian link from the file containing it. Provide the raw link and context path; optionally select an allowed vault root and request structured emplacement. The result preserves the resolver outcomes: resolved, unresolved, sub_target_not_found, ambiguous, or error. A simple target line is sufficient for a single point target. Set with_emplacement when reading a precise section or shard; it provides the containing heading stack, section range, and structured block when available. Attachments do not gain emplacement data."
     )]
     async fn resolve_obsidian_link(
         &self,
