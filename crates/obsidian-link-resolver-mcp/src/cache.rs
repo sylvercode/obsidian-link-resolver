@@ -110,10 +110,16 @@ impl VaultCache {
         let entry = self.entry(canonical_root);
 
         loop {
-            if entry.needs_refresh() {
+            let refreshed = if entry.needs_refresh() {
                 entry.refresh(false).await?;
-            }
+                true
+            } else {
+                false
+            };
             if let Some(generation) = entry.generation_if_fresh() {
+                if !refreshed {
+                    log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_hit"; "Vault cache hit");
+                }
                 return Ok(generation);
             }
         }
@@ -218,6 +224,7 @@ impl VaultCache {
             refresh_completed: Notify::new(),
             watcher: Mutex::new(None),
         });
+        log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_miss"; "Vault cache miss");
         if self.watch_enabled {
             entry.start_watcher();
         }
@@ -304,6 +311,27 @@ impl CacheEntry {
         if !force && !self.needs_refresh() {
             return Ok(());
         }
+        let started = Instant::now();
+        log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refresh_started"; "Vault cache refresh started");
+        let result = self.refresh_snapshot().await;
+        let duration_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
+        match &result {
+            Ok(()) => {
+                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refreshed", duration_ms = duration_ms; "Vault cache refreshed")
+            }
+            Err(_) => {
+                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refresh_failed", failure_kind = "cache_refresh", duration_ms = duration_ms; "Vault cache refresh failed")
+            }
+        }
+        result
+    }
+
+    /// Build and atomically install a complete index while holding the refresh lock.
+    ///
+    /// # Returns
+    ///
+    /// Success when a fresh generation is installed, or a fixed cache failure reason.
+    async fn refresh_snapshot(&self) -> Result<(), String> {
         for _ in 0..MAX_REFRESH_ATTEMPTS {
             #[cfg(test)]
             {
@@ -363,11 +391,16 @@ impl CacheEntry {
             Ok(watcher)
         });
 
-        if let Ok(watcher) = watcher {
-            *self
-                .watcher
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(watcher);
+        match watcher {
+            Ok(watcher) => {
+                *self
+                    .watcher
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(watcher);
+            }
+            Err(_) => {
+                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "watcher_unavailable", failure_kind = "watch_setup"; "Vault filesystem watcher unavailable");
+            }
         }
     }
 }

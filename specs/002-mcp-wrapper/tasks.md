@@ -147,12 +147,12 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Write subprocess tests first because the logger is process-global and the stdout/stderr boundary is part of the contract.
 
-- [ ] T028 [P] [US6] Add child-process tests for diagnostics-disabled silence, enabled lifecycle/request/cache events, the exact event and failure-kind allow-lists in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`, and stdout/result parity in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_diagnostics.rs`; include unique sentinel values in request text, context/vault paths, note contents, serialized arguments, and raw errors and assert none appear in stderr.
+- [X] T028 [P] [US6] Add child-process tests for diagnostics-disabled silence, enabled lifecycle/request/cache events, the exact event and failure-kind allow-lists in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`, and stdout/result parity in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_diagnostics.rs`; include unique sentinel values in request text, context/vault paths, note contents, serialized arguments, and raw errors and assert none appear in stderr.
 
 ### Implementation for User Story 6
 
-- [ ] T029 [US6] Add `--diagnostics` handling and initialize `structured-logger` only when enabled, routing the fixed MCP diagnostics target to stderr and all other targets to a sink in `crates/obsidian-link-resolver-mcp/src/main.rs` and `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
-- [ ] T030 [US6] Implement exactly the diagnostic fields, event names, and failure-kind allow-lists defined in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`; use fixed messages/targets, distinguish resolver `error` results from failed requests, and redact request text, paths, note contents, serialized arguments, and unfiltered error messages in `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
+- [X] T029 [US6] Add `--diagnostics` handling and initialize `structured-logger` only when enabled, routing the fixed MCP diagnostics target to stderr and all other targets to a sink in `crates/obsidian-link-resolver-mcp/src/main.rs` and `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
+- [X] T030 [US6] Implement exactly the diagnostic fields, event names, and failure-kind allow-lists defined in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`; use fixed messages/targets, distinguish resolver `error` results from failed requests, and redact request text, paths, note contents, serialized arguments, and unfiltered error messages in `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
 
 **Checkpoint**: Optional diagnostics report operational outcomes on stderr only, leave MCP results unchanged, and remain absent by default.
 
