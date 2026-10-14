@@ -4,15 +4,31 @@ use crate::cache::VaultCache;
 use obsidian_link_resolver::error_for_link;
 use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
-    handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, ServerCapabilities, ServerConfig},
+    handler::server::{
+        router::tool::ToolRouter,
+        tool::{IntoCallToolResult, ToolCallContext},
+        wrapper::Parameters,
+    },
+    model::{
+        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, ServerCapabilities,
+        ServerConfig,
+    },
     schemars::JsonSchema,
-    tool, tool_handler, tool_router, ServerHandler,
+    service::RequestContext,
+    tool, tool_handler, tool_router, RoleServer, ServerHandler,
 };
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
+
+/// Fixed target used for allow-listed operational diagnostics.
+const DIAGNOSTICS_TARGET: &str = "obsidian_link_resolver_mcp::diagnostics";
+
+/// Process-local sequence assigned to each tool request.
+static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 /// Typed arguments accepted by the `resolve_obsidian_link` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -114,33 +130,127 @@ impl ResolverServer {
         &self,
         Parameters(request): Parameters<ResolveRequest>,
     ) -> Result<CallToolResult, String> {
+        let request_seq = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let started = Instant::now();
+        log::info!(target: DIAGNOSTICS_TARGET, event = "request_started", request_seq = request_seq; "MCP request started");
+
+        self.resolve_request(request, request_seq, started).await
+    }
+}
+
+impl ResolverServer {
+    async fn resolve_request(
+        &self,
+        request: ResolveRequest,
+        request_seq: u64,
+        started: Instant,
+    ) -> Result<CallToolResult, String> {
         if request.link.is_empty() || request.context_path.is_empty() {
+            log_request_failed(request_seq, "invalid_arguments", started);
             return Err("link and context_path must not be empty".to_owned());
         }
-        let vault_root = select_allowed_vault(
+        let vault_root = match select_allowed_vault(
             &request.context_path,
             request.vault_root.as_deref(),
             &self.allowed_vaults,
-        )?;
+        ) {
+            Ok(vault_root) => vault_root,
+            Err(error) => {
+                log_request_failed(request_seq, "root_selection", started);
+                return Err(error);
+            }
+        };
         let generation = match self.cache.get_or_refresh(&vault_root).await {
             Ok(generation) => generation,
             Err(reason) => {
-                return Ok(CallToolResult::structured(
-                    serde_json::to_value(error_for_link(&request.link, reason))
-                        .map_err(|error| error.to_string())?,
-                ));
+                let structured = match serde_json::to_value(error_for_link(&request.link, reason)) {
+                    Ok(structured) => structured,
+                    Err(_) => {
+                        log_request_failed(request_seq, "internal", started);
+                        return Err("resolver result could not be serialized".to_owned());
+                    }
+                };
+                log_request_completed(request_seq, "error", started);
+                return Ok(CallToolResult::structured(structured));
             }
         };
         let link = request.link;
         let context_path = request.context_path;
         let with_emplacement = request.with_emplacement;
-        let result = tokio::task::spawn_blocking(move || {
+        let result = match tokio::task::spawn_blocking(move || {
             resolve_with_vault(&link, &context_path, &generation.vault, with_emplacement)
         })
         .await
-        .map_err(|error| format!("resolver task failed: {error}"))?;
-        let structured = serde_json::to_value(result).map_err(|error| error.to_string())?;
+        {
+            Ok(result) => result,
+            Err(error) => {
+                log_request_failed(request_seq, "internal", started);
+                return Err(format!("resolver task failed: {error}"));
+            }
+        };
+        let structured = match serde_json::to_value(result) {
+            Ok(structured) => structured,
+            Err(error) => {
+                log_request_failed(request_seq, "internal", started);
+                return Err(error.to_string());
+            }
+        };
+        log_request_completed(request_seq, resolver_status(&structured), started);
         Ok(CallToolResult::structured(structured))
+    }
+}
+
+/// Record a completed resolver response using only its fixed outcome category.
+///
+/// # Parameters
+///
+/// - `request_seq`: Process-local request sequence.
+/// - `status`: Resolver outcome category, selected from the fixed status allow-list.
+/// - `started`: Monotonic request start time used to calculate elapsed milliseconds.
+fn log_request_completed(request_seq: u64, status: &'static str, started: Instant) {
+    log::info!(target: DIAGNOSTICS_TARGET, event = "request_completed", request_seq = request_seq, status = status, duration_ms = elapsed_milliseconds(started); "MCP request completed");
+}
+
+/// Record a failed request with a fixed failure category and no raw error details.
+///
+/// # Parameters
+///
+/// - `request_seq`: Process-local request sequence.
+/// - `failure_kind`: Fixed category selected at the failure boundary.
+/// - `started`: Monotonic request start time used to calculate elapsed milliseconds.
+fn log_request_failed(request_seq: u64, failure_kind: &'static str, started: Instant) {
+    log::info!(target: DIAGNOSTICS_TARGET, event = "request_failed", request_seq = request_seq, failure_kind = failure_kind, duration_ms = elapsed_milliseconds(started); "MCP request failed");
+}
+
+/// Convert elapsed monotonic time to a bounded millisecond field.
+///
+/// # Parameters
+///
+/// - `started`: Monotonic start time.
+///
+/// # Returns
+///
+/// Elapsed milliseconds capped at the largest representable `u64`.
+fn elapsed_milliseconds(started: Instant) -> u64 {
+    started.elapsed().as_millis().min(u64::MAX as u128) as u64
+}
+
+/// Map serialized resolver status to the fixed diagnostic status allow-list.
+///
+/// # Parameters
+///
+/// - `result`: Serialized resolver result record.
+///
+/// # Returns
+///
+/// One of the five stable resolver outcome values.
+fn resolver_status(result: &serde_json::Value) -> &'static str {
+    match result.get("status").and_then(serde_json::Value::as_str) {
+        Some("resolved") => "resolved",
+        Some("unresolved") => "unresolved",
+        Some("sub_target_not_found") => "sub_target_not_found",
+        Some("ambiguous") => "ambiguous",
+        _ => "error",
     }
 }
 
@@ -178,6 +288,40 @@ fn select_allowed_vault(
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for ResolverServer {
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, rmcp::ErrorData> {
+        if request.name != "resolve_obsidian_link" {
+            return self
+                .tool_router
+                .call(ToolCallContext::new(self, request, context))
+                .await;
+        }
+
+        let request_seq = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let started = Instant::now();
+        log::info!(target: DIAGNOSTICS_TARGET, event = "request_started", request_seq = request_seq; "MCP request started");
+
+        let arguments = request.arguments.unwrap_or_default();
+        let request =
+            match serde_json::from_value::<ResolveRequest>(serde_json::Value::Object(arguments)) {
+                Ok(request) => request,
+                Err(error) => {
+                    log_request_failed(request_seq, "invalid_arguments", started);
+                    return Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                        "failed to deserialize parameters: {error}"
+                    ))])
+                    .into());
+                }
+            };
+
+        self.resolve_request(request, request_seq, started)
+            .await
+            .into_call_tool_result()
+    }
+
     /// Return the server capabilities advertised during MCP initialization.
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
