@@ -48,6 +48,97 @@ iwr https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scr
 pwsh ./install.ps1 -Mode install
 ```
 
+## MCP Server Install / Update
+
+The MCP server has its own installer; the commands below install or update
+`obsidian-link-resolver-mcp` only. The CLI installer above remains CLI-only.
+
+MCP release executables are published for Linux and macOS (x86_64 and
+aarch64), and Windows (x86_64). Assets are named
+`obsidian-link-resolver-mcp-<tag>-<os>-<arch>` with an `.exe` suffix on Windows.
+The installers require a release that includes these MCP assets; older
+CLI-only releases are not supported.
+
+### Bash (Linux/macOS)
+
+Install or update the latest release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh | bash
+```
+
+Install a pinned version or choose an installation directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh | bash -s -- --version 2.0.0
+```
+
+To inspect the script first or set an installation directory:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh
+bash install-mcp.sh --version 2.0.0 --install-dir "$HOME/.local/bin"
+```
+
+### PowerShell 7+ (Windows/Linux/macOS)
+
+Install or update the latest release, or pin a version:
+
+```powershell
+irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1))) -Version 2.0.0
+```
+
+To inspect the script first or set an installation directory:
+
+```powershell
+iwr https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 -OutFile install-mcp.ps1
+pwsh ./install-mcp.ps1 -Version 2.0.0 -InstallDir "$HOME/.local/bin"
+```
+
+### GitHub Copilot in VS Code
+
+Add a server entry to `.vscode/mcp.json` in the workspace, replacing the vault
+path with an absolute path on this machine:
+
+```json
+{
+	"servers": {
+		"obsidian-link-resolver": {
+			"type": "stdio",
+			"command": "obsidian-link-resolver-mcp",
+			"args": ["--vault", "/absolute/path/to/vault"]
+		}
+	}
+}
+```
+
+Use a Windows path such as `C:\\Users\\you\\Documents\\Obsidian`. Add another
+`"--vault", "/absolute/path/to/another-vault"` pair to `args` to allow more
+vaults. VS Code starts the local process and connects to it over stdio; keep
+stdout reserved for MCP messages.
+
+### Claude Desktop
+
+Add the server to Claude Desktop's `claude_desktop_config.json` (`%APPDATA%\\Claude\\claude_desktop_config.json` on Windows, or
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+	"mcpServers": {
+		"obsidian-link-resolver": {
+			"command": "obsidian-link-resolver-mcp",
+			"args": ["--vault", "/absolute/path/to/vault"]
+		}
+	}
+}
+```
+
+Replace the vault path with an absolute path and repeat the `--vault` argument
+pair for each additional allowed vault. Claude Desktop launches the local
+server and communicates through stdio. Restart the client after updating its
+configuration.
+
 ## Usage
 
 ```bash

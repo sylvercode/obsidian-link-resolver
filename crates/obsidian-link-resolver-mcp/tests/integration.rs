@@ -1,5 +1,7 @@
 //! End-to-end tests for MCP stdio behavior.
 
+#[path = "integration/installers.rs"]
+mod installers;
 #[path = "integration/mcp_cache_refresh.rs"]
 mod mcp_cache_refresh;
 #[path = "support/mcp_client.rs"]
