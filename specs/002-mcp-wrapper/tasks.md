@@ -129,11 +129,11 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Add metadata assertions before changing the published tool description/schema.
 
-- [ ] T026 [P] [US3] Add tool description, argument schema, and result-shape assertions—including emplacement guidance—in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs`.
+- [X] T026 [P] [US3] Add tool description, argument schema, and result-shape assertions—including emplacement guidance—in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs`.
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Define stable MCP tool metadata and schema descriptions for required/optional arguments and resolver outcomes, including point-target versus emplacement guidance, in `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
+- [X] T027 [US3] Define stable MCP tool metadata and schema descriptions for required/optional arguments and resolver outcomes, including point-target versus emplacement guidance, in `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
 
 **Checkpoint**: A client can discover the tool and choose appropriate result detail from its metadata without guesswork.
 
