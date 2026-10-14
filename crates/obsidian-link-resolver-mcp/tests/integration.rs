@@ -12,3 +12,5 @@ mod mcp_diagnostics;
 mod mcp_resolver_parity;
 #[path = "integration/mcp_stdio.rs"]
 mod mcp_stdio;
+#[path = "integration/release_assets.rs"]
+mod release_assets;

@@ -35,3 +35,8 @@ name = "mcp_warm"
 path = "benches/mcp_warm.rs"
 harness = false
 # The benchmark emits a machine-readable report instead of using a test harness.
+
+[[bench]]
+name = "mcp_cold_start"
+path = "benches/mcp_cold_start.rs"
+harness = false

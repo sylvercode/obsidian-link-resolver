@@ -16,8 +16,39 @@ Validate against the latest stable release of each supported client available wh
 
 | Client | Exact version | Validation date | Operating system | Result |
 |---|---|---|---|---|
-| GitHub Copilot in VS Code | Record when validated | Record when validated | Record when validated | Record discovery and successful tool-call outcome |
-| Claude Desktop | Record when validated | Record when validated | Record when validated | Record discovery and successful tool-call outcome |
+| GitHub Copilot in VS Code | VS Code 1.141.2; Copilot extension not detected | 2026-10-14 | Debian GNU/Linux 13 dev container | Not validated: `code --list-extensions --show-versions` did not report GitHub Copilot; no interactive discovery or tool call was performed. |
+| Claude Desktop | Unavailable in this environment | 2026-10-14 | Debian GNU/Linux 13 dev container | Not validated: Claude Desktop is not installed or available; no interactive discovery or tool call was performed. |
+
+These are environment-validation notes, not successful client-compatibility claims. Replace them with successful results that include exact client and extension versions after validating each client.
+
+## Install / Update
+
+The dedicated MCP installer installs only `obsidian-link-resolver-mcp`.
+
+Install or update the latest release with Bash, or pin a release version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh | bash -s -- --version 2.0.0
+```
+
+For a manual fallback, inspect and run the downloaded script:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh
+bash install-mcp.sh --version 2.0.0 --install-dir "$HOME/.local/bin"
+```
+
+PowerShell 7+ supports the same latest, pinned, and manual installation paths:
+
+```powershell
+irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1))) -Version 2.0.0
+iwr https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 -OutFile install-mcp.ps1
+pwsh ./install-mcp.ps1 -Version 2.0.0 -InstallDir "$HOME/.local/bin"
+```
+
+The existing `install.sh` and `install.ps1` remain CLI-only. Neither installer accepts a component-selection parameter.
 
 ## Build and Run
 
@@ -68,11 +99,19 @@ cargo fmt --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 cargo bench -p obsidian-link-resolver-mcp --bench mcp_warm
+cargo bench -p obsidian-link-resolver-mcp --bench mcp_cold_start
+pwsh -NoProfile -File scripts/check-mcp-contract-compatibility.ps1 specs/002-mcp-wrapper/contracts/mcp-contract.json published MIGRATION.md
 ```
 
 The focused suite verifies tool discovery/input schema, stdio initialize/list/call, structured and text result parity, all five resolver statuses, path-qualified and vault-relative context path parity, cache reuse, event invalidation, request-independent periodic refresh, refresh failure behavior, separation between vault roots, and diagnostics default/redaction/channel isolation. Run path parity fixtures natively on `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, and `x86_64-pc-windows-gnu`, configuring the MinGW linker for the Windows GNU target. Compare outcome categories for every case and compare target/location fields only when present in the direct resolver result. Determinism tests hold vault contents fixed; mutation tests separately verify that cache freshness can legitimately change subsequent results. Contract compatibility validation follows canonical requirement FR-012 and success criterion SC-012. Use child-process tests to capture stderr and stdout because the `log` facade logger is process-global; verify unrelated targets are sent to the configured sink and emitted diagnostics match the allow-listed schema in `contracts/mcp.md`. Filesystem-event correctness tests should inject invalidation deterministically; the periodic scheduler should use a controllable clock so the 60-second bound can be tested without a wall-clock delay. The cross-platform watcher smoke test checks registration without depending on event timing.
 
 The warm-run benchmark is a performance gate in both pull-request CI and tag-release validation. Both workflows run it on GitHub-hosted `ubuntu-24.04`; it measures 100 consecutive end-to-end MCP calls against the deterministic, generated `bench-vault-v1` corpus from `tests/fixtures/bench_vault.rs`, excluding process startup and initial index construction. The p50 must be ≤100 ms. The benchmark emits a machine-readable report with runner image/OS/architecture, fixture version, sample count, and p50; the workflow retains that report as an artifact. Run the same command locally for a diagnostic measurement, but interpret the enforced threshold on the named CI/release runner.
+
+The cold-start benchmark measures 100 fresh processes from launch through the first successful resolution, including startup and initial indexing. It records the p50 as a baseline without a failure threshold. Both benchmarks emit machine-readable reports containing runner image, OS, architecture, fixture version, sample count, and p50; CI and release workflows retain both reports as artifacts.
+
+The compatibility command compares the candidate with the latest published MCP contract in the same major version. It requires an authenticated GitHub CLI session and repository access when using `published`. If no published MCP contract asset exists, the candidate establishes the initial baseline; breaking changes in later releases require a new major version and matching migration notes in `MIGRATION.md`.
+
+The automated end-to-end scenarios are exercised by the MCP stdio, resolver-parity, cache-refresh, diagnostics, installer, and release-asset integration tests, along with the contract and determinism tests. Interactive validation in the two supported clients remains outstanding as recorded above.
 
 ## Shared-Version Release Validation
 

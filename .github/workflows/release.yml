@@ -38,19 +38,31 @@ jobs:
           sudo mv /tmp/zig-linux-x86_64-0.14.0 /usr/local/zig
           echo "/usr/local/zig" >> "$GITHUB_PATH"
           cargo install cargo-zigbuild --locked
-      - name: Build release artifacts
+      - name: Run workspace tests and build release artifacts
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
         run: |
-          cargo test
+          set -euo pipefail
+          cargo test --workspace
+          cargo build --release --workspace
+          cargo bench -p obsidian-link-resolver-mcp --bench mcp_warm > "$RUNNER_TEMP/mcp-warm-report.json"
+          cargo bench -p obsidian-link-resolver-mcp --bench mcp_cold_start > "$RUNNER_TEMP/mcp-cold-start-report.json"
           cargo bench -p obsidian-link-resolver --bench resolve -- --warm-up-time 0.1
-          cargo build --workspace --release
           cargo build --workspace --release --target x86_64-unknown-linux-gnu
           cargo build --workspace --release --target aarch64-unknown-linux-gnu
           cargo build --workspace --release --target x86_64-pc-windows-gnu
           cargo zigbuild --workspace --release --target x86_64-apple-darwin
           cargo zigbuild --workspace --release --target aarch64-apple-darwin
+      - name: Retain MCP benchmark reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-benchmark-reports-${{ github.ref_name }}
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/mcp-warm-report.json
+            ${{ runner.temp }}/mcp-cold-start-report.json
       - name: Stage release assets
         env:
           RELEASE_TAG: ${{ github.ref_name }}

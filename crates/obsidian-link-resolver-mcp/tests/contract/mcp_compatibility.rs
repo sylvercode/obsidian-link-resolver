@@ -325,7 +325,11 @@ fn published_baseline_gate_allows_first_contract_but_fails_closed_on_api_errors(
     let gate = workflow
         .find("mcp-contract.json published MIGRATION.md")
         .unwrap();
-    assert!(gate < workflow.find("name: Build release artifacts").unwrap());
+    assert!(
+        gate < workflow
+            .find("name: Run workspace tests and build release artifacts")
+            .unwrap()
+    );
     assert!(gate < workflow.find("name: Stage release assets").unwrap());
     assert!(workflow.contains("GH_TOKEN: ${{ github.token }}"));
     assert!(workflow
