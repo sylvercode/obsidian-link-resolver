@@ -1,7 +1,7 @@
 //! MCP tool adapter for the existing Obsidian link resolver.
 
 use crate::cache::VaultCache;
-use obsidian_link_resolver::output::{ResolutionTarget, Status};
+use obsidian_link_resolver::error_for_link;
 use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -126,17 +126,8 @@ impl ResolverServer {
             Ok(generation) => generation,
             Err(reason) => {
                 return Ok(CallToolResult::structured(
-                    serde_json::to_value(ResolutionTarget {
-                        status: Status::Error,
-                        target_path: None,
-                        target_range: None,
-                        is_embed: request.link.starts_with("![["),
-                        display_text: None,
-                        candidates: None,
-                        reason: Some(reason),
-                        emplacement: None,
-                    })
-                    .map_err(|error| error.to_string())?,
+                    serde_json::to_value(error_for_link(&request.link, reason))
+                        .map_err(|error| error.to_string())?,
                 ));
             }
         };

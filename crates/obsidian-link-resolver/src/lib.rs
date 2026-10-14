@@ -47,7 +47,7 @@ pub mod output;
 pub mod resolve;
 pub mod vault;
 
-use crate::link::{parse_link, Link};
+use crate::link::{parse_link, Link, LinkParseError};
 use crate::output::ResolutionTarget;
 use crate::resolve::resolve_link;
 use crate::vault::{detect_root, ContextFile, Vault};
@@ -106,16 +106,7 @@ pub fn resolve(
     let vault = match detect_root(context_path, vault) {
         Ok(vault) => vault,
         Err(reason) => {
-            return ResolutionTarget {
-                status: crate::output::Status::Error,
-                target_path: None,
-                target_range: None,
-                is_embed: parsed.is_embed,
-                display_text: parsed.display_text.clone(),
-                candidates: None,
-                reason: Some(reason),
-                emplacement: None,
-            };
+            return error_for_parsed_link(parsed, reason);
         }
     };
 
@@ -142,21 +133,55 @@ pub fn resolve_with_vault(
 ) -> ResolutionTarget {
     let parsed = match parse_link(link) {
         Ok(link) => link,
-        Err(error) => {
-            return ResolutionTarget {
-                status: crate::output::Status::Error,
-                target_path: None,
-                target_range: None,
-                is_embed: false,
-                display_text: None,
-                candidates: None,
-                reason: Some(error.to_string()),
-                emplacement: None,
-            };
-        }
+        Err(error) => return parse_error_result(error),
     };
 
     resolve_parsed(parsed, context_path, vault, with_emplacement)
+}
+
+/// Create a resolver error result for a raw link, preserving normal parse-first semantics.
+///
+/// # Parameters
+///
+/// - `link`: Raw Obsidian link text.
+/// - `reason`: Error to report when the link is valid.
+///
+/// # Returns
+///
+/// A parse error when `link` is malformed, or an error result carrying its parsed link metadata.
+pub fn error_for_link(link: &str, reason: String) -> ResolutionTarget {
+    match parse_link(link) {
+        Ok(parsed) => error_for_parsed_link(parsed, reason),
+        Err(error) => parse_error_result(error),
+    }
+}
+
+/// Build an error result from a parsed link while retaining its display metadata.
+fn error_for_parsed_link(parsed: Link, reason: String) -> ResolutionTarget {
+    ResolutionTarget {
+        status: crate::output::Status::Error,
+        target_path: None,
+        target_range: None,
+        is_embed: parsed.is_embed,
+        display_text: parsed.display_text,
+        candidates: None,
+        reason: Some(reason),
+        emplacement: None,
+    }
+}
+
+/// Convert a link parsing failure into the standard resolver error record.
+fn parse_error_result(error: LinkParseError) -> ResolutionTarget {
+    ResolutionTarget {
+        status: crate::output::Status::Error,
+        target_path: None,
+        target_range: None,
+        is_embed: false,
+        display_text: None,
+        candidates: None,
+        reason: Some(error.to_string()),
+        emplacement: None,
+    }
 }
 
 /// Resolve an already parsed link against a preselected vault and context path.
