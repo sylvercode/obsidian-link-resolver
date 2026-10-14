@@ -48,6 +48,44 @@ const BASH_PLATFORMS: [Platform; 4] = [
     },
 ];
 
+const POWERSHELL_PLATFORMS: [Platform; 5] = [
+    Platform {
+        os: "Linux",
+        os_token: "linux",
+        arch: "X64",
+        arch_token: "x86_64",
+        executable_suffix: "",
+    },
+    Platform {
+        os: "Linux",
+        os_token: "linux",
+        arch: "Arm64",
+        arch_token: "aarch64",
+        executable_suffix: "",
+    },
+    Platform {
+        os: "Darwin",
+        os_token: "darwin",
+        arch: "X64",
+        arch_token: "x86_64",
+        executable_suffix: "",
+    },
+    Platform {
+        os: "Darwin",
+        os_token: "darwin",
+        arch: "Arm64",
+        arch_token: "aarch64",
+        executable_suffix: "",
+    },
+    Platform {
+        os: "Windows",
+        os_token: "windows",
+        arch: "X64",
+        arch_token: "x86_64",
+        executable_suffix: ".exe",
+    },
+];
+
 #[test]
 fn bash_installers_download_the_component_asset_for_latest_and_pinned_versions() {
     for platform in &BASH_PLATFORMS {
@@ -64,24 +102,25 @@ fn bash_installers_download_the_component_asset_for_latest_and_pinned_versions()
 
 #[test]
 fn powershell_installers_download_the_component_asset_for_latest_and_pinned_versions() {
-    let platform = powershell_platform();
     let temp = tempfile::tempdir().expect("temporary directory should be created");
     let harness = temp.path().join("mock-installer.ps1");
     fs::write(&harness, powershell_harness()).expect("PowerShell harness should be written");
 
-    for (binary, script_name) in [
-        ("obsidian-link-resolver", "install.ps1"),
-        ("obsidian-link-resolver-mcp", "install-mcp.ps1"),
-    ] {
-        for version in [None, Some("4.5.6")] {
-            run_powershell_install(
-                &harness,
-                &platform,
-                binary,
-                script_name,
-                version,
-                temp.path(),
-            );
+    for platform in &POWERSHELL_PLATFORMS {
+        for (binary, script_name) in [
+            ("obsidian-link-resolver", "install.ps1"),
+            ("obsidian-link-resolver-mcp", "install-mcp.ps1"),
+        ] {
+            for version in [None, Some("4.5.6")] {
+                run_powershell_install(
+                    &harness,
+                    platform,
+                    binary,
+                    script_name,
+                    version,
+                    temp.path(),
+                );
+            }
         }
     }
 }
@@ -179,11 +218,34 @@ fn run_powershell_install(
     version: Option<&str>,
     base_dir: &Path,
 ) {
-    let install_dir = base_dir.join(format!("ps-{binary}-{}", version.unwrap_or("latest")));
+    let case_name = format!(
+        "ps-{binary}-{}-{}-{}",
+        platform.os_token,
+        platform.arch_token,
+        version.unwrap_or("latest")
+    );
+    let install_dir = base_dir.join(&case_name);
+    let installer = base_dir.join(format!("{case_name}.ps1"));
+    let mut source = fs::read_to_string(repository_file(&format!("scripts/{script_name}")))
+        .expect("PowerShell installer should be readable");
+    // Inject only runtime probes so the installer's platform mapping runs unchanged.
+    for (probe, replacement) in [
+        ("$IsWindows", format!("${}", platform.os == "Windows")),
+        ("$IsLinux", format!("${}", platform.os == "Linux")),
+        ("$IsMacOS", format!("${}", platform.os == "Darwin")),
+        (
+            "[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture",
+            format!("'{}'", platform.arch),
+        ),
+    ] {
+        assert!(source.contains(probe), "{script_name} is missing {probe}");
+        source = source.replace(probe, &replacement);
+    }
+    fs::write(&installer, source).expect("platform-injected installer should be written");
     let output = Command::new("pwsh")
         .args(["-NoProfile", "-File"])
         .arg(harness)
-        .arg(repository_file(&format!("scripts/{script_name}")))
+        .arg(&installer)
         .arg(&install_dir)
         .arg(version.unwrap_or_default())
         .arg(binary)
@@ -218,40 +280,6 @@ fn run_powershell_install(
             .expect("installed binary should exist"),
         MOCK_CONTENT
     );
-}
-
-fn powershell_platform() -> Platform {
-    let output = Command::new("pwsh")
-        .args([
-            "-NoProfile",
-            "-Command",
-            "[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()",
-        ])
-        .output()
-        .expect("PowerShell 7+ is required for mocked installer tests");
-    assert_success(&output, "PowerShell runtime probe");
-    let architecture = String::from_utf8(output.stdout)
-        .expect("PowerShell architecture should be UTF-8")
-        .trim()
-        .to_owned();
-    let arch_token = match architecture.as_str() {
-        "X64" => "x86_64",
-        "Arm64" => "aarch64",
-        other => panic!("unsupported PowerShell test architecture: {other}"),
-    };
-    let os = match std::env::consts::OS {
-        "windows" => ("windows", ".exe"),
-        "macos" => ("darwin", ""),
-        "linux" => ("linux", ""),
-        other => panic!("unsupported PowerShell test OS: {other}"),
-    };
-    Platform {
-        os: "",
-        os_token: os.0,
-        arch: "",
-        arch_token,
-        executable_suffix: os.1,
-    }
 }
 
 fn asset_name(binary: &str, tag: &str, platform: &Platform) -> String {
@@ -289,10 +317,11 @@ function global:MockInvokeWebRequest {
 }
 Set-Alias -Name Invoke-RestMethod -Value MockInvokeRestMethod -Scope Global -Force
 Set-Alias -Name Invoke-WebRequest -Value MockInvokeWebRequest -Scope Global -Force
+$InstallerBlock = [scriptblock]::Create((Get-Content -LiteralPath $Installer -Raw))
 if ($Version) {
-    . $Installer -InstallDir $InstallDir -Version $Version
+    & $InstallerBlock -InstallDir $InstallDir -Version $Version
 } else {
-    . $Installer -InstallDir $InstallDir
+    & $InstallerBlock -InstallDir $InstallDir
 }
 [pscustomobject]@{
     api_uri = $global:MockApiUri

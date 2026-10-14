@@ -71,6 +71,12 @@ Install a pinned version or choose an installation directory:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh | bash -s -- --version 2.0.0
+```
+
+To inspect the script first or set an installation directory:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.sh
 bash install-mcp.sh --version 2.0.0 --install-dir "$HOME/.local/bin"
 ```
 
@@ -80,7 +86,7 @@ Install or update the latest release, or pin a version:
 
 ```powershell
 irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 | iex
-irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1 | ForEach-Object { iex "$($_) -Version 2.0.0" }
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sylvercode/obsidian-link-resolver/main/scripts/install-mcp.ps1))) -Version 2.0.0
 ```
 
 To inspect the script first or set an installation directory:
