@@ -53,6 +53,12 @@ pwsh ./install.ps1 -Mode install
 The MCP server has its own installer; the commands below install or update
 `obsidian-link-resolver-mcp` only. The CLI installer above remains CLI-only.
 
+MCP release executables are published for Linux and macOS (x86_64 and
+aarch64), and Windows (x86_64). Assets are named
+`obsidian-link-resolver-mcp-<tag>-<os>-<arch>` with an `.exe` suffix on Windows.
+The installers require a release that includes these MCP assets; older
+CLI-only releases are not supported.
+
 ### Bash (Linux/macOS)
 
 Install or update the latest release:
