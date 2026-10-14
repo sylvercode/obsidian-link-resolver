@@ -242,8 +242,10 @@ impl VaultCache {
     fn start_periodic_refresh(entry: &Arc<CacheEntry>) {
         let weak_entry = Arc::downgrade(entry);
         tokio::spawn(async move {
+            let mut refresh_interval = tokio::time::interval(FULL_RESCAN_INTERVAL);
+            refresh_interval.tick().await;
             loop {
-                tokio::time::sleep(FULL_RESCAN_INTERVAL).await;
+                refresh_interval.tick().await;
                 let Some(entry) = weak_entry.upgrade() else {
                     break;
                 };
