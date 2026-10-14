@@ -121,6 +121,87 @@ fn compatibility_checker_accepts_additions_and_rejects_breaking_changes() {
 }
 
 #[test]
+fn compatibility_checker_rejects_requiredness_and_outcome_breaks() {
+    let root = repository_root();
+    let contract_path = root.join("specs/002-mcp-wrapper/contracts/mcp-contract.json");
+    let baseline: Value = serde_json::from_slice(
+        &fs::read(&contract_path).expect("MCP contract artifact should exist"),
+    )
+    .expect("MCP contract artifact should be JSON");
+
+    let mut changed_argument_requiredness = baseline.clone();
+    changed_argument_requiredness["tool"]["arguments"]["link"]["required"] = json!(false);
+
+    let mut changed_field_requiredness = baseline.clone();
+    changed_field_requiredness["tool"]["result"]["fields"]["status"]["required"] = json!(false);
+
+    let mut added_required_argument = baseline.clone();
+    added_required_argument["tool"]["arguments"]["new_argument"] = json!({
+        "type": "string",
+        "required": true,
+        "meaning": "A newly required argument."
+    });
+
+    let mut added_required_field = baseline.clone();
+    added_required_field["tool"]["result"]["fields"]["new_field"] = json!({
+        "type": "string",
+        "required": true,
+        "meaning": "A newly required result field."
+    });
+
+    let mut removed_outcome = baseline.clone();
+    removed_outcome["tool"]["result"]["outcomes"]
+        .as_object_mut()
+        .expect("outcomes should be an object")
+        .remove("ambiguous");
+
+    let mut added_outcome = baseline.clone();
+    added_outcome["tool"]["result"]["outcomes"]["not_found"] = json!("A new outcome.");
+
+    let mut changed_outcome_meaning = baseline.clone();
+    changed_outcome_meaning["tool"]["result"]["outcomes"]["resolved"] =
+        json!("A target may not have been resolved.");
+
+    let cases = [
+        (
+            changed_argument_requiredness,
+            "changed argument 'link' required",
+        ),
+        (
+            changed_field_requiredness,
+            "changed result field 'status' required",
+        ),
+        (
+            added_required_argument,
+            "added required argument 'new_argument'",
+        ),
+        (
+            added_required_field,
+            "added required result field 'new_field'",
+        ),
+        (removed_outcome, "removed or changed outcome 'ambiguous'"),
+        (added_outcome, "added outcome 'not_found'"),
+        (
+            changed_outcome_meaning,
+            "removed or changed outcome 'resolved'",
+        ),
+    ];
+
+    for (candidate, expected_diagnostic) in cases {
+        let output = run_checker(&root, &candidate, &baseline, "");
+        assert!(
+            !output.status.success(),
+            "unexpectedly accepted change: {expected_diagnostic}"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains(expected_diagnostic),
+            "expected diagnostic {expected_diagnostic:?}, got: {stderr}"
+        );
+    }
+}
+
+#[test]
 fn published_baseline_gate_selects_latest_same_major_and_cannot_be_skipped() {
     let root = repository_root();
     let baseline: Value = serde_json::from_slice(
