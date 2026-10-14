@@ -139,6 +139,51 @@ fn diagnostics_are_opt_in_redacted_and_isolated_from_protocol_output() {
     assert!(diagnostics
         .iter()
         .any(|record| { record["event"] == "request_completed" && record["status"] == "error" }));
+    assert!(diagnostics.iter().any(|record| {
+        record["event"] == "request_failed" && record["failure_kind"] == "invalid_arguments"
+    }));
+}
+
+#[test]
+fn transport_failure_does_not_print_raw_error_when_diagnostics_are_enabled() {
+    let directory = tempfile::tempdir().expect("temporary directory should be created");
+    let vault = directory.path().join("vault");
+    fs::create_dir_all(&vault).expect("vault should be created");
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_obsidian-link-resolver-mcp"))
+        .args([
+            "--vault",
+            vault.to_str().expect("vault path should be UTF-8"),
+            "--diagnostics",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("MCP server should start");
+    writeln!(
+        child.stdin.take().expect("stdin should be piped"),
+        "raw-error-sentinel"
+    )
+    .expect("invalid handshake data should be sent");
+
+    let output = child
+        .wait_with_output()
+        .expect("server output should be collected");
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be UTF-8");
+    assert!(
+        !output.status.success(),
+        "transport failure should exit nonzero"
+    );
+
+    let diagnostics = stderr
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).expect("diagnostic line should be JSON"))
+        .collect::<Vec<_>>();
+    assert!(diagnostics.iter().any(|record| {
+        record["event"] == "server_stopped" && record["failure_kind"] == "transport"
+    }));
+    assert!(!stderr.contains("raw-error-sentinel"));
 }
 
 /// Run equivalent protocol calls and capture the server's output channels after clean shutdown.
@@ -225,6 +270,15 @@ fn run_server(diagnostics: bool) -> ProcessOutput {
                 "link": "[[Note]]",
                 "context_path": context.to_string_lossy(),
                 "vault_root": directory.path().join("raw-error-sentinel").to_string_lossy()
+            }),
+        ),
+        (
+            6,
+            json!({
+                "link": 42,
+                "context_path": context.to_string_lossy(),
+                "vault_root": vault.to_string_lossy(),
+                "serialized-arguments-sentinel": true
             }),
         ),
     ] {

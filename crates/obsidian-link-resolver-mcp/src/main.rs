@@ -68,6 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(error) => {
             if args.diagnostics {
                 log::info!(target: DIAGNOSTICS_TARGET, event = "server_stopped", failure_kind = "transport"; "MCP server stopped after transport failure");
+                std::process::exit(1);
             }
             Err(error)
         }

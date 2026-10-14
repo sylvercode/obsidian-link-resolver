@@ -4,10 +4,18 @@ use crate::cache::VaultCache;
 use obsidian_link_resolver::error_for_link;
 use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
-    handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, ServerCapabilities, ServerConfig},
+    handler::server::{
+        router::tool::ToolRouter,
+        tool::{IntoCallToolResult, ToolCallContext},
+        wrapper::Parameters,
+    },
+    model::{
+        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, ServerCapabilities,
+        ServerConfig,
+    },
     schemars::JsonSchema,
-    tool, tool_handler, tool_router, ServerHandler,
+    service::RequestContext,
+    tool, tool_handler, tool_router, RoleServer, ServerHandler,
 };
 use serde::Deserialize;
 use std::fs;
@@ -126,6 +134,17 @@ impl ResolverServer {
         let started = Instant::now();
         log::info!(target: DIAGNOSTICS_TARGET, event = "request_started", request_seq = request_seq; "MCP request started");
 
+        self.resolve_request(request, request_seq, started).await
+    }
+}
+
+impl ResolverServer {
+    async fn resolve_request(
+        &self,
+        request: ResolveRequest,
+        request_seq: u64,
+        started: Instant,
+    ) -> Result<CallToolResult, String> {
         if request.link.is_empty() || request.context_path.is_empty() {
             log_request_failed(request_seq, "invalid_arguments", started);
             return Err("link and context_path must not be empty".to_owned());
@@ -269,6 +288,40 @@ fn select_allowed_vault(
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for ResolverServer {
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, rmcp::ErrorData> {
+        if request.name != "resolve_obsidian_link" {
+            return self
+                .tool_router
+                .call(ToolCallContext::new(self, request, context))
+                .await;
+        }
+
+        let request_seq = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let started = Instant::now();
+        log::info!(target: DIAGNOSTICS_TARGET, event = "request_started", request_seq = request_seq; "MCP request started");
+
+        let arguments = request.arguments.unwrap_or_default();
+        let request =
+            match serde_json::from_value::<ResolveRequest>(serde_json::Value::Object(arguments)) {
+                Ok(request) => request,
+                Err(error) => {
+                    log_request_failed(request_seq, "invalid_arguments", started);
+                    return Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                        "failed to deserialize parameters: {error}"
+                    ))])
+                    .into());
+                }
+            };
+
+        self.resolve_request(request, request_seq, started)
+            .await
+            .into_call_tool_result()
+    }
+
     /// Return the server capabilities advertised during MCP initialization.
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
