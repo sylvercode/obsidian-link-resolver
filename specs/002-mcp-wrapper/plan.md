@@ -93,7 +93,7 @@ scripts/install.sh
 scripts/install.ps1
 scripts/install-mcp.sh
 scripts/install-mcp.ps1
-scripts/check-mcp-contract-compatibility.sh # FR-012 compatibility validation; run in CI and before release assets are staged
+scripts/check-mcp-contract-compatibility.ps1 # FR-012 compatibility validation; run in CI and before release assets are staged
 README.md
 crates/
 ├── obsidian-link-resolver/   # Library crate: resolver API, vault index, C ABI / FFI

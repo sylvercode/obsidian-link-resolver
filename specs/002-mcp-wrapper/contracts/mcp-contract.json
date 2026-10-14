@@ -1,0 +1,99 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "contract_version": "2.0.0",
+    "tool": {
+        "name": "resolve_obsidian_link",
+        "description": "Resolve an Obsidian link from its containing note using the existing resolver.",
+        "arguments": {
+            "link": {
+                "type": "string",
+                "required": true,
+                "meaning": "Raw Obsidian link text to resolve."
+            },
+            "context_path": {
+                "type": "string",
+                "required": true,
+                "meaning": "Path to the note containing the link."
+            },
+            "vault_root": {
+                "type": "string",
+                "required": false,
+                "meaning": "Optional allowed vault root containing the context path."
+            },
+            "with_emplacement": {
+                "type": "boolean",
+                "required": false,
+                "meaning": "Whether to include structured emplacement details."
+            }
+        },
+        "result": {
+            "fields": {
+                "status": {
+                    "type": "string",
+                    "required": true,
+                    "meaning": "Resolution outcome: resolved, unresolved, sub_target_not_found, ambiguous, or error."
+                },
+                "target_path": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Resolved target path, vault-relative with forward slashes."
+                },
+                "target_range": {
+                    "type": [
+                        "lineRange",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Canonical target interval for heading, block, or structured-block targets."
+                },
+                "is_embed": {
+                    "type": "boolean",
+                    "required": true,
+                    "meaning": "Whether the link is an embed; informational and does not change resolution."
+                },
+                "display_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Display text from the link; informational only."
+                },
+                "candidates": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Ambiguous candidate paths, sorted ordinally by vault-relative path."
+                },
+                "reason": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Actionable reason for a non-resolved outcome."
+                },
+                "emplacement": {
+                    "type": [
+                        "structuredEmplacement",
+                        "null"
+                    ],
+                    "required": false,
+                    "meaning": "Requested structured emplacement for a target inside a note."
+                }
+            },
+            "outcomes": {
+                "resolved": "A target was resolved successfully.",
+                "unresolved": "No target could be resolved.",
+                "sub_target_not_found": "The note resolved but its requested heading or block did not.",
+                "ambiguous": "More than one target matches the link.",
+                "error": "The resolver encountered an error; this remains a resolver result, not an MCP protocol error."
+            }
+        }
+    }
+}
