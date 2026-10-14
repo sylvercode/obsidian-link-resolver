@@ -44,11 +44,7 @@ fn indexed_paths(generation: &cache::VaultGeneration) -> Vec<String> {
 async fn canonical_roots_reuse_the_same_generation() {
     let directory = make_vault();
     let root = directory.path();
-    let current_directory = std::env::current_dir().expect("working directory should exist");
-    let relative_root = root
-        .strip_prefix(&current_directory)
-        .map(|relative| current_directory.join(relative))
-        .unwrap_or_else(|_| root.to_path_buf());
+    let relative_root = root.join(".");
     let cache = VaultCache::new();
 
     let first = cache
