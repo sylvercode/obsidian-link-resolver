@@ -3,6 +3,7 @@
 use clap::Parser;
 use rmcp::{transport::stdio, ServiceExt};
 
+mod cache;
 mod mcp;
 
 /// Command-line configuration for the MCP server.

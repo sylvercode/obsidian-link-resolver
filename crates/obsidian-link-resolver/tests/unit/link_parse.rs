@@ -1,4 +1,24 @@
+use obsidian_link_resolver::error_for_link;
 use obsidian_link_resolver::link::{parse_link, LinkStyle};
+use obsidian_link_resolver::output::Status;
+
+/// Cache-style errors preserve alias metadata and defer to parse failures for malformed links.
+#[test]
+fn error_result_preserves_parse_first_link_semantics() {
+    let error = error_for_link("[[Target|Alias]]", "refresh failed".to_owned());
+    assert_eq!(error.status, Status::Error);
+    assert_eq!(error.display_text.as_deref(), Some("Alias"));
+    assert_eq!(error.reason.as_deref(), Some("refresh failed"));
+
+    let malformed = error_for_link("not a link", "refresh failed".to_owned());
+    assert_eq!(malformed.status, Status::Error);
+    assert_eq!(malformed.display_text, None);
+    assert_ne!(malformed.reason.as_deref(), Some("refresh failed"));
+    assert_eq!(
+        malformed.reason.as_deref(),
+        Some("unsupported link syntax: not a link")
+    );
+}
 
 /// Verifies parser coverage for wikilinks, markdown links, same-file links, and invalid sub-targets.
 #[test]
