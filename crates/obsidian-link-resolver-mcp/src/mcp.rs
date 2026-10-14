@@ -1,6 +1,8 @@
 //! MCP tool adapter for the existing Obsidian link resolver.
 
-use obsidian_link_resolver::resolve;
+use crate::cache::VaultCache;
+use obsidian_link_resolver::output::{ResolutionTarget, Status};
+use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{CallToolResult, ServerCapabilities, ServerConfig},
@@ -10,6 +12,7 @@ use rmcp::{
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Typed arguments accepted by the `resolve_obsidian_link` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -54,6 +57,8 @@ where
 #[derive(Debug, Clone)]
 pub(crate) struct ResolverServer {
     allowed_vaults: Vec<PathBuf>,
+    /// Process-scoped index snapshots keyed by canonical vault root.
+    cache: Arc<VaultCache>,
     tool_router: ToolRouter<Self>,
 }
 
@@ -84,6 +89,7 @@ impl ResolverServer {
             .collect::<Result<Vec<_>, String>>()?;
         Ok(Self {
             allowed_vaults,
+            cache: Arc::new(VaultCache::new()),
             tool_router: Self::tool_router(),
         })
     }
@@ -116,16 +122,29 @@ impl ResolverServer {
             request.vault_root.as_deref(),
             &self.allowed_vaults,
         )?;
+        let generation = match self.cache.get_or_refresh(&vault_root).await {
+            Ok(generation) => generation,
+            Err(reason) => {
+                return Ok(CallToolResult::structured(
+                    serde_json::to_value(ResolutionTarget {
+                        status: Status::Error,
+                        target_path: None,
+                        target_range: None,
+                        is_embed: request.link.starts_with("![["),
+                        display_text: None,
+                        candidates: None,
+                        reason: Some(reason),
+                        emplacement: None,
+                    })
+                    .map_err(|error| error.to_string())?,
+                ));
+            }
+        };
         let link = request.link;
         let context_path = request.context_path;
         let with_emplacement = request.with_emplacement;
         let result = tokio::task::spawn_blocking(move || {
-            resolve(
-                &link,
-                &context_path,
-                Some(vault_root.to_string_lossy().as_ref()),
-                with_emplacement,
-            )
+            resolve_with_vault(&link, &context_path, &generation.vault, with_emplacement)
         })
         .await
         .map_err(|error| format!("resolver task failed: {error}"))?;

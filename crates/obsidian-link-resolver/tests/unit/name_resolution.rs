@@ -1,6 +1,6 @@
 use obsidian_link_resolver::vault::{
-    detect_root, enumerate_vault, resolve_name, NameResolutionError, NoteIndexEntry, Vault,
-    VaultSource,
+    detect_root, enumerate_vault, resolve_name, select_root, NameResolutionError, NoteIndexEntry,
+    Vault, VaultSource,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -28,6 +28,11 @@ fn detects_vault_root_and_resolves_names_case_insensitively() {
         detect_root(context.to_string_lossy().as_ref(), None).expect("vault should detect");
     assert_eq!(detected.root, fixture_root.to_string_lossy());
     assert_eq!(detected.source, VaultSource::Detected);
+    assert_eq!(
+        select_root(context.to_string_lossy().as_ref(), None)
+            .expect("vault root should select without enumeration"),
+        (fixture_root.clone(), VaultSource::Detected)
+    );
 
     let explicit = detect_root(
         context.to_string_lossy().as_ref(),

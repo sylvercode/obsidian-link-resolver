@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 
 use walkdir::WalkDir;
 
@@ -108,6 +108,29 @@ pub enum NameResolutionError {
 ///
 /// A fully enumerated vault or an error when root detection/validation fails.
 pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Vault, String> {
+    let (root_path, source) = select_root(context_path, explicit_root)?;
+    let entries = enumerate_vault(root_path.to_string_lossy().as_ref())?;
+    Ok(Vault {
+        root: root_path.to_string_lossy().into_owned(),
+        source,
+        entries,
+    })
+}
+
+/// Canonicalize and validate a vault root without enumerating its contents.
+///
+/// # Parameters
+///
+/// - `context_path`: Path to the file containing the link being resolved.
+/// - `explicit_root`: Optional caller-specified vault root path.
+///
+/// # Returns
+///
+/// The canonical root path and its source, or an error when root selection fails.
+pub fn select_root(
+    context_path: &str,
+    explicit_root: Option<&str>,
+) -> Result<(PathBuf, VaultSource), String> {
     let context_abs = fs::canonicalize(context_path)
         .map_err(|error| format!("failed to read context path '{context_path}': {error}"))?;
     let (root_path, source) = if let Some(explicit_root) =
@@ -137,13 +160,7 @@ pub fn detect_root(context_path: &str, explicit_root: Option<&str>) -> Result<Va
             }
         }
     };
-
-    let entries = enumerate_vault(root_path.to_string_lossy().as_ref())?;
-    Ok(Vault {
-        root: root_path.to_string_lossy().into_owned(),
-        source,
-        entries,
-    })
+    Ok((root_path, source))
 }
 
 /// Enumerate note and attachment paths in a vault without reading file bodies.
