@@ -111,7 +111,7 @@ impl VaultCache {
 
         loop {
             if entry.needs_refresh() {
-                entry.refresh().await?;
+                entry.refresh(false).await?;
             }
             if let Some(generation) = entry.generation_if_fresh() {
                 return Ok(generation);
@@ -247,7 +247,7 @@ impl VaultCache {
                 let Some(entry) = weak_entry.upgrade() else {
                     break;
                 };
-                let _ = entry.refresh().await;
+                let _ = entry.refresh(true).await;
             }
         });
     }
@@ -297,8 +297,11 @@ impl CacheEntry {
     }
 
     /// Build and atomically install a complete index if no event raced with the scan.
-    async fn refresh(&self) -> Result<(), String> {
+    async fn refresh(&self, force: bool) -> Result<(), String> {
         let _refresh_guard = self.refresh_lock.lock().await;
+        if !force && !self.needs_refresh() {
+            return Ok(());
+        }
         for _ in 0..MAX_REFRESH_ATTEMPTS {
             #[cfg(test)]
             {
@@ -364,5 +367,86 @@ impl CacheEntry {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(watcher);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::VaultCache;
+    use std::future::{poll_fn, Future};
+    use std::sync::Arc;
+    use std::task::Poll;
+
+    #[tokio::test]
+    async fn concurrent_callers_coalesce_cold_and_dirty_refreshes() {
+        let directory = tempfile::tempdir().expect("temporary vault should be created");
+        std::fs::write(directory.path().join("Note.md"), "# Note\n")
+            .expect("note should be written");
+        let root = std::fs::canonicalize(directory.path()).expect("root should be canonicalized");
+        let cache = VaultCache::without_watcher();
+        let entry = cache.entry(root.clone());
+
+        for expected_generation in 1..=2 {
+            let refresh_guard = entry.refresh_lock.lock().await;
+            let first = cache.get_or_refresh(&root);
+            let second = cache.get_or_refresh(&root);
+            let third = cache.get_or_refresh(&root);
+            tokio::pin!(first, second, third);
+            poll_fn(|context| {
+                assert!(first.as_mut().poll(context).is_pending());
+                assert!(second.as_mut().poll(context).is_pending());
+                assert!(third.as_mut().poll(context).is_pending());
+                Poll::Ready(())
+            })
+            .await;
+            drop(refresh_guard);
+
+            let (first, second, third) = tokio::join!(first, second, third);
+            let first = first.expect("first request should select a generation");
+            let second = second.expect("second request should select a generation");
+            let third = third.expect("third request should select a generation");
+            assert!(Arc::ptr_eq(&first, &second));
+            assert!(Arc::ptr_eq(&first, &third));
+            assert_eq!(first.generation, expected_generation);
+            assert_eq!(cache.current_generation(&root), Some(expected_generation));
+            entry.invalidate();
+        }
+    }
+
+    #[tokio::test]
+    async fn forced_refresh_rescans_a_fresh_generation() {
+        let directory = tempfile::tempdir().expect("temporary vault should be created");
+        let cache = VaultCache::without_watcher();
+        let first = cache
+            .get_or_refresh(directory.path())
+            .await
+            .expect("initial index should build");
+        let entry = cache
+            .find_entry(directory.path())
+            .expect("entry should exist");
+        std::fs::write(directory.path().join("Added.md"), "# Added\n")
+            .expect("note should be written");
+
+        entry
+            .refresh(false)
+            .await
+            .expect("fresh index should be reused");
+        assert_eq!(
+            cache.current_generation(directory.path()),
+            Some(first.generation)
+        );
+        entry
+            .refresh(true)
+            .await
+            .expect("forced scan should succeed");
+        let refreshed = entry
+            .generation_if_fresh()
+            .expect("index should remain fresh");
+        assert_eq!(refreshed.generation, first.generation + 1);
+        assert!(refreshed
+            .vault
+            .entries
+            .iter()
+            .any(|entry| entry.rel_path == "Added.md"));
     }
 }
