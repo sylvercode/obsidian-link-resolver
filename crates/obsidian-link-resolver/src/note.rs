@@ -779,10 +779,12 @@ fn is_list_item(line: &str) -> bool {
 }
 
 #[cfg(test)]
+/// Unit tests for markdown heading parsing.
 mod tests {
     use super::parse_heading;
 
     #[test]
+    /// Closing hashes are stripped without changing hashes inside heading text.
     fn parse_heading_strips_only_markdown_closing_hashes() {
         assert_eq!(
             parse_heading("## Example ##"),

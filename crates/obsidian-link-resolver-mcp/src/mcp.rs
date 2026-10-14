@@ -139,6 +139,18 @@ impl ResolverServer {
 }
 
 impl ResolverServer {
+    /// Validate a request, select its vault generation, and serialize the resolver result.
+    ///
+    /// # Parameters
+    ///
+    /// - `request`: Deserialized arguments for one resolver tool call.
+    /// - `request_seq`: Process-local identifier used only for diagnostics.
+    /// - `started`: Start instant used to report request duration.
+    ///
+    /// # Returns
+    ///
+    /// A successful MCP tool result, including resolver error outcomes, or a tool error when
+    /// request validation, root selection, or result serialization fails.
     async fn resolve_request(
         &self,
         request: ResolveRequest,
@@ -288,6 +300,16 @@ fn select_allowed_vault(
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for ResolverServer {
+    /// Dispatch a protocol tool call and preserve MCP argument errors.
+    ///
+    /// # Parameters
+    ///
+    /// - `request`: MCP tool name and JSON arguments supplied by the client.
+    /// - `context`: Server request context provided by the MCP runtime.
+    ///
+    /// # Returns
+    ///
+    /// The MCP tool response or protocol error returned by the server handler.
     async fn call_tool(
         &self,
         request: CallToolRequestParams,

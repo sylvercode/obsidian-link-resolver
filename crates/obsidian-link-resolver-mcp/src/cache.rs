@@ -406,6 +406,7 @@ impl CacheEntry {
 }
 
 #[cfg(test)]
+/// Unit tests for vault cache generations and refresh coordination.
 mod tests {
     use super::VaultCache;
     use std::future::{poll_fn, Future};
@@ -413,6 +414,7 @@ mod tests {
     use std::task::Poll;
 
     #[tokio::test]
+    /// Concurrent cold and dirty requests share one refresh generation.
     async fn concurrent_callers_coalesce_cold_and_dirty_refreshes() {
         let directory = tempfile::tempdir().expect("temporary vault should be created");
         std::fs::write(directory.path().join("Note.md"), "# Note\n")
@@ -449,6 +451,7 @@ mod tests {
     }
 
     #[tokio::test]
+    /// A clean cache entry reuses its snapshot until an explicit invalidation.
     async fn forced_refresh_rescans_a_fresh_generation() {
         let directory = tempfile::tempdir().expect("temporary vault should be created");
         let cache = VaultCache::without_watcher();

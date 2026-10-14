@@ -267,6 +267,15 @@ fn validate_relative_path_segments(path: &str) -> bool {
     true
 }
 
+/// Parse a note, folder, heading, and block reference from a link target.
+///
+/// # Parameters
+///
+/// - `target`: Link target text after display metadata has been removed.
+///
+/// # Returns
+///
+/// The normalized target components, or a parse error for invalid paths or sub-targets.
 fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
     let target = target.trim();
     if target.is_empty() {
