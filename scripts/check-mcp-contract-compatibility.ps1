@@ -1,7 +1,8 @@
 param(
     [string]$CandidatePath,
     [string]$BaselinePath,
-    [string]$MigrationPath
+    [string]$MigrationPath,
+    [string]$Repository = $env:GITHUB_REPOSITORY
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($CandidatePath) -or
     [string]::IsNullOrWhiteSpace($BaselinePath) -or
     [string]::IsNullOrWhiteSpace($MigrationPath)) {
-    [Console]::Error.WriteLine("Usage: $($MyInvocation.MyCommand.Name) <candidate.json> <baseline.json|-> <MIGRATION.md>")
+    [Console]::Error.WriteLine("Usage: $($MyInvocation.MyCommand.Name) <candidate.json> <baseline.json|published|-> <MIGRATION.md> [-Repository owner/repo]")
     exit 2
 }
 
@@ -18,9 +19,12 @@ function Fail([string]$Message) {
     exit 1
 }
 
-function Read-Contract([string]$Path) {
+function Read-Contract([string]$Path, [string]$Json) {
     try {
-        $Contract = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json -AsHashtable
+        if ([string]::IsNullOrWhiteSpace($Json)) {
+            $Json = Get-Content -Raw -LiteralPath $Path
+        }
+        $Contract = $Json | ConvertFrom-Json -AsHashtable
     }
     catch {
         Fail "cannot read contract $Path`: $($_.Exception.Message)"
@@ -61,12 +65,84 @@ function Test-JsonEqual([object]$Left, [object]$Right) {
 
 $Candidate = Read-Contract $CandidatePath
 
-if ($BaselinePath -ceq '-') {
-    Write-Output "No published MCP contract baseline; $($Candidate['contract_version']) establishes it."
-    exit 0
+if ($BaselinePath -ceq 'published' -or $BaselinePath -ceq '-') {
+    try {
+        if ([string]::IsNullOrWhiteSpace($Repository)) {
+            $Repository = gh repo view --json nameWithOwner --jq .nameWithOwner
+            if ($LASTEXITCODE -ne 0) {
+                throw 'cannot determine GitHub repository'
+            }
+        }
+        if ($Repository -cnotmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+            throw 'repository must be owner/repo'
+        }
+        $ReleaseJson = gh api --paginate --slurp "repos/$Repository/releases?per_page=100"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'cannot list published GitHub releases'
+        }
+        $ReleasePages = ($ReleaseJson -join "`n") | ConvertFrom-Json -AsHashtable -NoEnumerate
+        if ($ReleasePages -isnot [array] -or $ReleasePages.Count -eq 0) {
+            throw 'release listing must contain paginated JSON arrays'
+        }
+        $Published = @(
+            foreach ($Page in $ReleasePages) {
+                if ($Page -isnot [array]) {
+                    throw 'each release page must be a JSON array'
+                }
+                foreach ($Release in $Page) {
+                    if ($Release -isnot [System.Collections.IDictionary] -or $Release['assets'] -isnot [array]) {
+                        throw 'each release must contain an assets array'
+                    }
+                    if ($Release['draft'] -or $Release['prerelease']) {
+                        continue
+                    }
+                    $Assets = @($Release['assets'] | Where-Object {
+                            $_['name'] -ceq 'mcp-contract.json'
+                        })
+                    if ($Assets.Count -eq 0) {
+                        continue
+                    }
+                    if ($Release['tag_name'] -cnotmatch '^v\d+\.\d+\.\d+$' -or $Assets.Count -ne 1) {
+                        throw 'published MCP contract must have one asset and a vX.Y.Z release tag'
+                    }
+                    @{
+                        Version = [version]$Release['tag_name'].Substring(1)
+                        AssetId = $Assets[0]['id']
+                        Tag     = $Release['tag_name']
+                    }
+                }
+            }
+        )
+        if ($Published.Count -eq 0) {
+            Write-Output "No published MCP contract baseline; $($Candidate['contract_version']) establishes it."
+            exit 0
+        }
+        if ($BaselinePath -ceq '-') {
+            throw "'-' is only allowed when no published MCP contract release exists; use 'published'"
+        }
+        $SameMajor = @($Published | Where-Object {
+                $_.Version.Major -eq ([version]$Candidate['contract_version']).Major
+            })
+        $Choices = if ($SameMajor.Count -gt 0) { $SameMajor } else { $Published }
+        $Selected = $Choices | Sort-Object -Property Version -Descending | Select-Object -First 1
+        $BaselineJson = gh api -H 'Accept: application/octet-stream' "repos/$Repository/releases/assets/$($Selected.AssetId)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "cannot download published MCP contract for $($Selected.Tag)"
+        }
+        $Baseline = Read-Contract $Selected.Tag ($BaselineJson -join "`n")
+        if ([version]$Baseline['contract_version'] -ne $Selected.Version) {
+            throw 'published MCP contract version does not match its release tag'
+        }
+        Write-Output "Selected published MCP contract $($Selected.Tag)."
+    }
+    catch {
+        Fail "published baseline discovery failed`: $($_.Exception.Message)"
+    }
+}
+else {
+    $Baseline = Read-Contract $BaselinePath
 }
 
-$Baseline = Read-Contract $BaselinePath
 $CandidateVersion = [version]$Candidate['contract_version']
 $BaselineVersion = [version]$Baseline['contract_version']
 $CandidateTool = $Candidate['tool']

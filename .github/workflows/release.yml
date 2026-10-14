@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - name: Check published MCP contract compatibility
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/check-mcp-contract-compatibility.ps1 specs/002-mcp-wrapper/contracts/mcp-contract.json published MIGRATION.md
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.98.1
@@ -68,6 +74,7 @@ jobs:
           cp target/aarch64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-aarch64.dylib"
 
           cp crates/obsidian-link-resolver/include/obsidian_link_resolver.h "dist/obsidian_link_resolver-${RELEASE_TAG}.h"
+            cp specs/002-mcp-wrapper/contracts/mcp-contract.json dist/mcp-contract.json
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v3
         with:

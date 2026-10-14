@@ -120,6 +120,137 @@ fn compatibility_checker_accepts_additions_and_rejects_breaking_changes() {
     .success());
 }
 
+#[test]
+fn published_baseline_gate_selects_latest_same_major_and_cannot_be_skipped() {
+    let root = repository_root();
+    let baseline: Value = serde_json::from_slice(
+        &fs::read(root.join("specs/002-mcp-wrapper/contracts/mcp-contract.json")).unwrap(),
+    )
+    .unwrap();
+    let mut published = baseline.clone();
+    published["contract_version"] = json!("2.10.0");
+    let mut candidate = published.clone();
+    candidate["contract_version"] = json!("2.11.0");
+    let releases = json!([
+        [
+            {"tag_name": "v3.0.0", "assets": [{"name": "mcp-contract.json", "id": 30}]},
+            {"tag_name": "v2.9.0", "assets": [{"name": "mcp-contract.json", "id": 29}]},
+            {"tag_name": "v2.99.0", "draft": true, "assets": [{"name": "mcp-contract.json", "id": 99}]},
+            {"tag_name": "v2.98.0", "prerelease": true, "assets": [{"name": "mcp-contract.json", "id": 98}]}
+        ],
+        [
+            {"tag_name": "v2.10.0", "assets": [{"name": "mcp-contract.json", "id": 210}]},
+            {"tag_name": "v2.12.0", "assets": []}
+        ]
+    ]);
+    let mut fixture = json!({
+        "mode": "published", "pages": releases, "assets": {"210": published}, "exit_code": 0
+    });
+    let output = run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture));
+    assert!(output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("Selected published MCP contract v2.10.0")
+    );
+
+    fixture["mode"] = json!("-");
+    let output = run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture));
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("only allowed when no published"));
+
+    candidate["tool"]["arguments"]
+        .as_object_mut()
+        .unwrap()
+        .remove("link");
+    fixture["mode"] = json!("published");
+    assert!(
+        !run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture))
+            .status
+            .success()
+    );
+
+    candidate["contract_version"] = json!("4.0.0");
+    fixture["pages"] =
+        json!([[{"tag_name": "v2.10.0", "assets": [{"name": "mcp-contract.json", "id": 210}]}]]);
+    assert!(
+        !run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture))
+            .status
+            .success()
+    );
+    assert!(run_checker_with_publication(
+        &root,
+        &candidate,
+        &baseline,
+        "## 2.x to 4.0.0\nMigration notes.\n",
+        Some(&fixture)
+    )
+    .status
+    .success());
+
+    fixture["assets"]["210"]["contract_version"] = json!("2.9.0");
+    assert!(
+        !run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture))
+            .status
+            .success()
+    );
+    fixture["assets"] = json!({});
+    assert!(
+        !run_checker_with_publication(&root, &candidate, &baseline, "", Some(&fixture))
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn published_baseline_gate_allows_first_contract_but_fails_closed_on_api_errors() {
+    let root = repository_root();
+    let contract: Value = serde_json::from_slice(
+        &fs::read(root.join("specs/002-mcp-wrapper/contracts/mcp-contract.json")).unwrap(),
+    )
+    .unwrap();
+    let mut fixture = json!({
+        "mode": "-", "pages": [[{"tag_name": "v1.1.0", "assets": []}]], "assets": {}, "exit_code": 0
+    });
+    assert!(
+        run_checker_with_publication(&root, &contract, &contract, "", Some(&fixture))
+            .status
+            .success()
+    );
+    fixture["mode"] = json!("published");
+    assert!(
+        run_checker_with_publication(&root, &contract, &contract, "", Some(&fixture))
+            .status
+            .success()
+    );
+    for mode in ["-", "published"] {
+        fixture["mode"] = json!(mode);
+        fixture["exit_code"] = json!(1);
+        assert!(
+            !run_checker_with_publication(&root, &contract, &contract, "", Some(&fixture))
+                .status
+                .success()
+        );
+    }
+    fixture["exit_code"] = json!(0);
+    for invalid_pages in [json!(null), json!({}), json!([]), json!([[{}]])] {
+        fixture["pages"] = invalid_pages;
+        assert!(
+            !run_checker_with_publication(&root, &contract, &contract, "", Some(&fixture))
+                .status
+                .success()
+        );
+    }
+
+    let workflow = fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
+    let gate = workflow
+        .find("mcp-contract.json published MIGRATION.md")
+        .unwrap();
+    assert!(gate < workflow.find("name: Build release artifacts").unwrap());
+    assert!(gate < workflow.find("name: Stage release assets").unwrap());
+    assert!(workflow.contains("GH_TOKEN: ${{ github.token }}"));
+    assert!(workflow
+        .contains("cp specs/002-mcp-wrapper/contracts/mcp-contract.json dist/mcp-contract.json"));
+}
+
 /// Invoke the compatibility checker with explicit candidate, baseline, and migration paths.
 ///
 /// # Parameters
@@ -137,6 +268,16 @@ fn run_checker(
     candidate: &Value,
     baseline: &Value,
     migration_notes: &str,
+) -> std::process::Output {
+    run_checker_with_publication(root, candidate, baseline, migration_notes, None)
+}
+
+fn run_checker_with_publication(
+    root: &Path,
+    candidate: &Value,
+    baseline: &Value,
+    migration_notes: &str,
+    publication: Option<&Value>,
 ) -> std::process::Output {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -156,14 +297,47 @@ fn run_checker(
         .expect("baseline contract should be written");
     fs::write(&migration_path, migration_notes).expect("migration notes should be written");
 
-    let output = Command::new("pwsh")
-        .args(["-NoProfile", "-File"])
-        .arg(root.join("scripts/check-mcp-contract-compatibility.ps1"))
-        .arg(&candidate_path)
-        .arg(&baseline_path)
-        .arg(&migration_path)
-        .output()
-        .expect("compatibility checker should run");
+    let mut command = Command::new("pwsh");
+    command.arg("-NoProfile");
+    if let Some(fixture) = publication {
+        let fixture_path = temporary.join("publication.json");
+        fs::write(&fixture_path, serde_json::to_vec(fixture).unwrap()).unwrap();
+        command.args(["-Command", r#"
+            function global:gh {
+                $Fixture = Get-Content -Raw $env:TEST_PUBLICATION | ConvertFrom-Json -AsHashtable
+                $global:LASTEXITCODE = $Fixture['exit_code']
+                if ($global:LASTEXITCODE -ne 0) { return }
+                $Endpoint = $args[-1]
+                if ($Endpoint -ceq 'repos/example/project/releases?per_page=100') {
+                    if ($args -notcontains '--paginate' -or $args -notcontains '--slurp') { throw 'pagination required' }
+                    ConvertTo-Json -InputObject $Fixture['pages'] -Depth 100 -Compress
+                } elseif ($Endpoint -match '^repos/example/project/releases/assets/(\d+)$') {
+                    if ($args -notcontains 'Accept: application/octet-stream') { throw 'asset download required' }
+                    $Asset = $Fixture['assets'][$Matches[1]]
+                    if ($null -eq $Asset) { $global:LASTEXITCODE = 1; return }
+                    ConvertTo-Json -InputObject $Asset -Depth 100 -Compress
+                } else { throw "unexpected gh call: $args" }
+            }
+            & $env:TEST_CHECKER $env:TEST_CANDIDATE $env:TEST_MODE $env:TEST_MIGRATION -Repository example/project
+        "#]);
+        command
+            .env("TEST_PUBLICATION", fixture_path)
+            .env(
+                "TEST_CHECKER",
+                root.join("scripts/check-mcp-contract-compatibility.ps1"),
+            )
+            .env("TEST_CANDIDATE", &candidate_path)
+            .env("TEST_MODE", fixture["mode"].as_str().unwrap())
+            .env("TEST_MIGRATION", &migration_path);
+    } else {
+        command
+            .arg("-File")
+            .arg(root.join("scripts/check-mcp-contract-compatibility.ps1"))
+            .arg(&candidate_path)
+            .arg(&baseline_path)
+            .arg(&migration_path);
+    }
+    let output = command.output().expect("compatibility checker should run");
     fs::remove_dir_all(temporary).expect("temporary contract directory should be removed");
     output
 }

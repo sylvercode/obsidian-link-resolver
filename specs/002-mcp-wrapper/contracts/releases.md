@@ -20,6 +20,10 @@ Before staging or publishing any component assets, the workflow MUST pass all fo
 
 Failure of any gate MUST prevent staging and publication of every component asset.
 
+The compatibility gate invokes `scripts/check-mcp-contract-compatibility.ps1` with `published` as the baseline argument. It enumerates all pages of non-draft, non-prerelease GitHub releases containing `mcp-contract.json`, selects the highest semantic version in the candidate's major, and downloads that asset. If that major has no published contract, it compares with the highest published contract version to enforce the major-version migration policy. Repository discovery, release listing, asset download, and malformed-contract failures block release. Explicit baseline file paths are for local comparisons only; `-` succeeds only after discovery confirms that no published MCP contract exists.
+
+Each release publishes the candidate as `mcp-contract.json` so later releases can discover it. Releases without this asset do not establish an MCP contract baseline.
+
 After the gates pass, the workflow publishes three distinct component asset families under the same GitHub release:
 
 - **Library/FFI**: generated C header and supported native library artifacts.
