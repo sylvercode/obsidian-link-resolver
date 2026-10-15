@@ -200,12 +200,18 @@ impl VaultCache {
         }
     }
 
+    /// Recover the map after poisoning, retaining fully initialized entries.
+    fn entries(&self) -> MutexGuard<'_, HashMap<PathBuf, Arc<CacheEntry>>> {
+        self.entries.lock().unwrap_or_else(|error| {
+            let entries = error.into_inner();
+            self.entries.clear_poison();
+            entries
+        })
+    }
+
     /// Find or create one entry and start its watcher and periodic scanner.
     fn entry(&self, root: PathBuf) -> Arc<CacheEntry> {
-        let mut entries = self
-            .entries
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut entries = self.entries();
         if let Some(entry) = entries.get(&root) {
             return Arc::clone(entry);
         }
@@ -238,11 +244,7 @@ impl VaultCache {
     #[allow(dead_code)]
     fn find_entry(&self, root: &Path) -> Option<Arc<CacheEntry>> {
         let key = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
-        self.entries
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(&key)
-            .map(Arc::clone)
+        self.entries().get(&key).map(Arc::clone)
     }
 
     /// Run a full scan at a fixed interval independently of incoming requests.
@@ -263,11 +265,16 @@ impl VaultCache {
 }
 
 impl CacheEntry {
-    /// Lock entry state while recovering safely from a prior poisoned lock.
+    /// Recover poisoned state by requiring a new scan before serving snapshots.
     fn state(&self) -> MutexGuard<'_, EntryState> {
-        self.state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        self.state.lock().unwrap_or_else(|error| {
+            let mut state = error.into_inner();
+            state.dirty = true;
+            state.last_full_scan = None;
+            state.invalidation_sequence = state.invalidation_sequence.wrapping_add(1);
+            self.state.clear_poison();
+            state
+        })
     }
 
     /// Record an invalidation without replacing the current immutable generation.
@@ -407,84 +414,5 @@ impl CacheEntry {
 
 #[cfg(test)]
 /// Unit tests for vault cache generations and refresh coordination.
-mod tests {
-    use super::VaultCache;
-    use std::future::{poll_fn, Future};
-    use std::sync::Arc;
-    use std::task::Poll;
-
-    #[tokio::test]
-    /// Concurrent cold and dirty requests share one refresh generation.
-    async fn concurrent_callers_coalesce_cold_and_dirty_refreshes() {
-        let directory = tempfile::tempdir().expect("temporary vault should be created");
-        std::fs::write(directory.path().join("Note.md"), "# Note\n")
-            .expect("note should be written");
-        let root = std::fs::canonicalize(directory.path()).expect("root should be canonicalized");
-        let cache = VaultCache::without_watcher();
-        let entry = cache.entry(root.clone());
-
-        for expected_generation in 1..=2 {
-            let refresh_guard = entry.refresh_lock.lock().await;
-            let first = cache.get_or_refresh(&root);
-            let second = cache.get_or_refresh(&root);
-            let third = cache.get_or_refresh(&root);
-            tokio::pin!(first, second, third);
-            poll_fn(|context| {
-                assert!(first.as_mut().poll(context).is_pending());
-                assert!(second.as_mut().poll(context).is_pending());
-                assert!(third.as_mut().poll(context).is_pending());
-                Poll::Ready(())
-            })
-            .await;
-            drop(refresh_guard);
-
-            let (first, second, third) = tokio::join!(first, second, third);
-            let first = first.expect("first request should select a generation");
-            let second = second.expect("second request should select a generation");
-            let third = third.expect("third request should select a generation");
-            assert!(Arc::ptr_eq(&first, &second));
-            assert!(Arc::ptr_eq(&first, &third));
-            assert_eq!(first.generation, expected_generation);
-            assert_eq!(cache.current_generation(&root), Some(expected_generation));
-            entry.invalidate();
-        }
-    }
-
-    #[tokio::test]
-    /// A clean cache entry reuses its snapshot until an explicit invalidation.
-    async fn forced_refresh_rescans_a_fresh_generation() {
-        let directory = tempfile::tempdir().expect("temporary vault should be created");
-        let cache = VaultCache::without_watcher();
-        let first = cache
-            .get_or_refresh(directory.path())
-            .await
-            .expect("initial index should build");
-        let entry = cache
-            .find_entry(directory.path())
-            .expect("entry should exist");
-        std::fs::write(directory.path().join("Added.md"), "# Added\n")
-            .expect("note should be written");
-
-        entry
-            .refresh(false)
-            .await
-            .expect("fresh index should be reused");
-        assert_eq!(
-            cache.current_generation(directory.path()),
-            Some(first.generation)
-        );
-        entry
-            .refresh(true)
-            .await
-            .expect("forced scan should succeed");
-        let refreshed = entry
-            .generation_if_fresh()
-            .expect("index should remain fresh");
-        assert_eq!(refreshed.generation, first.generation + 1);
-        assert!(refreshed
-            .vault
-            .entries
-            .iter()
-            .any(|entry| entry.rel_path == "Added.md"));
-    }
-}
+#[path = "../tests/unit/mcp_cache_internals.rs"]
+mod tests;
