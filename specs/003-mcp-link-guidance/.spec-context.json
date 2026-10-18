@@ -3,7 +3,7 @@
   "specName": "MCP Link Guidance",
   "branch": "003-obsidian-reference",
   "currentStep": "implement",
-  "status": "implemented",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -107,6 +107,13 @@
       "kind": "complete",
       "by": "extension",
       "at": "2026-10-18T18:25:59.353Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-18T23:53:55.147Z"
     }
   ],
   "telemetryInstanceId": "6d02d0d5-874e-4401-bf2c-27277e117c2b",
