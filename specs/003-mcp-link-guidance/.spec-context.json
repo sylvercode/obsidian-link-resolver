@@ -1,0 +1,24 @@
+{
+  "workflow": "speckit",
+  "specName": "MCP Link Guidance",
+  "branch": "003-obsidian-reference",
+  "currentStep": "specify",
+  "status": "specified",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-10-18T16:03:23.000Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-18T16:10:18.474Z"
+    }
+  ],
+  "telemetryInstanceId": "6d02d0d5-874e-4401-bf2c-27277e117c2b"
+}

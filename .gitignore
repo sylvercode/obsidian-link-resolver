@@ -36,3 +36,6 @@ crates/obsidian-link-resolver/include/obsidian_link_resolver.h
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# speckit companion scripts cache
+.specify/extensions/companion/scripts/__pycache__/
