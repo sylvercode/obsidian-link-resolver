@@ -28,19 +28,19 @@ No foundational tasks are required; the existing resolver schema, startup access
 
 ## Phase 3: User Story 1 - Pass source links to the resolver (Priority: P1) - MVP
 
-**Goal**: Guide agents to recognize the four specified link forms and send each unchanged with its source Markdown file as context.
+**Goal**: Guide agents to recognize the five specified link forms and send each unchanged with its source Markdown file as context.
 
-**Independent Test**: Discover `resolve_obsidian_link`, verify its description names `[[Note]]`, `[[Note#Heading]]`, `[text](Note.md)`, and `[text](Note.md#Heading)`, requires unchanged source text and source-file context, and states the startup-configured directory boundary. Submit each unchanged form with a configured source file and confirm it reaches the existing resolver.
+**Independent Test**: Discover `resolve_obsidian_link`, verify its description names `[[Note]]`, `[[Note#Heading]]`, `[[Note#^blockid]]`, `[text](Note.md)`, and `[text](Note.md#Heading)`, requires unchanged source text and source-file context, and states the startup-configured directory boundary. Submit each unchanged form with a source file under a configured root and confirm it reaches the existing resolver; confirm a source file under an unconfigured root remains inaccessible.
 
 ### Tests for User Story 1
 
-- [ ] T001 [US1] Extend metadata and stdio contract assertions in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` to check all four exact examples, verbatim-link and context guidance, startup directory restriction, absence of discovery/search claims, and unchanged submission of each example to the existing tool.
+- [ ] T001 [US1] Add test-first coverage: extend metadata assertions in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` for all five exact examples, verbatim-link and context guidance, startup directory restriction, and absence of discovery/search claims; extend `crates/obsidian-link-resolver-mcp/tests/integration/mcp_stdio.rs` to submit each unchanged example with a source file under a configured root and verify a source file under an unconfigured root remains inaccessible.
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Update the `resolve_obsidian_link` description in `crates/obsidian-link-resolver-mcp/src/mcp.rs` with the four required examples, exact-source and source-file-context instructions, Markdown-folder/no-Obsidian clarification, and startup-configured access boundary without changing the tool schema or resolver behavior.
+- [ ] T002 [US1] Update the `resolve_obsidian_link` description in `crates/obsidian-link-resolver-mcp/src/mcp.rs` with the five required examples, exact-source and source-file-context instructions, Markdown-folder/no-Obsidian clarification, and startup-configured access boundary without changing the tool schema or resolver behavior.
 
-**Checkpoint**: The discovered tool description supports the four requested forms, and unchanged inputs continue through the existing resolver.
+**Checkpoint**: The discovered tool description supports the five requested forms, unchanged inputs continue through the existing resolver from configured roots, and unconfigured roots remain inaccessible.
 
 ---
 
@@ -94,7 +94,7 @@ No foundational tasks are required; the existing resolver schema, startup access
 ### MVP First
 
 1. Complete T001, then T002 for User Story 1.
-2. Validate the P1 independent test: four unchanged source forms are discoverable and submitted with their source-file context.
+2. Validate the P1 independent test: five unchanged source forms are discoverable and submitted with their source-file context, with configured and unconfigured root access verified.
 3. Stop at the P1 checkpoint if only the MVP is needed.
 
 ### Incremental Delivery

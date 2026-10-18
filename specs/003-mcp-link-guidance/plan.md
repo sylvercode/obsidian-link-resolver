@@ -6,7 +6,7 @@
 
 ## Summary
 
-Update the existing `resolve_obsidian_link` tool description to identify the four requested link examples, direct callers to pass source text unchanged with its Markdown file as context, and bound access to directories configured at startup. Keep initialization instructions to a short statement of purpose. No resolver behavior, tool schema, tools, or skills change.
+Update the existing `resolve_obsidian_link` tool description to identify the five requested link examples, direct callers to pass source text unchanged with its Markdown file as context, and bound access to directories configured at startup. Keep initialization instructions to a short statement of purpose. No resolver behavior, tool schema, tools, or skills change.
 
 ## Technical Context
 
@@ -32,8 +32,8 @@ Update the existing `resolve_obsidian_link` tool description to identify the fou
 
 *GATE: Evaluated before Phase 0 and re-checked after Phase 1.*
 
-- **III. Test-First**: Pass. Add assertions for tool guidance and initialization text in the existing metadata contract test before changing the strings.
-- **IV. Integration Testing**: Pass. The MCP contract and stdio integration suites validate discovery and real tool calls; unchanged resolver tests cover parsing and resolution.
+- **III. Test-First**: Pass. Add metadata assertions and stdio integration coverage before changing the strings; cover all five examples and both configured and unconfigured directories.
+- **IV. Integration Testing**: Pass. The MCP contract and stdio integration suites validate discovery, real tool calls, and the startup-configured directory boundary; unchanged resolver tests cover parsing and resolution.
 - **VI. Interoperability**: Pass. Keep the existing MCP tool name, schema, and result contract stable.
 - **VII. Reproducible Environment**: Pass. No new toolchain or dependency is introduced.
 - **VIII. CI & Release Gating**: Pass. Run the existing Rust test suites; required CI remains the merge gate.

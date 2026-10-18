@@ -16,14 +16,16 @@ An agent reading a Markdown file encounters a link and needs to resolve its targ
 
 **Why this priority**: Recognizing the link forms and preserving them avoids needless conversion and lets agents use the resolver with ordinary Markdown documentation.
 
-**Independent Test**: Inspect the resolver tool's discoverable description and verify that it identifies the four supported example forms and instructs callers not to rewrite them. Submit each form unchanged with its source file as context and verify it reaches the existing resolver.
+**Independent Test**: Inspect the resolver tool's discoverable description and verify that it identifies the five supported example forms and instructs callers not to rewrite them. Submit each form unchanged with its source file as context from a configured directory and verify it reaches the existing resolver; verify a source file under an unconfigured directory remains inaccessible.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Markdown file containing `[[Note]]` or `[[Note#Heading]]`, **When** an agent chooses a link to resolve, **Then** the tool guidance identifies the form and the agent passes the exact source text as the link.
 2. **Given** a Markdown file containing `[text](Note.md)` or `[text](Note.md#Heading)`, **When** an agent chooses a link to resolve, **Then** the tool guidance identifies the form and the agent passes the exact source text as the link.
-3. **Given** a directory of Markdown files configured for server access at startup and no Obsidian app, **When** an agent submits a supported link with its source file as context, **Then** the resolver can resolve it using its existing behavior.
-4. **Given** a link is present in a Markdown file, **When** the agent reads the tool description, **Then** it is told not to convert the link to another supported form before submitting it.
+3. **Given** a Markdown file containing `[[Note#^blockid]]`, **When** an agent chooses the block-reference link to resolve, **Then** the tool guidance identifies the form and the agent passes the exact source text as the link.
+4. **Given** a directory of Markdown files configured for server access at startup and no Obsidian app, **When** an agent submits a supported link with its source file as context, **Then** the resolver can resolve it using its existing behavior.
+5. **Given** a source Markdown file is under a directory not configured for server access at startup, **When** an agent submits a supported link with that file as context, **Then** the server does not access that directory, even if the agent can read the file.
+6. **Given** a link is present in a Markdown file, **When** the agent reads the tool description, **Then** it is told not to convert the link to another supported form before submitting it.
 
 ### User Story 2 - Understand the MCP's purpose at initialization (Priority: P2)
 
@@ -40,14 +42,14 @@ A client or agent initializes the MCP server and receives a concise explanation 
 ### Edge Cases
 
 - A directory not configured for server access at startup remains inaccessible even if the agent can read a Markdown file from it.
-- A link syntax other than the four documented examples is not newly promised by this guidance; existing resolver behavior remains authoritative.
+- A link syntax other than the five documented examples is not newly promised by this guidance; existing resolver behavior remains authoritative.
 - The guidance must not imply that the server discovers links or searches documents on the agent's behalf.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The resolver tool's discoverable description MUST identify Wikilinks in the forms `[[Note]]` and `[[Note#Heading]]` and Markdown links in the forms `[text](Note.md)` and `[text](Note.md#Heading)` as supported examples.
+- **FR-001**: The resolver tool's discoverable description MUST identify Wikilinks in the forms `[[Note]]`, `[[Note#Heading]]`, and `[[Note#^blockid]]`, and Markdown links in the forms `[text](Note.md)` and `[text](Note.md#Heading)` as supported examples.
 - **FR-002**: The tool description MUST instruct agents to pass a link exactly as written in its Markdown source and MUST NOT encourage conversion between link forms.
 - **FR-003**: The tool description MUST explain that the source Markdown file is supplied as context for resolving the link.
 - **FR-004**: The server's initialization instructions MUST remain brief and focused on the MCP's purpose; detailed syntax guidance belongs in the resolver tool description.
@@ -59,7 +61,7 @@ A client or agent initializes the MCP server and receives a concise explanation 
 
 ### Measurable Outcomes
 
-- **SC-001**: All four representative link forms named in FR-001 are identifiable in the resolver tool description, and each can be submitted unchanged as a resolver input in acceptance testing (4/4 forms).
+- **SC-001**: All five representative link forms named in FR-001 are identifiable in the resolver tool description, and each can be submitted unchanged as a resolver input in acceptance testing (5/5 forms).
 - **SC-002**: In acceptance testing, an agent can resolve a supported link from a configured Markdown directory without the Obsidian app, while a directory not configured at startup remains outside the server's access scope.
 - **SC-003**: Reviewers can identify the detailed link-form guidance in the resolver tool description and the concise purpose statement in initialization instructions without finding conflicting guidance.
 - **SC-004**: The feature adds zero link-discovery or document-search capabilities, zero MCP tools, and zero skills.

@@ -1,6 +1,0 @@
-{"timestamp":"2026-10-18T16:16:05Z","action":"guard","status":"allow","feature_directory":"","decision":"allow","reason":"","actor":"unknown","checked_action":"speckit.clarify"}
-{"timestamp":"2026-10-18T16:23:35.3734623Z","action":"guard","status":"allow","feature_directory":"","decision":"allow","reason":"","actor":"unknown","checked_action":"speckit.plan"}
-
-{"timestamp":"2026-10-18T16:40:14.1856545Z","action":"guard","status":"allow","feature_directory":"","decision":"allow","reason":"","actor":"unknown","checked_action":"speckit.tasks"}
-
-{"timestamp":"2026-10-18T16:41:11Z","action":"handoff","status":"ready","feature_directory":"specs/003-mcp-link-guidance","decision":"updated","reason":"","actor":"unknown","prior_actor":null,"snapshot_id":"20261018T164111445Z-ready"}

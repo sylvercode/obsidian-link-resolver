@@ -11,6 +11,10 @@
         "/^python3 \\.specify/.*\\.py(?: .*)?$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+            "/^rg(?: .*)?$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
