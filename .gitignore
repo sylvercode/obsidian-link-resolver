@@ -29,10 +29,6 @@ crates/obsidian-link-resolver/include/obsidian_link_resolver.h
 ~$*
 *~
 
-# Editor directories
-.vscode/
-.idea/
-
 # OS metadata
 .DS_Store
 Thumbs.db
