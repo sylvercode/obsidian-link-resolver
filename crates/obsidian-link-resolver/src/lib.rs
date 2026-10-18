@@ -40,6 +40,9 @@
 //! - JSON output is compact, single-line, with fixed field order
 //! - No non-deterministic fields (timestamps, etc.) in primary result objects
 
+// The cache uses optional watcher and async-runtime dependencies, so expose it only with this feature.
+#[cfg(feature = "vault-cache")]
+pub mod cache;
 pub mod ffi;
 pub mod link;
 pub mod note;

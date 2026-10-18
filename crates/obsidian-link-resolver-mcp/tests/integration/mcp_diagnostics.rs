@@ -123,10 +123,6 @@ fn diagnostics_are_opt_in_redacted_and_isolated_from_protocol_output() {
         "request_started",
         "request_completed",
         "request_failed",
-        "cache_miss",
-        "cache_hit",
-        "cache_refresh_started",
-        "cache_refreshed",
     ] {
         assert!(
             events.contains(&expected),

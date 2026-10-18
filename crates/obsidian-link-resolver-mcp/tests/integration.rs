@@ -2,8 +2,6 @@
 
 #[path = "integration/installers.rs"]
 mod installers;
-#[path = "integration/mcp_cache_refresh.rs"]
-mod mcp_cache_refresh;
 #[path = "support/mcp_client.rs"]
 mod mcp_client;
 #[path = "integration/mcp_diagnostics.rs"]

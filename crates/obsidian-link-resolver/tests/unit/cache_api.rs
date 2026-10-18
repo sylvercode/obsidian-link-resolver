@@ -1,16 +1,87 @@
 //! Deterministic tests for cached vault generations.
 
-#[path = "../../src/cache.rs"]
-mod cache;
-
-use cache::VaultCache;
-use obsidian_link_resolver::output::Status;
-use obsidian_link_resolver::resolve_with_vault;
+use super::{VaultCache, VaultGeneration};
+use crate::output::Status;
+use crate::resolve_with_vault;
+use log::kv::{Key, Value, VisitSource};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::thread::ThreadId;
 use tempfile::TempDir;
 use tokio::sync::oneshot;
+
+struct CacheEventLogger {
+    state: Mutex<CaptureState>,
+}
+
+struct CaptureState {
+    thread_id: Option<ThreadId>,
+    events: Vec<String>,
+}
+
+static CACHE_EVENT_LOGGER: CacheEventLogger = CacheEventLogger {
+    state: Mutex::new(CaptureState {
+        thread_id: None,
+        events: Vec::new(),
+    }),
+};
+
+impl CacheEventLogger {
+    fn begin_capture(&self) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("event logger should not be poisoned");
+        state.events.clear();
+        state.thread_id = Some(std::thread::current().id());
+    }
+
+    fn finish_capture(&self) -> Vec<String> {
+        let mut state = self
+            .state
+            .lock()
+            .expect("event logger should not be poisoned");
+        state.thread_id = None;
+        std::mem::take(&mut state.events)
+    }
+}
+
+impl Log for CacheEventLogger {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.level() <= Level::Info && metadata.target() == "obsidian_link_resolver::cache"
+    }
+
+    fn log(&self, record: &Record<'_>) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("event logger should not be poisoned");
+        if state.thread_id.as_ref() != Some(&std::thread::current().id()) {
+            return;
+        }
+
+        let mut visitor = EventVisitor(None);
+        let _ = record.key_values().visit(&mut visitor);
+        if let Some(event) = visitor.0 {
+            state.events.push(event);
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+struct EventVisitor(Option<String>);
+
+impl VisitSource<'_> for EventVisitor {
+    fn visit_pair(&mut self, key: Key<'_>, value: Value<'_>) -> Result<(), log::kv::Error> {
+        if key.as_str() == "event" {
+            self.0 = Some(value.to_string());
+        }
+        Ok(())
+    }
+}
 
 /// Create a small vault with one note and return its temporary directory.
 fn make_vault() -> TempDir {
@@ -30,7 +101,7 @@ fn write_note(root: &Path, relative_path: &str) {
 }
 
 /// Return the paths in one cached generation.
-fn indexed_paths(generation: &cache::VaultGeneration) -> Vec<String> {
+fn indexed_paths(generation: &VaultGeneration) -> Vec<String> {
     generation
         .vault
         .entries
@@ -48,7 +119,7 @@ async fn canonical_roots_reuse_the_same_generation() {
     let cache = VaultCache::new();
 
     let first = cache
-        .get_or_refresh(root)
+        .get_or_refresh_canonical(root)
         .await
         .expect("first vault index should build");
     let second = cache
@@ -58,6 +129,35 @@ async fn canonical_roots_reuse_the_same_generation() {
 
     assert!(Arc::ptr_eq(&first, &second));
     assert_eq!(first.generation, second.generation);
+}
+
+/// Cold lookup, refresh, and warm lookup emit all cache lifecycle events.
+#[tokio::test(flavor = "current_thread")]
+async fn cache_lifecycle_emits_diagnostic_events() {
+    log::set_logger(&CACHE_EVENT_LOGGER).expect("cache event logger should be installed once");
+    log::set_max_level(LevelFilter::Info);
+    CACHE_EVENT_LOGGER.begin_capture();
+
+    let directory = make_vault();
+    let cache = VaultCache::without_watcher();
+    cache
+        .get_or_refresh(directory.path())
+        .await
+        .expect("first vault index should build");
+    cache
+        .get_or_refresh(directory.path())
+        .await
+        .expect("second lookup should reuse the cached index");
+
+    assert_eq!(
+        CACHE_EVENT_LOGGER.finish_capture(),
+        [
+            "cache_miss",
+            "cache_refresh_started",
+            "cache_refreshed",
+            "cache_hit"
+        ]
+    );
 }
 
 /// Multiple invalidations before a lookup coalesce into one index replacement.

@@ -6,8 +6,8 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 use std::task::Poll;
 
-#[tokio::test]
 /// A poisoned map retains existing entries and permits new roots after recovery.
+#[tokio::test]
 async fn poisoned_map_preserves_entries() {
     let directory = tempfile::tempdir().expect("temporary vault should be created");
     let root = std::fs::canonicalize(directory.path()).expect("root should be canonicalized");

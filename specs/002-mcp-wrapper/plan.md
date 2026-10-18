@@ -12,9 +12,9 @@ Add a separately installable, long-running MCP server that exposes the existing 
 
 **Language/Version**: Rust 1.98.1, edition 2021, pinned consistently in the devcontainer, CI workflow, and `vX.Y.Z` release workflow.
 
-**Primary Dependencies**: `rmcp` 3.5.1 for MCP server/tool/stdio protocol support (explicitly enable only `server`, `macros`, `schemars`, and `transport-io`); Tokio runtime as required by the SDK and periodic refresh scheduler; `notify` 8.2.0 for cross-platform vault filesystem invalidation; `structured-logger` 1.0.5 with default features disabled for synchronous JSON diagnostics and `log` 0.4 with structured key-value support; existing `serde`/`serde_json` and resolver library. Keep `clap` out of the resolver library; the CLI crate owns its argument parser, and the MCP executable may use `clap` for its own launch options. Do not enable HTTP transport.
+**Primary Dependencies**: `rmcp` 3.5.1 for MCP server/tool/stdio protocol support (explicitly enable only `server`, `macros`, `schemars`, and `transport-io`); the resolver library's opt-in `vault-cache` feature supplies Tokio, `notify` 8.2.0, and structured `log` 0.4 support for periodic refresh and filesystem invalidation, and is enabled by the MCP crate; `structured-logger` 1.0.5 with default features disabled provides synchronous JSON diagnostics; existing `serde`/`serde_json` and resolver library. Keep `clap` out of the resolver library; the CLI crate owns its argument parser, and the MCP executable may use `clap` for its own launch options. Do not enable HTTP transport.
 
-**Storage**: Read-only local vault filesystem; in-memory cache of vault indexes scoped to the server process.
+**Storage**: Read-only local vault filesystem; in-memory cache of vault indexes scoped to the server process and provided by the resolver library's opt-in `vault-cache` feature.
 
 **Testing**: `cargo test --workspace` with MCP protocol contract tests, resolver parity tests, cache behavior tests, diagnostics default/redaction/channel-isolation tests, and existing unit/integration/CLI/FFI suites; `cargo fmt --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings`; and release-tag validation that accepts the shared `vX.Y.Z` tag, runs all workspace release gates, and publishes distinct assets for all three components. Each release runs the full workspace test suite and MCP warm-run benchmark before staging assets; the benchmark enforces a ≤100 ms p50. Record a separate cold-start benchmark p50 as a baseline. Run benchmarks on GitHub-hosted `ubuntu-24.04` and emit/upload machine-readable reports containing runner image/OS/architecture, fixture version, sample count, and p50. Run path-qualified and vault-relative path parity fixtures natively on all five supported release targets. Contract compatibility validation compares published MCP contract versions within a major version and checks that every breaking contract change has a new major version and migration notes.
 
@@ -37,7 +37,7 @@ Add a separately installable, long-running MCP server that exposes the existing 
 - Implement canonical compatibility requirement FR-012 by versioning the MCP contract with the shared Cargo package semantic version. Release validation compares published contract artifacts and verifies migration notes for breaking changes.
 - Keep the existing `vX.Y.Z` GitHub release tag and root Cargo package version shared across the library, CLI, and MCP server. Each tagged release passes the full test suite and MCP warm-run benchmark, then publishes distinct library/FFI, CLI, and MCP assets carrying the same version. The CLI and MCP server have separate installer commands supporting latest and pinned versions; each installs only its corresponding executable and takes no component-selection parameter. Publish GitHub release assets only; crates.io publication is out of scope.
 - Split vault-root selection from index enumeration as needed so each request can identify and validate its canonical root without forcing a full vault walk. Cache `Vault` snapshots by canonical root for the server process lifetime.
-- Keep cache ownership explicit: `cache.rs` owns canonical-root entries, watcher state, dirty flags, index generations, refresh scheduling, and atomic replacement; `mcp.rs` selects the cache generation for each request, invokes the resolver with that generation, and maps resolver results to MCP responses.
+- Keep cache ownership explicit: `crates/obsidian-link-resolver/src/cache.rs` owns canonical-root entries, watcher state, dirty flags, index generations, refresh scheduling, and atomic replacement. The module is exposed only with the resolver library's `vault-cache` feature, which the MCP crate enables; `mcp.rs` selects the cache generation for each request, invokes the resolver with that generation, and maps resolver results to MCP responses.
 - Use filesystem watcher events as per-root dirty hints and coalesce bursts. Each in-flight resolution uses the index generation selected when it starts; if that root is invalidated during the call, the call may complete on its selected generation, but refresh before the next resolution for that root and use the latest state available at refresh time. Run a periodic background full rescan for each cached vault at least every 60 seconds, independent of requests, to bound missed-event staleness. If watcher setup fails, retain the periodic-rescan fallback. A refresh failure returns an error, not a stale resolution.
 - Add an opt-in server `--diagnostics` launch flag, disabled by default. When enabled, use `structured-logger`'s synchronous JSON writer for one JSON-lines event per log call to stderr. Initialize with an explicit level and only the MCP diagnostics target routed to stderr; route all other targets to a sink. Use only the fixed fields and allow-listed event/failure values defined in the Operational Diagnostics section of `spec.md` and `contracts/mcp.md`. Never log user-supplied link text, context/vault paths, note contents, serialized arguments, or unfiltered error strings. Use only static messages and targets. Disable the default `log-panic` feature and keep optional diagnostics out of MCP stdout and tool result objects.
 - Distribute prebuilt MCP executables for the existing supported release matrix. Keep the existing CLI installer and add separate MCP installer scripts/commands so users do not need to pass a component-selection parameter.
@@ -102,6 +102,7 @@ crates/
 │   ├── include/              # generated C header
 │   ├── src/
 │   │   ├── lib.rs            # library root and public API
+│   │   ├── cache.rs          # optional vault-cache feature: index generations, refresh, and watcher management
 │   │   ├── ffi.rs            # C ABI functions
 │   │   ├── link.rs           # link parsing
 │   │   ├── note.rs           # note parsing / emplacement
@@ -109,6 +110,7 @@ crates/
 │   │   ├── resolve.rs        # resolution logic
 │   │   └── vault.rs          # vault enumeration and indexing
 │   └── tests/                # library unit, integration, and FFI tests
+│       └── unit/             # includes cache_api.rs, cache_internals.rs, and cache_refresh.rs
 ├── obsidian-link-resolver-cli/ # CLI binary crate
 │   ├── Cargo.toml            # depends on path = "../obsidian-link-resolver"
 │   ├── src/
@@ -116,12 +118,11 @@ crates/
 │   │   └── cli.rs            # CLI argument/format types; uses clap in this crate
 │   └── tests/                # CLI integration and contract tests
 └── obsidian-link-resolver-mcp/ # MCP server binary crate
-    ├── Cargo.toml            # depends on path = "../obsidian-link-resolver", rmcp, notify, structured-logger
+    ├── Cargo.toml            # depends on path = "../obsidian-link-resolver" with vault-cache enabled, plus rmcp and structured-logger
     ├── src/
     │   ├── main.rs           # MCP binary entry point (obsidian-link-resolver-mcp)
-    │   ├── mcp.rs            # MCP tool handler, request generation selection, result mapping, and diagnostics
-    │   └── cache.rs          # canonical-root cache entries, generations, refresh, and watcher management
-    ├── tests/                # MCP protocol contract, parity, cache, and diagnostics tests
+    │   └── mcp.rs            # MCP tool handler, request generation selection, result mapping, and diagnostics
+    ├── tests/                # MCP protocol contract, parity, and diagnostics tests
     └── benches/
         ├── mcp_warm.rs       # 100-call warm-cache benchmark and report
         └── mcp_cold_start.rs # 100 cold-start benchmark and baseline report

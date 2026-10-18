@@ -1,6 +1,6 @@
 //! MCP tool adapter for the existing Obsidian link resolver.
 
-use crate::cache::VaultCache;
+use obsidian_link_resolver::cache::VaultCache;
 use obsidian_link_resolver::error_for_link;
 use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
@@ -172,7 +172,7 @@ impl ResolverServer {
                 return Err(error);
             }
         };
-        let generation = match self.cache.get_or_refresh(&vault_root).await {
+        let generation = match self.cache.get_or_refresh_canonical(&vault_root).await {
             Ok(generation) => generation,
             Err(reason) => {
                 let structured = match serde_json::to_value(error_for_link(&request.link, reason)) {

@@ -786,9 +786,12 @@ dependencies = [
  "cbindgen",
  "criterion",
  "libloading",
+ "log",
+ "notify",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
  "urlencoding",
  "walkdir",
 ]
@@ -811,7 +814,6 @@ version = "2.0.0"
 dependencies = [
  "clap",
  "log",
- "notify",
  "obsidian-link-resolver",
  "rmcp",
  "schemars",

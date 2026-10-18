@@ -84,14 +84,14 @@ description: "Executable task list for the Obsidian Link Resolver MCP wrapper"
 
 > Add cache behavior and benchmark coverage first; use deterministic invalidation and a controllable clock rather than wall-clock sleeps.
 
-- [X] T013 [P] [US4] Add cache unit tests for canonical-root reuse, dirty-state coalescing, separate roots, atomic refresh, failed-refresh behavior, in-flight generation consistency, and changed note contents becoming visible after refresh in `crates/obsidian-link-resolver-mcp/tests/unit/mcp_cache.rs`.
-- [X] T014 [P] [US4] Add integration tests for watcher invalidation, watcher unavailability, and request-independent periodic refresh within 60 seconds in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_cache_refresh.rs`.
+- [X] T013 [P] [US4] Add cache tests for canonical-root reuse, dirty-state coalescing, separate roots, atomic refresh, failed-refresh behavior, in-flight generation consistency, and changed note contents becoming visible after refresh in `crates/obsidian-link-resolver/tests/unit/cache_api.rs` and `crates/obsidian-link-resolver/tests/unit/cache_internals.rs`.
+- [X] T014 [P] [US4] Add cache refresh tests for watcher invalidation, watcher unavailability, and request-independent periodic refresh within 60 seconds in `crates/obsidian-link-resolver/tests/unit/cache_refresh.rs`.
 - [X] T015 [P] [US4] Add a warm-cache benchmark for 100 consecutive end-to-end MCP calls against the approximately 5,000-note corpus in `crates/obsidian-link-resolver-mcp/benches/mcp_warm.rs` and `crates/obsidian-link-resolver-mcp/Cargo.toml`; identify the generated corpus as `bench-vault-v1` from `tests/fixtures/bench_vault.rs`, calculate p50 excluding process startup and initial indexing, and emit a machine-readable report containing runner image, OS, architecture, fixture version, sample count, and p50; enforce p50 ≤100 ms on GitHub-hosted `ubuntu-24.04`.
 
 ### Implementation for User Story 4
 
 - [X] T016 [US4] Separate canonical root selection/validation from vault index enumeration while preserving `detect_root` behavior in `crates/obsidian-link-resolver/src/vault.rs`; document new or modified Rust symbols with Rustdoc.
-- [X] T017 [US4] Implement the process-scoped cache keyed by canonical root, watcher dirty hints, coalesced invalidation, atomic index replacement, and a background full rescan no later than 60 seconds in `crates/obsidian-link-resolver-mcp/src/cache.rs`; document new Rust symbols with Rustdoc.
+- [X] T017 [US4] Implement the process-scoped cache keyed by canonical root, watcher dirty hints, coalesced invalidation, atomic index replacement, and a background full rescan no later than 60 seconds in `crates/obsidian-link-resolver/src/cache.rs`, exposed by the `vault-cache` feature in `crates/obsidian-link-resolver/Cargo.toml` and enabled by `crates/obsidian-link-resolver-mcp/Cargo.toml`; document new Rust symbols with Rustdoc.
 - [X] T018 [US4] Ensure each request resolves against the index generation selected at its start, the next request refreshes a root invalidated in flight, and refresh failures return an error rather than stale resolution in `crates/obsidian-link-resolver-mcp/src/mcp.rs`; document new or modified Rust symbols with Rustdoc.
 
 **Checkpoint**: Repeated resolutions reuse indexes, detected changes refresh before the next call, missed events recover within 60 seconds, and failed refreshes do not produce stale successes.

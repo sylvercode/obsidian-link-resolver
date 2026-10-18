@@ -1,9 +1,6 @@
-//! Watcher and periodic-refresh coverage for the MCP vault cache.
+//! Watcher and periodic-refresh coverage for the vault cache.
 
-#[path = "../../src/cache.rs"]
-mod cache;
-
-use cache::VaultCache;
+use super::VaultCache;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
@@ -38,13 +35,13 @@ async fn watcher_invalidates_before_the_next_generation_is_selected() {
     assert!(cache.watcher_available(directory.path()));
     write_note(directory.path(), "Watcher Added.md");
 
-    tokio::time::timeout(Duration::from_secs(5), async {
-        while !cache.is_dirty(directory.path()) {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        cache.wait_until_dirty(directory.path()),
+    )
     .await
-    .expect("watcher should report the filesystem change");
+    .expect("watcher should report the filesystem change")
+    .expect("cached root should remain present");
 
     let refreshed = cache
         .get_or_refresh(directory.path())

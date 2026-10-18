@@ -12,8 +12,7 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 log = { version = "0.4", features = ["kv"] }
-notify = "8.2.0"
-obsidian-link-resolver = { path = "../obsidian-link-resolver" }
+obsidian-link-resolver = { path = "../obsidian-link-resolver", features = ["vault-cache"] }
 rmcp = { version = "3.5.1", default-features = false, features = [
     "server",
     "macros",

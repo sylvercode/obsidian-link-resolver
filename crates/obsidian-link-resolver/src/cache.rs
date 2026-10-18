@@ -1,7 +1,7 @@
 //! Process-scoped vault index cache with watcher and periodic invalidation.
 
+use crate::vault::{enumerate_vault, Vault, VaultSource};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use obsidian_link_resolver::vault::{enumerate_vault, Vault, VaultSource};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,11 +18,11 @@ const MAX_REFRESH_ATTEMPTS: usize = 3;
 
 /// One immutable vault index selected by a request or installed by a refresh.
 #[derive(Debug)]
-pub(crate) struct VaultGeneration {
+pub struct VaultGeneration {
     /// Monotonically increasing index generation for one canonical root.
-    pub(crate) generation: u64,
+    pub generation: u64,
     /// Complete resolver snapshot used by requests holding this generation.
-    pub(crate) vault: Vault,
+    pub vault: Vault,
 }
 
 /// An in-progress cache entry and its watcher state for one canonical vault root.
@@ -33,6 +33,9 @@ struct CacheEntry {
     state: Mutex<EntryState>,
     /// Serializes scans so only one replacement is constructed at a time.
     refresh_lock: AsyncMutex<()>,
+    /// Wakes deterministic tests when a watcher invalidates the current generation.
+    #[cfg(test)]
+    invalidated: Notify,
     /// Wakes deterministic tests when a background generation has been installed.
     refresh_completed: Notify,
     /// Retained watcher handle; dropping it disables filesystem notifications.
@@ -55,7 +58,10 @@ struct EntryState {
 }
 
 /// Per-process vault cache keyed by canonical absolute root paths.
-pub(crate) struct VaultCache {
+///
+/// Must be used within a Tokio runtime. The cache spawns a periodic refresh task
+/// for each root when that root is first cached.
+pub struct VaultCache {
     /// Entries owned for the lifetime of the MCP server process.
     entries: Mutex<HashMap<PathBuf, Arc<CacheEntry>>>,
     /// Whether new entries should attempt recursive filesystem watching.
@@ -71,7 +77,10 @@ impl std::fmt::Debug for VaultCache {
 
 impl VaultCache {
     /// Create a cache that uses filesystem watchers when the platform permits.
-    pub(crate) fn new() -> Self {
+    ///
+    /// The cache must be used within a Tokio runtime because it spawns background
+    /// tasks as roots are cached.
+    pub fn new() -> Self {
         Self::with_watcher(true)
     }
 
@@ -101,13 +110,29 @@ impl VaultCache {
     /// # Returns
     ///
     /// A stable generation for the caller, or a refresh error without stale data.
-    pub(crate) async fn get_or_refresh(&self, root: &Path) -> Result<Arc<VaultGeneration>, String> {
+    pub async fn get_or_refresh(&self, root: &Path) -> Result<Arc<VaultGeneration>, String> {
         let canonical_root = fs::canonicalize(root)
             .map_err(|error| format!("failed to canonicalize vault root: {error}"))?;
+        self.get_or_refresh_canonical(&canonical_root).await
+    }
+
+    /// Select the current generation for an already-canonicalized root.
+    ///
+    /// # Parameters
+    ///
+    /// - `canonical_root`: Existing canonical directory identifying the vault to index.
+    ///
+    /// # Returns
+    ///
+    /// A stable generation for the caller, or a refresh error without stale data.
+    pub async fn get_or_refresh_canonical(
+        &self,
+        canonical_root: &Path,
+    ) -> Result<Arc<VaultGeneration>, String> {
         if !canonical_root.is_dir() {
             return Err("vault root is not a directory".to_owned());
         }
-        let entry = self.entry(canonical_root);
+        let entry = self.entry(canonical_root.to_path_buf());
 
         loop {
             let refreshed = if entry.needs_refresh() {
@@ -118,7 +143,7 @@ impl VaultCache {
             };
             if let Some(generation) = entry.generation_if_fresh() {
                 if !refreshed {
-                    log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_hit"; "Vault cache hit");
+                    log::info!(target: "obsidian_link_resolver::cache", event = "cache_hit"; "Vault cache hit");
                 }
                 return Ok(generation);
             }
@@ -149,6 +174,22 @@ impl VaultCache {
     pub(crate) fn is_dirty(&self, root: &Path) -> bool {
         self.find_entry(root)
             .is_some_and(|entry| entry.state().dirty)
+    }
+
+    /// Wait until a watcher or explicit invalidation marks a root dirty.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) async fn wait_until_dirty(&self, root: &Path) -> Option<()> {
+        let entry = self.find_entry(root)?;
+        loop {
+            let notified = entry.invalidated.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if entry.state().dirty {
+                return Some(());
+            }
+            notified.await;
+        }
     }
 
     /// Report whether a recursive filesystem watcher is active for a root.
@@ -227,10 +268,12 @@ impl VaultCache {
                 fail_next_refresh: false,
             }),
             refresh_lock: AsyncMutex::new(()),
+            #[cfg(test)]
+            invalidated: Notify::new(),
             refresh_completed: Notify::new(),
             watcher: Mutex::new(None),
         });
-        log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_miss"; "Vault cache miss");
+        log::info!(target: "obsidian_link_resolver::cache", event = "cache_miss"; "Vault cache miss");
         if self.watch_enabled {
             entry.start_watcher();
         }
@@ -264,6 +307,12 @@ impl VaultCache {
     }
 }
 
+impl Default for VaultCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CacheEntry {
     /// Recover poisoned state by requiring a new scan before serving snapshots.
     fn state(&self) -> MutexGuard<'_, EntryState> {
@@ -282,6 +331,11 @@ impl CacheEntry {
         let mut state = self.state();
         state.invalidation_sequence = state.invalidation_sequence.wrapping_add(1);
         state.dirty = true;
+        #[cfg(test)]
+        {
+            drop(state);
+            self.invalidated.notify_waiters();
+        }
     }
 
     /// Check whether the current generation is absent, dirty, or past its scan deadline.
@@ -319,15 +373,15 @@ impl CacheEntry {
             return Ok(());
         }
         let started = Instant::now();
-        log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refresh_started"; "Vault cache refresh started");
+        log::info!(target: "obsidian_link_resolver::cache", event = "cache_refresh_started"; "Vault cache refresh started");
         let result = self.refresh_snapshot().await;
         let duration_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
         match &result {
             Ok(()) => {
-                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refreshed", duration_ms = duration_ms; "Vault cache refreshed")
+                log::info!(target: "obsidian_link_resolver::cache", event = "cache_refreshed", duration_ms = duration_ms; "Vault cache refreshed")
             }
             Err(_) => {
-                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "cache_refresh_failed", failure_kind = "cache_refresh", duration_ms = duration_ms; "Vault cache refresh failed")
+                log::info!(target: "obsidian_link_resolver::cache", event = "cache_refresh_failed", failure_kind = "cache_refresh", duration_ms = duration_ms; "Vault cache refresh failed")
             }
         }
         result
@@ -406,7 +460,7 @@ impl CacheEntry {
                     .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(watcher);
             }
             Err(_) => {
-                log::info!(target: "obsidian_link_resolver_mcp::diagnostics", event = "watcher_unavailable", failure_kind = "watch_setup"; "Vault filesystem watcher unavailable");
+                log::info!(target: "obsidian_link_resolver::cache", event = "watcher_unavailable", failure_kind = "watch_setup"; "Vault filesystem watcher unavailable");
             }
         }
     }
@@ -414,5 +468,13 @@ impl CacheEntry {
 
 #[cfg(test)]
 /// Unit tests for vault cache generations and refresh coordination.
-#[path = "../tests/unit/mcp_cache_internals.rs"]
+#[path = "../tests/unit/cache_internals.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/cache_api.rs"]
+mod api_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/cache_refresh.rs"]
+mod refresh_tests;

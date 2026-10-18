@@ -25,6 +25,10 @@
 
 - Q: How should releases version and publish the library, CLI binary, and MCP server when they live in the same repository? → A: Split the repository into three separate crates in a Cargo workspace (library, CLI, and MCP), sharing a synchronized semantic version and released under a single `vX.Y.Z` tag with distinct component-specific assets.
 
+### Session 2026-10-17
+
+- Q: Where should the process-scoped vault cache live after the workspace split? → A: Implement it in the core resolver crate behind an opt-in `vault-cache` feature, enabled by the MCP crate. Cache lifecycle remains scoped to the MCP server process, and default library consumers do not enable the cache dependencies.
+
 ### Analysis refinements 2026-10-05
 
 - Deterministic results are required for identical inputs when the vault contents are unchanged; filesystem changes may legitimately change later results.
