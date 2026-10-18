@@ -1,0 +1,18 @@
+{
+  "workflow": "companion",
+  "specName": "002-mcp-wrapper",
+  "branch": "002-mcp-wrapper",
+  "selectedAt": "2026-10-18T03:22:48.355Z",
+  "currentStep": "specify",
+  "status": "completed",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "user",
+      "at": "2026-10-18T03:24:32.044Z"
+    }
+  ],
+  "telemetryInstanceId": "fd853330-b238-4568-9eca-402d65edfd92"
+}

@@ -1,0 +1,18 @@
+{
+  "workflow": "companion",
+  "specName": "001-link-resolver",
+  "branch": "001-link-resolver",
+  "selectedAt": "2026-10-18T03:23:48.951Z",
+  "currentStep": "specify",
+  "status": "completed",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "user",
+      "at": "2026-10-18T03:24:23.486Z"
+    }
+  ],
+  "telemetryInstanceId": "9c8bb6c4-9ede-443c-9b10-57667f1bf560"
+}
