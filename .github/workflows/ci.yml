@@ -15,5 +15,66 @@ jobs:
           toolchain: 1.98.1
           components: rustfmt,clippy
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Validate MCP contract compatibility
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/check-mcp-contract-compatibility.ps1 specs/002-mcp-wrapper/contracts/mcp-contract.json published MIGRATION.md
+      - name: Run workspace tests
+        run: cargo test --workspace
+      - name: Build MCP server for benchmarks
+        run: cargo build --release -p obsidian-link-resolver-mcp
+      - name: Run warm MCP benchmark
+        run: cargo bench -p obsidian-link-resolver-mcp --bench mcp_warm > "${RUNNER_TEMP}/mcp-warm-report.json"
+      - name: Run cold-start MCP benchmark
+        run: cargo bench -p obsidian-link-resolver-mcp --bench mcp_cold_start > "${RUNNER_TEMP}/mcp-cold-start-report.json"
+      - name: Retain MCP benchmark reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-benchmark-reports
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/mcp-warm-report.json
+            ${{ runner.temp }}/mcp-cold-start-report.json
+
+  native-target-tests:
+    name: Native tests (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+          - target: aarch64-apple-darwin
+            runner: macos-15
+          - target: x86_64-pc-windows-gnu
+            runner: windows-2022
+    runs-on: ${{ matrix.runner }}
+    env:
+      CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: gcc
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: ${{ matrix.target }}
+      - name: Install MinGW linker
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc
+      - name: Run resolver path parity tests
+        run: cargo test -p obsidian-link-resolver-mcp --target ${{ matrix.target }} --test integration mcp_resolver_parity
+      - name: Run installer integration tests
+        if: contains(matrix.target, 'linux')
+        run: cargo test -p obsidian-link-resolver-mcp --target ${{ matrix.target }} --test integration installers
+      - name: Run release asset contract tests
+        run: cargo test -p obsidian-link-resolver-mcp --target ${{ matrix.target }} --test integration release_assets

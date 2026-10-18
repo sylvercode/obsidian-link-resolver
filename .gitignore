@@ -16,7 +16,7 @@
 tests/fixtures/bench-vault/
 
 # Generated library artifacts
-include/obsidian_link_resolver.h
+crates/obsidian-link-resolver/include/obsidian_link_resolver.h
 
 # Environment config
 .env
@@ -36,6 +36,3 @@ include/obsidian_link_resolver.h
 # OS metadata
 .DS_Store
 Thumbs.db
-
-# Cargo lock is usually committed for binaries, but keep it out if this project is treated as a library-only package.
-Cargo.lock

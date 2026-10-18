@@ -1,0 +1,124 @@
+# Data Model: Obsidian Link Resolver MCP Wrapper
+
+The MCP wrapper adapts the existing resolver; it does not introduce a second link-resolution model. The authoritative result fields and serialization semantics remain in [the resolver result schema](../001-link-resolver/contracts/result.schema.json).
+
+## MCP Tool Request
+
+One `resolve_obsidian_link` invocation.
+
+| Field | Type | Required | Validation and meaning |
+|---|---|---:|---|
+| `link` | string | Yes | Non-empty raw Obsidian link text accepted by the existing resolver parser. |
+| `context_path` | string | Yes | Non-empty path to the file containing the link; relative and absolute paths follow existing resolver behavior. |
+| `vault_root` | string | No | Non-empty explicit vault root, which must canonicalize to one of the launch-time allowed roots. If omitted, the server selects the configured root containing `context_path`; requests outside configured roots are rejected. |
+| `with_emplacement` | boolean | No | Defaults to `false`; requests the existing structured heading/section/block result when available. Attachments retain existing no-emplacement behavior. |
+
+The request is not persisted. It is passed to the resolver with no alternate parsing or matching rules.
+
+## MCP Contract Version
+
+The public MCP tool contract is versioned with the shared Cargo package's semantic version.
+
+| Element | Compatibility rule |
+|---|---|
+| Argument names and requiredness | Must remain unchanged within a major version. |
+| Result field names and meanings | Must remain unchanged within a major version. |
+| Outcome categories and semantics | Must remain unchanged within a major version. |
+| Additions | New optional arguments and result fields may be added compatibly. |
+| Breaking changes | Require a new major version and migration notes. |
+
+The first published MCP contract is the baseline if no MCP contract has yet been released. Later MCP releases are compared with the latest published contract in the same major version.
+
+## Resolver Capability
+
+The existing Rust library capability parses a link, validates/detects its vault, resolves against the vault index, and reads the target note as needed. MCP requests delegate to `resolve_with_vault` after obtaining the cached index. Root selection, index enumeration, and resolution remain conceptually separate so cached requests can validate/select a root without rebuilding its index.
+
+## Vault Index Cache
+
+An in-memory cache entry is owned by the MCP server process and keyed by the canonical absolute vault root.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `root` | canonical path | Identity key; never returned in the public resolution record. |
+| `vault` | `Vault` snapshot | Existing supported note/attachment entries used for name and path matching. |
+| `last_full_scan` | monotonic instant | Completion marker used to schedule the next background full rescan, no more than 60 seconds later. |
+| `dirty` | boolean | Set by relevant watcher events; causes a rebuild before the next resolution. |
+| `watch_state` | internal state | Active watcher or unavailable; unavailability does not disable periodic refresh. |
+
+### Cache State Transitions
+
+- **Absent → Clean**: first request selects/canonicalizes the root, enumerates it, and registers a watcher when possible.
+- **Clean → Dirty**: a relevant filesystem event is observed; event bursts coalesce into one dirty state.
+- **Clean → Refreshing**: the per-vault background timer reaches its full-rescan deadline, independently of whether a request arrives.
+- **Dirty/Refreshing → Clean**: enumeration succeeds and atomically replaces the cached snapshot and scan time.
+- **Dirty/Refreshing → Error**: enumeration fails; the cache records the refresh failure, requests return a resolver `error` outcome, and the stale snapshot is not served. A later refresh retries.
+- **Watcher Active → Watcher Unavailable**: watch registration/runtime failure; retain the cache and rely on periodic rescans.
+
+Filesystem events are hints, not an authoritative operation log. A background full scan runs at least every 60 seconds even while watching and even when no requests arrive; this makes undetected index changes available to the next resolution within the specified bound. The cache exists for the server process lifetime; this is the defined active-session scope. Note file bodies are read on each resolution, so body edits are visible without a vault-index transition.
+
+## MCP Tool Result
+
+The result is the existing `ResolutionTarget` record. It has the five mutually exclusive statuses `resolved`, `unresolved`, `sub_target_not_found`, `ambiguous`, and `error`, and retains the existing optional target path/range, embed/display metadata, candidates, reason, and emplacement fields. The MCP response carries this record as structured content and its compact serialized JSON as text. Resolver statuses are successful tool calls with machine-readable outcomes; invalid protocol arguments or transport/lifecycle failures are MCP errors.
+
+## Diagnostic Configuration and Event
+
+Diagnostics are a server launch-time setting controlled by `--diagnostics`. The default is disabled. When enabled, `structured-logger` writes one synchronous JSON record per event to stderr; diagnostics are not part of `ResolutionTarget` or any MCP response. The logger is initialized only for this flag, with `INFO` as the explicit level, `obsidian_link_resolver_mcp::diagnostics` as the only target routed to stderr, and a sink as the default writer. Configure the crate with default features disabled to avoid its panic-logging feature.
+
+| Log field | Type | Meaning |
+|---|---|---|
+| `timestamp` | logger-generated epoch-millisecond integer | Log time; diagnostic-only and not part of an MCP result. |
+| `level` | fixed string enum | `INFO`, `WARN`, or `ERROR`. |
+| `target` | fixed string | Always `obsidian_link_resolver_mcp::diagnostics` for records written to stderr. |
+| `message` | fixed string | Static event description; never formatted with untrusted values. |
+| `event` | fixed string enum | Server lifecycle, request lifecycle/outcome/failure, or cache/watcher event. |
+| `request_seq` | optional process-local unsigned integer | Correlates request events without using user-controlled identifiers. |
+| `status` | optional resolver status enum | Outcome category for a completed resolution. |
+| `failure_kind` | optional fixed category enum | Server-controlled stage/category for an operational or request failure; never raw error text. |
+| `duration_ms` | optional non-negative number | Elapsed request or refresh time, when useful. |
+
+`event` is one of `server_started`, `server_stopped`, `request_started`, `request_completed`, `request_failed`, `cache_hit`, `cache_miss`, `cache_refresh_started`, `cache_refreshed`, `cache_refresh_failed`, or `watcher_unavailable`. `request_completed` carries the resolver status, including its normal `error` outcome; `request_failed` is reserved for a call that fails at the MCP/request-processing boundary rather than returning a resolver result.
+
+When present, `failure_kind` is one of `invalid_arguments`, `root_selection`, `cache_refresh`, `watch_setup`, `protocol`, `transport`, or `internal`. Records must not include link text, context or vault paths, note contents, serialized arguments, or raw error messages. Do not interpolate runtime values into the static `message` or `target` fields. Failure logging is limited to errors observable at the server's protocol, tool, resolver, and cache boundaries. Log calls from all other targets are routed to the configured sink, not stderr.
+
+## Relationships
+
+- Each tool request selects one context file and one effective vault root.
+- Many requests in one server process may share one cache entry when their effective canonical roots match.
+- Each request produces one resolver result from that request plus the selected `Vault` snapshot and current target note contents.
+- The tool result schema is the existing result schema, not an MCP-specific fork.
+- Diagnostic events are an opt-in operational side channel; they do not affect request processing or result serialization.
+
+## Shared-Version Component Release
+
+A GitHub release triggered by one semantic version tag and containing distinct assets for the library/FFI, CLI, and MCP server.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `component` | enum | One of `library`, `cli`, or `mcp`; identifies an asset family, not a distinct release version or installer parameter. |
+| `version` | semantic version | Shared Cargo package version applied to all component assets. |
+| `tag` | string | `vX.Y.Z`, matching the shared Cargo package version. |
+| `artifacts` | component-specific list | Distinct library/FFI release assets, CLI binaries, and MCP server binaries, all attached to this shared-tag release. |
+| `publication_channel` | enum | `github_release`; crates.io publication is not part of this feature. |
+
+### Release State Transitions
+
+- **Tagged → Validated**: the release workflow accepts a semantic `vX.Y.Z` tag and verifies that it matches the shared package version.
+- **Validated → Tested**: the full repository test suite and MCP warm-run benchmark pass.
+- **Tested → Published**: library/FFI, CLI, and MCP assets are staged with distinct names and published together under the shared version.
+- A malformed tag or failed test/performance gate blocks artifact publication.
+
+The CLI installer installs only the CLI binary. A separate MCP installer installs only the MCP binary without requiring a component-selection parameter. Library/FFI assets are distributed separately and are not installed by either executable installer.
+
+## Workspace Crates
+
+The repository is organized as a Cargo workspace with three member crates sharing a synchronized version:
+
+| Crate | Path | Responsibility | Dependencies |
+|---|---|---|---|
+| `obsidian-link-resolver` | `crates/obsidian-link-resolver` | Core link resolution engine, vault indexing, and C ABI / FFI | `serde`, `serde_json`, `walkdir`, `urlencoding`, `cbindgen` |
+| `obsidian-link-resolver-cli` | `crates/obsidian-link-resolver-cli` | Command-line interface executable (`obsidian-link-resolver`) | `obsidian-link-resolver`, `clap` |
+| `obsidian-link-resolver-mcp` | `crates/obsidian-link-resolver-mcp` | MCP stdio server executable (`obsidian-link-resolver-mcp`) | `obsidian-link-resolver`, `rmcp`, `notify`, `structured-logger`, `tokio`, `clap` |
+
+All crates inherit the workspace semantic version (`[workspace.package.version]`). Separate CLI and MCP installer commands let users install either executable without installing the other or passing a component-selection parameter.
+
+CLI argument parsing and formatting types reside in the CLI crate; the resolver library has no `cli` module and does not depend on `clap`. The MCP executable may use `clap` for its separate server launch options. Moving the existing module removes the public `obsidian_link_resolver::cli` API, including `CliArgs` and `OutputFormat`. The first release of the split workspace must therefore be `2.0.0` from the current `1.1.0` line, and its migration notes must document the breaking removal. No compatibility re-export or shim is provided; the resolver and FFI APIs are unchanged.

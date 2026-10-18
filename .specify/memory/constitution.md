@@ -1,11 +1,10 @@
 <!--
 Sync Impact Report
-Version change: 1.2.0 -> 1.3.0
-Modified principles: none renamed
-Added principles:
-- IX. Native Documentation for Named Symbols (added)
+Version change: 1.3.0 -> 1.4.0
+Modified principles:
+- VIII. Continuous Integration & Release Gating (expanded; title unchanged)
 Modified sections:
-- Development Workflow (expanded to require native-language documentation review for named symbols)
+- Development Workflow (requires every applicable PR CI check to pass before merge)
 Added sections: none
 Removed sections: none
 Follow-up TODOs: none
@@ -37,7 +36,7 @@ The project MUST be designed for interoperability so it can be consumed by, or i
 The `.devcontainer/devcontainer.json` MUST always be complete and MUST reflect the full toolchain required to build, test, and run the project. Every language runtime, package manager, and tool the project depends on MUST be declared there so that a fresh container yields a working environment without manual setup. When a change introduces a new dependency, tool, or version requirement, the devcontainer configuration MUST be updated in the same change. Rationale: a complete, reproducible dev container guarantees consistent onboarding, keeps local and CI environments in parity, and eliminates "works on my machine" drift.
 
 ### VIII. Continuous Integration & Release Gating
-A GitHub Actions CI workflow MUST be maintained as the authoritative source of build and test automation. Releases MUST be reproducible and test-gated: creating a semantic version tag of the form `vX.Y.Z` MUST trigger a release pipeline that first runs the full test suite (the test gate) and only produces release artifacts when all tests pass. The CI and release configuration MUST stay in sync with the devcontainer toolchain (see Principle VII) so that local, CI, and release builds are equivalent. Rationale: an automated, test-gated release process prevents shipping broken or unverified artifacts and ensures every tagged release is reproducible.
+A GitHub Actions CI workflow MUST be maintained as the authoritative source of build and test automation. Before a pull request is merged, every required check and job triggered for that pull request MUST pass, including every configured matrix entry. A focused local check MUST NOT substitute for the complete required CI result, and a failed required check MUST block merge until it passes on rerun. Releases MUST be reproducible and test-gated: creating a semantic version tag of the form `vX.Y.Z` MUST trigger a release pipeline that first runs the full test suite (the test gate) and only produces release artifacts when all tests pass. The CI and release configuration MUST stay in sync with the devcontainer toolchain (see Principle VII) so that local, CI, and release builds are equivalent. Rationale: requiring the complete CI result before merge catches failures outside a contributor's focused local checks; test-gated releases prevent shipping broken or unverified artifacts and keep tagged releases reproducible.
 
 ### IX. Native Documentation for Named Symbols
 Every named symbol in the project — including modules, types, enums and enum variants, functions, methods, members, parameters, return values, and public or private constants — MUST be documented using the documentation mechanism that is native and industry-standard for that language and ecosystem. For Rust, use Rustdoc comments (`///` and `//!`) and module-level docs; for Python, use docstrings; for TypeScript or JavaScript, prefer JSDoc or the ecosystem's standard API documentation; and for C-family code, use the language's accepted comment or documentation style. Custom documentation formats are not allowed when a standard mechanism exists. Documentation MUST explain purpose, constraints, semantics, and side effects in a way that supports both humans and tools; undocumented or ambiguously documented symbols are treated as incomplete work. Rationale: clear, idiomatic documentation makes APIs discoverable, reviewable, and maintainable across ecosystems, and it keeps the project aligned with the conventions expected by the languages it integrates with.
@@ -51,7 +50,7 @@ Every named symbol in the project — including modules, types, enums and enum v
 - All changes that affect CLI output, defaults, or performance MUST include test coverage and a short benchmark in the PR description.
 - Code review MUST verify that output shape is unchanged or that a documented migration path exists for consumers.
 - Every change that adds or modifies a named symbol MUST include native-language documentation in the same patch, using the standard mechanism for the language and ecosystem.
-- CI gates: unit tests, contract tests for CLI output, and a lightweight performance check for critical commands.
+- CI gates: before merge, every required check and job triggered by the pull request MUST pass, including all configured matrix entries. Contributors MUST confirm the complete CI result; focused local checks MUST NOT substitute for it. Required CI MUST cover unit tests, contract tests for CLI output, and a lightweight performance check for critical commands.
 - Any change that adds or updates a dependency, tool, or runtime version MUST update `.devcontainer/devcontainer.json` in the same change so the container remains complete (see Principle VII).
 - Releases are cut by pushing a `vX.Y.Z` tag, which MUST run the full test suite as a gate before publishing artifacts; a failed test gate MUST block the release (see Principle VIII).
 
@@ -62,4 +61,4 @@ Amendments to this constitution require a documented proposal in the repository,
 - PATCH for clarifications, wording, or non-semantic refinements.
 Compliance: PRs that touch CLI behavior or API surface must reference this constitution, include tests demonstrating no regressions, and verify that all named symbols use the native documentation standard appropriate to their language.
 
-**Version**: 1.3.0 | **Ratified**: 2026-09-17 | **Last Amended**: 2026-09-20
+**Version**: 1.4.0 | **Ratified**: 2026-09-17 | **Last Amended**: 2026-10-13

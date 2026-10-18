@@ -1,5 +1,6 @@
 {
 	"name": "obsidian-link-resolver",
+	// Includes Rust 1.98.1, rustfmt, and Clippy; see https://github.com/devcontainers/images/blob/main/src/rust/history/2.1.1.md
 	"image": "mcr.microsoft.com/devcontainers/rust:2.1.1-1-trixie",
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
@@ -16,7 +17,35 @@
 		"ghcr.io/devcontainers-extra/features/uv:1": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers/features/powershell:2": {}
+		"ghcr.io/devcontainers/features/powershell:2": {},
+		"ghcr.io/devcontainer-community/devcontainer-features/delta:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"version": "latest",
+			"moby": false
+		},
+		"ghcr.io/devcontainers-extra/features/starship:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/copilot-cli:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers-extra/features/eza:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers-extra/features/ripgrep:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainer-community/devcontainer-features/sxyazi-yazi:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers-extra/features/micro:1": {
+			"version": "latest"
+		}
 	},
 	"customizations": {
 		"vscode": {
@@ -25,9 +54,10 @@
 			},
 			"extensions": [
 				"rust-lang.rust-analyzer",
-				"tamasfe.even-better-toml"
+				"tamasfe.even-better-toml",
+				"github.vscode-github-actions"
 			]
 		}
 	},
-	"postCreateCommand": "rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin x86_64-pc-windows-gnu && cargo install --locked cbindgen"
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 && rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin x86_64-pc-windows-gnu && cargo install --locked cbindgen"
 }

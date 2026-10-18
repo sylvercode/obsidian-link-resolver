@@ -1,0 +1,47 @@
+[package]
+name = "obsidian-link-resolver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "obsidian_link_resolver"
+crate-type = ["rlib", "cdylib"]
+
+[features]
+vault-cache = ["dep:log", "dep:notify", "dep:tokio"]
+
+[dependencies]
+log = { version = "0.4", features = ["kv"], optional = true }
+notify = { version = "8.2.0", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+], optional = true }
+urlencoding = "2"
+walkdir = "2"
+
+[dev-dependencies]
+criterion = "0.8"
+libloading = "0.8"
+tempfile = "3"
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+    "test-util",
+] }
+
+[[bench]]
+name = "resolve"
+path = "../../benches/resolve.rs"
+harness = false
+
+[build-dependencies]
+cbindgen = "0.29"
