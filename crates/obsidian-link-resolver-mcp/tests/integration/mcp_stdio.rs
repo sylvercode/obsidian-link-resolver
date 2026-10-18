@@ -120,3 +120,63 @@ fn resolves_from_each_configured_vault() {
     drop(client);
     fs::remove_dir_all(second_root).expect("temporary vault should be removed");
 }
+
+/// Submit each documented source-link form unchanged and enforce the configured-root boundary.
+#[test]
+fn resolves_documented_link_forms_and_rejects_unconfigured_context() {
+    let temporary_directory = tempfile::tempdir().expect("temporary directory should be created");
+    let configured_root = temporary_directory.path().join("configured");
+    let unconfigured_root = temporary_directory.path().join("unconfigured");
+    fs::create_dir_all(configured_root.join(".obsidian"))
+        .expect("configured root metadata should be created");
+    fs::create_dir_all(&unconfigured_root).expect("unconfigured root should be created");
+    let context_path = configured_root.join("Context.md");
+    let unconfigured_context_path = unconfigured_root.join("Context.md");
+    fs::write(&context_path, "# Context\n").expect("configured context should be written");
+    fs::write(&unconfigured_context_path, "# Context\n")
+        .expect("unconfigured context should be written");
+    fs::write(
+        configured_root.join("Note.md"),
+        "# Heading\n\nNote body.\n\n^blockid\n",
+    )
+    .expect("target note should be written");
+
+    let mut client = StdioClient::with_vaults(vec![configured_root.to_string_lossy().into_owned()]);
+    assert!(client.initialize().get("result").is_some());
+    client.notify_initialized();
+
+    let link_forms = [
+        "[[Note]]",
+        "[[Note#Heading]]",
+        "[[Note#^blockid]]",
+        "[text](Note.md)",
+        "[text](Note.md#Heading)",
+    ];
+    for (index, link) in link_forms.into_iter().enumerate() {
+        let response = client.call_tool(
+            index as u64 + 2,
+            json!({
+                "link": link,
+                "context_path": context_path.to_string_lossy()
+            }),
+        );
+        assert_eq!(response["result"]["isError"], false, "{link}: {response}");
+        assert_eq!(
+            response["result"]["structuredContent"]["status"], "resolved",
+            "{link}"
+        );
+        assert_eq!(
+            response["result"]["structuredContent"]["target_path"], "Note.md",
+            "{link}"
+        );
+    }
+
+    let response = client.call_tool(
+        link_forms.len() as u64 + 2,
+        json!({
+            "link": "[[Note]]",
+            "context_path": unconfigured_context_path.to_string_lossy()
+        }),
+    );
+    assert_eq!(response["result"]["isError"], true, "{response}");
+}

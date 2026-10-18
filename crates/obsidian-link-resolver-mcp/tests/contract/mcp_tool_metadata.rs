@@ -3,6 +3,39 @@
 use super::mcp_client::{context_file, StdioClient};
 use serde_json::{json, Value};
 
+/// Verify initialization briefly states the resolver purpose without repeating link examples.
+#[test]
+fn keeps_initialization_instructions_brief_and_purpose_focused() {
+    let mut client = StdioClient::new();
+    let initialized = client.initialize();
+    let instructions = initialized["result"]["instructions"]
+        .as_str()
+        .expect("initialize response should include server instructions");
+
+    assert!(
+        instructions
+            .to_lowercase()
+            .contains("resolve obsidian links"),
+        "instructions should state the resolver purpose: {instructions}"
+    );
+    assert!(
+        instructions.len() <= 40,
+        "initialization instructions should stay concise: {instructions}"
+    );
+    for link_form in [
+        "[[Note]]",
+        "[[Note#Heading]]",
+        "[[Note#^blockid]]",
+        "[text](Note.md)",
+        "[text](Note.md#Heading)",
+    ] {
+        assert!(
+            !instructions.contains(link_form),
+            "initialization instructions should leave detailed syntax to the tool: {instructions}"
+        );
+    }
+}
+
 /// Verify that discovered metadata explains inputs, outcomes, and target detail.
 #[test]
 fn describes_tool_arguments_outcomes_and_emplacement_choice() {
@@ -21,6 +54,35 @@ fn describes_tool_arguments_outcomes_and_emplacement_choice() {
     let description = tool["description"]
         .as_str()
         .expect("resolver tool should have a description");
+
+    for link_form in [
+        "[[Note]]",
+        "[[Note#Heading]]",
+        "[[Note#^blockid]]",
+        "[text](Note.md)",
+        "[text](Note.md#Heading)",
+    ] {
+        assert!(
+            description.contains(link_form),
+            "tool description should identify {link_form:?}: {description}"
+        );
+    }
+
+    let lowercased_description = description.to_lowercase();
+    for guidance in [
+        "exactly as written",
+        "do not convert",
+        "context_path",
+        "without the obsidian application",
+        "configured at startup",
+    ] {
+        assert!(
+            lowercased_description.contains(guidance),
+            "tool description should include {guidance:?}: {description}"
+        );
+    }
+    assert!(!lowercased_description.contains("search documents"));
+    assert!(!lowercased_description.contains("discover links"));
 
     for guidance in [
         "Obsidian link",

@@ -34,11 +34,11 @@ No foundational tasks are required; the existing resolver schema, startup access
 
 ### Tests for User Story 1
 
-- [ ] T001 [US1] Add test-first coverage: extend metadata assertions in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` for all five exact examples, verbatim-link and context guidance, startup directory restriction, and absence of discovery/search claims; extend `crates/obsidian-link-resolver-mcp/tests/integration/mcp_stdio.rs` to submit each unchanged example with a source file under a configured root and verify a source file under an unconfigured root remains inaccessible.
+- [x] T001 [US1] Add test-first coverage: extend metadata assertions in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` for all five exact examples, verbatim-link and context guidance, startup directory restriction, and absence of discovery/search claims; extend `crates/obsidian-link-resolver-mcp/tests/integration/mcp_stdio.rs` to submit each unchanged example with a source file under a configured root and verify a source file under an unconfigured root remains inaccessible.
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Update the `resolve_obsidian_link` description in `crates/obsidian-link-resolver-mcp/src/mcp.rs` with the five required examples, exact-source and source-file-context instructions, Markdown-folder/no-Obsidian clarification, and startup-configured access boundary without changing the tool schema or resolver behavior.
+- [x] T002 [US1] Update the `resolve_obsidian_link` description in `crates/obsidian-link-resolver-mcp/src/mcp.rs` with the five required examples, exact-source and source-file-context instructions, Markdown-folder/no-Obsidian clarification, and startup-configured access boundary without changing the tool schema or resolver behavior.
 
 **Checkpoint**: The discovered tool description supports the five requested forms, unchanged inputs continue through the existing resolver from configured roots, and unconfigured roots remain inaccessible.
 
@@ -52,11 +52,11 @@ No foundational tasks are required; the existing resolver schema, startup access
 
 ### Tests for User Story 2
 
-- [ ] T003 [US2] Extend the initialization metadata assertion in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` to require a concise resolver-purpose statement and ensure the detailed link examples are not duplicated there.
+- [x] T003 [US2] Extend the initialization metadata assertion in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_tool_metadata.rs` to require a concise resolver-purpose statement and ensure the detailed link examples are not duplicated there.
 
 ### Implementation for User Story 2
 
-- [ ] T004 [US2] Shorten the MCP initialization instructions in `crates/obsidian-link-resolver-mcp/src/mcp.rs` to a brief purpose statement and keep detailed link guidance exclusively in the resolver tool description.
+- [x] T004 [US2] Shorten the MCP initialization instructions in `crates/obsidian-link-resolver-mcp/src/mcp.rs` to a brief purpose statement and keep detailed link guidance exclusively in the resolver tool description.
 
 **Checkpoint**: Initialization orients the client concisely while the discovered tool retains the detailed calling guidance.
 
@@ -66,7 +66,7 @@ No foundational tasks are required; the existing resolver schema, startup access
 
 **Purpose**: Verify the feature against the documented acceptance flow and unchanged resolver behavior.
 
-- [ ] T005 Run the package validation command documented in `specs/003-mcp-link-guidance/quickstart.md` (`cargo test -p obsidian-link-resolver -p obsidian-link-resolver-mcp`) after both stories are complete.
+- [x] T005 Run the package validation command documented in `specs/003-mcp-link-guidance/quickstart.md` (`cargo test -p obsidian-link-resolver -p obsidian-link-resolver-mcp`) after both stories are complete.
 
 ---
 
