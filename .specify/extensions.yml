@@ -2,6 +2,7 @@ installed:
 - assess
 - bug
 - companion
+- speckit-superpowers-bridge
 settings:
   auto_execute_hooks: true
 hooks:
@@ -23,6 +24,15 @@ hooks:
     prompt: Execute speckit.companion.before-step?
     description: Record plan start (currentStep=plan, status=planning) into .spec-context.json
     condition: null
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.guard
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.guard?
+    description: Prevent Spec Kit contract changes while Superpowers implementation
+      is executing
+    condition: null
   before_tasks:
   - extension: companion
     command: speckit.companion.before-step
@@ -31,6 +41,15 @@ hooks:
     priority: 10
     prompt: Execute speckit.companion.before-step?
     description: Record tasks start (currentStep=tasks, status=tasking) into .spec-context.json
+    condition: null
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.guard
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.guard?
+    description: Prevent Spec Kit contract changes while Superpowers implementation
+      is executing
     condition: null
   before_implement:
   - extension: companion
@@ -41,6 +60,14 @@ hooks:
     prompt: Execute speckit.companion.before-step?
     description: Record implement start (currentStep=implement, status=implementing)
       into .spec-context.json
+    condition: null
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.guard
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.guard?
+    description: Block speckit.implement for features handed off to Superpowers
     condition: null
   after_specify:
   - extension: companion
@@ -71,6 +98,14 @@ hooks:
     description: Record tasks completion (currentStep=tasks, status=ready-to-implement)
       into .spec-context.json
     condition: null
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.handoff
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.handoff?
+    description: Create the Superpowers handoff after Spec Kit task generation
+    condition: null
   after_implement:
   - extension: companion
     command: speckit.companion.after-implement
@@ -100,4 +135,14 @@ hooks:
     prompt: Execute speckit.companion.after-converge?
     description: Record converge finish (currentStep=converge, status unchanged) into
       .spec-context.json
+    condition: null
+  before_clarify:
+  - extension: speckit-superpowers-bridge
+    command: speckit.speckit-superpowers-bridge.guard
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.speckit-superpowers-bridge.guard?
+    description: Prevent Spec Kit contract changes while Superpowers implementation
+      is executing
     condition: null
