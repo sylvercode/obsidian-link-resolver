@@ -124,7 +124,7 @@ impl ResolverServer {
     /// The resolver record as MCP structured content and compact JSON text.
     #[tool(
         name = "resolve_obsidian_link",
-        description = "Resolve an Obsidian link from the file containing it. Provide the raw link and context path; optionally select an allowed vault root and request structured emplacement. The result preserves the resolver outcomes: resolved, unresolved, sub_target_not_found, ambiguous, or error. A simple target line is sufficient for a single point target. Set with_emplacement when reading a precise section or shard; it provides the containing heading stack, section range, and structured block when available. Attachments do not gain emplacement data."
+        description = "Resolve an Obsidian link from the Markdown file containing it. Supported examples include Wikilinks [[Note]], [[Note#Heading]], [[Note#^blockid]], and Markdown links [text](Note.md) and [text](Note.md#Heading). Pass the link exactly as written in the source; do not convert it to another form. Set context_path to the Markdown file containing the link. A folder of Markdown files works without the Obsidian application, but the server can access only directories configured at startup. Optionally select an allowed vault root and request structured emplacement. The result preserves the resolver outcomes: resolved, unresolved, sub_target_not_found, ambiguous, or error. A simple target line is sufficient for a single point target. Set with_emplacement when reading a precise section or shard; it provides the containing heading stack, section range, and structured block when available. Attachments do not gain emplacement data."
     )]
     async fn resolve_obsidian_link(
         &self,
@@ -347,6 +347,6 @@ impl ServerHandler for ResolverServer {
     /// Return the server capabilities advertised during MCP initialization.
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions("Resolve Obsidian links through the existing resolver.")
+            .with_instructions("Resolve Obsidian links.")
     }
 }

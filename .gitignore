@@ -29,10 +29,14 @@ crates/obsidian-link-resolver/include/obsidian_link_resolver.h
 ~$*
 *~
 
-# Editor directories
-.vscode/
-.idea/
-
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# speckit companion scripts cache
+.specify/extensions/companion/scripts/__pycache__/
+
+# speckit superpowers bridge artifacts
+.specify/bridge-snapshots
+.specify/bridge-events.jsonl
+.specify/superpowers-handoff.json
