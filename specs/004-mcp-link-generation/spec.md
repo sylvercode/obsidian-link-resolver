@@ -83,7 +83,6 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 - **FR-005**: For future-target requests, the MCP MUST distinguish syntax and path-boundary checks from destination validation and MUST NOT imply that the destination exists or will be created.
 - **FR-006**: The MCP MUST keep generation read-only: it returns link text and applicable validation details, and MUST NOT create or modify files, insert block IDs, or perform note edits.
 - **FR-007**: Source and target paths MUST remain within the vault locations allowed to the MCP at startup, including when a path does not yet exist or is affected by symlinks.
-- **FR-008**: Generated Wikilink destinations MUST use vault-relative paths. Generated Markdown destinations MUST use paths relative to the source note.
 - **FR-008**: Generated Wikilink and Markdown destinations MUST use vault-relative paths.
 - **FR-009**: For Markdown output, the MCP MUST provide link text suitable for insertion. Callers MAY supply an optional display label; when omitted, the MCP MUST derive the label from the target and requested subtarget.
 - **FR-010**: Inputs that cannot be represented faithfully in the chosen format MUST produce a clear failure and MUST NOT be presented as validated links.
@@ -106,6 +105,7 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 - **SC-005**: Users can identify from each response whether its destination is verified, unverified, or rejected without interpreting ambiguous success wording.
 - **SC-006**: In acceptance testing, 100% of same-file shorthand requests identify the requested heading or block without including the source note path.
 - **SC-007**: In acceptance testing, 100% of embed requests use the embed syntax for the selected link format.
+- **SC-008**: On the existing synthetic benchmark vault with up to 5,000 notes, warm-cache link generation has p50 latency at or below 100 ms in the MCP warm benchmark.
 
 ## Assumptions
 
