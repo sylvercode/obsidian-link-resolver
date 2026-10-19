@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Two decisions remain for clarification before the checklist can be complete: generated destination path policy and Markdown display-label behavior.
-- The unchecked item must be resolved before `/speckit-clarify` or `/speckit-plan`.
+- Clarifications are recorded in [spec.md](../spec.md#clarifications): both formats use vault-relative paths, and Markdown labels may be caller-supplied or derived.
+- All checklist items pass; planning may proceed.

@@ -11,7 +11,7 @@
 ## Clarifications
 
 ### Session 2026-10-18
-- Q: Which path style should generated links use for their destination? → A: Use vault-relative paths for Wikilinks and source-relative paths for Markdown links.
+- Q: Which path style should generated links use for their destination? → A: Use vault-relative paths for both Wikilinks and Markdown links, matching Obsidian's documented internal-link behavior.
 
 - Q: How should the generated Markdown link's visible text be chosen? → A: Callers may supply an optional custom label; when omitted, derive it from the target and requested subtarget.
 
@@ -84,6 +84,7 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 - **FR-006**: The MCP MUST keep generation read-only: it returns link text and applicable validation details, and MUST NOT create or modify files, insert block IDs, or perform note edits.
 - **FR-007**: Source and target paths MUST remain within the vault locations allowed to the MCP at startup, including when a path does not yet exist or is affected by symlinks.
 - **FR-008**: Generated Wikilink destinations MUST use vault-relative paths. Generated Markdown destinations MUST use paths relative to the source note.
+- **FR-008**: Generated Wikilink and Markdown destinations MUST use vault-relative paths.
 - **FR-009**: For Markdown output, the MCP MUST provide link text suitable for insertion. Callers MAY supply an optional display label; when omitted, the MCP MUST derive the label from the target and requested subtarget.
 - **FR-010**: Inputs that cannot be represented faithfully in the chosen format MUST produce a clear failure and MUST NOT be presented as validated links.
 - **FR-011**: The MCP MUST accept a per-request link-or-embed choice and support embedded output for note and attachment targets. Link discovery, document search, and note editing are outside the initial feature scope.
