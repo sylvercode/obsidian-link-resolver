@@ -1,18 +1,42 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "/^bash \\.specify/.*\\.sh(?: .*)?$/": {
+        "/^bash \\.specify\\/extensions\\/speckit-superpowers-bridge\\/scripts\\/bash\\/bridge-status\\.sh(?: --readiness)?(?: --json)?(?: --actor (?:codex|claude|unknown))?$/": {
             "approve": true,
             "matchCommandLine": true
         },
-        "/^pwsh (?:(?:-NoProfile )?-File )?\\.specify/.*\\.ps1(?: .*)?$/": {
+        "/^bash \\.specify\\/extensions\\/speckit-superpowers-bridge\\/scripts\\/bash\\/guard-command\\.sh --action (?:\"(?:speckit\\.implement|speckit\\.constitution|speckit\\.tasks|superpowers:writing-plans|superpowers:brainstorming|superpowers:executing-plans)\"|(?:speckit\\.implement|speckit\\.constitution|speckit\\.tasks|superpowers:writing-plans|superpowers:brainstorming|superpowers:executing-plans)) --actor (?:codex|claude|unknown)$/": {
             "approve": true,
             "matchCommandLine": true
         },
-        "/^python3 \\.specify/.*\\.py(?: .*)?$/": {
+        "/^pwsh (?:-NoProfile )?-File \\.specify\\/extensions\\/speckit-superpowers-bridge\\/scripts\\/powershell\\/bridge-status\\.ps1(?: -Readiness)?(?: -Json)?(?: -Actor (?:codex|claude|unknown))?$/": {
             "approve": true,
             "matchCommandLine": true
         },
-        "/^rg(?: .*)?$/": {
+        "/^pwsh (?:-NoProfile )?-File \\.specify\\/extensions\\/speckit-superpowers-bridge\\/scripts\\/powershell\\/guard-command\\.ps1 -Action (?:speckit\\.implement|speckit\\.constitution|speckit\\.tasks|superpowers:writing-plans|superpowers:brainstorming|superpowers:executing-plans) -Actor (?:codex|claude|unknown)$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 \\.specify\\/extensions\\/companion\\/scripts\\/status-context\\.py(?: --feature-dir specs\\/[0-9]{3}-[a-z0-9][a-z0-9-]*)?$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 \\.specify\\/extensions\\/companion\\/scripts\\/doctor\\.py(?: --all)?$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 \\.specify\\/extensions\\/companion\\/scripts\\/living_validate\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 \\.specify\\/extensions\\/companion\\/scripts\\/drift\\.py(?: --working(?: --json)?| --json)?$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 \\.specify\\/extensions\\/companion\\/scripts\\/check-coverage\\.py(?: --json| --capability [a-z0-9][a-z0-9-]*)?$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^rg(?!.*(?:^|\\s)[\"']?--pre[\"']?(?:=|\\s|$))(?: .*)?$/": {
             "approve": true,
             "matchCommandLine": true
         },

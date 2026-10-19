@@ -127,8 +127,7 @@ fn resolves_documented_link_forms_and_rejects_unconfigured_context() {
     let temporary_directory = tempfile::tempdir().expect("temporary directory should be created");
     let configured_root = temporary_directory.path().join("configured");
     let unconfigured_root = temporary_directory.path().join("unconfigured");
-    fs::create_dir_all(configured_root.join(".obsidian"))
-        .expect("configured root metadata should be created");
+    fs::create_dir_all(&configured_root).expect("configured root should be created");
     fs::create_dir_all(&unconfigured_root).expect("unconfigured root should be created");
     let context_path = configured_root.join("Context.md");
     let unconfigured_context_path = unconfigured_root.join("Context.md");
