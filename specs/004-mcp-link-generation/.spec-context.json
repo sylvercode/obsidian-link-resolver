@@ -1,0 +1,39 @@
+{
+  "workflow": "speckit",
+  "specName": "MCP Link Generation",
+  "branch": "main",
+  "currentStep": "specify",
+  "status": "specified",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-10-19T00:35:35.000Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-19T00:50:03.979Z"
+    }
+  ],
+  "telemetryInstanceId": "7c0f14e7-7f5c-4f73-a822-2a4b5f07b774",
+  "reviewComments": [
+    {
+      "id": "ref-1792372000365-2mwq0",
+      "doc": "spec",
+      "anchor": {
+        "heading": "User Story 1 - Generate a link to an existing destination (Priority: P1)",
+        "blockText": "An agent has chosen a note, heading, or block to reference and asks the MCP for link text using a source file for context. The MCP formats the requested link and checks that it resolves to the exact destination the caller named. The agent can insert the returned text only when that destination check succeeds.",
+        "line": 15
+      },
+      "comment": "it should also give the display text",
+      "status": "applied",
+      "createdAt": "2026-10-19T01:06:40.389Z"
+    }
+  ],
+  "assistant": "ide-chat"
+}
