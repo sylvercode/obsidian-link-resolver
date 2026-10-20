@@ -14,10 +14,11 @@ fn initializes_lists_tool_and_resolves_fixture_link() {
     client.notify_initialized();
 
     let listed = client.request(2, "tools/list", json!({}));
-    assert_eq!(
-        listed["result"]["tools"][0]["name"],
-        "resolve_obsidian_link"
-    );
+    assert!(listed["result"]["tools"]
+        .as_array()
+        .expect("tools/list should return an array")
+        .iter()
+        .any(|tool| tool["name"] == "resolve_obsidian_link"));
 
     let response = client.call_tool(
         3,

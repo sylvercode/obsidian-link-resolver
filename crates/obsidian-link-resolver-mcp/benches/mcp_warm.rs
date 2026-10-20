@@ -68,6 +68,23 @@ impl McpProcess {
         )
     }
 
+    /// Generate and validate the benchmark destination through the MCP tool.
+    fn call_generation(&mut self, id: usize, context_path: &str) -> Value {
+        self.request(
+            id as u64,
+            "tools/call",
+            json!({
+                "name": "generate_obsidian_link",
+                "arguments": {
+                    "context_path": context_path,
+                    "target_path": "Target Note.md",
+                    "intent": "existing",
+                    "heading": "Target Heading"
+                }
+            }),
+        )
+    }
+
     /// Write one JSON-RPC request and wait for the matching response line.
     fn request(&mut self, id: u64, method: &str, params: Value) -> Value {
         self.write(&json!({
@@ -154,6 +171,20 @@ fn main() {
         assert_eq!(result["result"]["structuredContent"]["status"], "resolved");
     }
     let median = p50(&mut samples);
+
+    let generation_warmup = process.call_generation(3 + SAMPLE_COUNT, &context_path);
+    assert_eq!(
+        generation_warmup["result"]["structuredContent"]["status"],
+        "validated"
+    );
+    let mut generation_samples = Vec::with_capacity(SAMPLE_COUNT);
+    for request_id in 4 + SAMPLE_COUNT..4 + SAMPLE_COUNT * 2 {
+        let started = Instant::now();
+        let result = process.call_generation(request_id, &context_path);
+        generation_samples.push(started.elapsed());
+        assert_eq!(result["result"]["structuredContent"]["status"], "validated");
+    }
+    let generation_median = p50(&mut generation_samples);
     let runner_image = std::env::var("ImageOS")
         .or_else(|_| std::env::var("RUNNER_IMAGE"))
         .unwrap_or_else(|_| "local".to_owned());
@@ -163,12 +194,17 @@ fn main() {
         "architecture": std::env::consts::ARCH,
         "fixture_version": "bench-vault-v1",
         "sample_count": SAMPLE_COUNT,
-        "p50_ms": median.as_secs_f64() * 1000.0
+        "p50_ms": median.as_secs_f64() * 1000.0,
+        "generation_p50_ms": generation_median.as_secs_f64() * 1000.0
     });
     println!("{report}");
     assert!(
         median <= Duration::from_millis(100),
         "warm MCP p50 exceeded 100 ms: {report}"
+    );
+    assert!(
+        generation_median <= Duration::from_millis(100),
+        "warm MCP generation p50 exceeded 100 ms: {report}"
     );
 }
 

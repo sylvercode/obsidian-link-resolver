@@ -213,10 +213,7 @@ pub fn enumerate_vault(root: &str) -> Result<Vec<NoteIndexEntry>, String> {
             .strip_prefix(root_path)
             .map_err(|error| format!("failed to relativize path '{}': {error}", path.display()))?;
         let rel_path = normalize_path(rel_path);
-        let is_markdown = path
-            .extension()
-            .and_then(|value| value.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+        let is_markdown = is_markdown_file_name(file_name);
         let name = if is_markdown {
             path.file_stem()
                 .and_then(|value| value.to_str())
@@ -408,7 +405,7 @@ fn is_supported_directory_name(name: &str) -> bool {
 /// # Returns
 ///
 /// `true` when the file name is structurally valid and extension-supported.
-pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
+pub fn is_supported_linkable_name(file_name: &str) -> bool {
     if !is_supported_base_name(file_name) {
         return false;
     }
@@ -422,6 +419,45 @@ pub(crate) fn is_supported_linkable_name(file_name: &str) -> bool {
         "m4a", "mp3", "ogg", "wav", "webm", "3gp", "mkv", "mov", "mp4", "ogv", "pdf",
     ];
     ext.is_empty() || supported.contains(&ext.as_str())
+}
+
+/// Report whether a file name has a case-insensitive `.md` extension.
+///
+/// # Parameters
+///
+/// - `file_name`: File name to inspect.
+///
+/// # Returns
+///
+/// `true` when the file name ends in `.md`, ignoring ASCII case.
+pub fn is_markdown_file_name(file_name: &str) -> bool {
+    Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
+}
+
+/// Remove a terminal Markdown extension without changing other filename suffixes.
+///
+/// # Parameters
+///
+/// - `path`: Vault-relative path or file name.
+///
+/// # Returns
+///
+/// The path without a case-insensitive `.md` suffix, or the original path.
+pub fn strip_markdown_extension(path: &str) -> &str {
+    let Some(suffix_start) = path.len().checked_sub(3) else {
+        return path;
+    };
+    if path
+        .get(suffix_start..)
+        .is_some_and(|suffix| suffix.eq_ignore_ascii_case(".md"))
+    {
+        path.get(..suffix_start).unwrap_or(path)
+    } else {
+        path
+    }
 }
 
 /// Validate a link reference token used inside wikilink and markdown targets.

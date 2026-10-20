@@ -24,10 +24,10 @@ The existing Rust workspace, MCP crate, test harness, and dependencies already s
 
 **Purpose**: Establish the strict tool contract and common vault boundary before story behavior.
 
-- [ ] T001 [P] Add tool discovery, strict input schema, required fields, and invalid-argument contract tests in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_link_generation.rs` and register the module in `crates/obsidian-link-resolver-mcp/tests/contract.rs`.
-- [ ] T002 [P] Add source/target containment integration tests, including planned source paths and symlink escape rejection, in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs` and register the module in `crates/obsidian-link-resolver-mcp/tests/integration.rs`.
-- [ ] T003 Implement documented generation request/result types and configured-root selection, including safe canonical-prefix validation for planned source paths, in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
-- [ ] T004 Register the generation module and `generate_obsidian_link` tool adapter using the existing allowed roots and shared `VaultCache` in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
+- [x] T001 [P] Add tool discovery, strict input schema, required fields, and invalid-argument contract tests in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_link_generation.rs` and register the module in `crates/obsidian-link-resolver-mcp/tests/contract.rs`.
+- [x] T002 [P] Add source/target containment integration tests, including planned source paths and symlink escape rejection, in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs` and register the module in `crates/obsidian-link-resolver-mcp/tests/integration.rs`.
+- [x] T003 Implement documented generation request/result types and configured-root selection, including safe canonical-prefix validation for planned source paths, in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
+- [x] T004 Register the generation module and `generate_obsidian_link` tool adapter using the existing allowed roots and shared `VaultCache` in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
 
 **Checkpoint**: The additive tool schema is discoverable, strict, and cannot widen the startup-configured vault boundary.
 
@@ -41,12 +41,12 @@ The existing Rust workspace, MCP crate, test harness, and dependencies already s
 
 ### Tests for User Story 1
 
-- [ ] T005 [US1] Add stdio integration cases for existing whole-note, heading, and block destinations, both link formats, and missing/ambiguous/mismatched destinations in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`.
+- [x] T005 [US1] Add stdio integration cases for existing whole-note, heading, and block destinations, both link formats, and missing/ambiguous/mismatched destinations in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement representable note/subtarget rendering, parser round-tripping, and exact canonical path plus subtarget comparison against the cached resolver result in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
-- [ ] T007 [US1] Return structured validated or rejected generation results without changing `resolve_obsidian_link` behavior in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
+- [x] T006 [US1] Implement representable note/subtarget rendering, parser round-tripping, and exact canonical path plus subtarget comparison against the cached resolver result in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
+- [x] T007 [US1] Return structured validated or rejected generation results without changing `resolve_obsidian_link` behavior in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
 
 **Checkpoint**: Existing note and subtarget requests report validated only on an exact resolver match.
 
@@ -60,11 +60,11 @@ The existing Rust workspace, MCP crate, test harness, and dependencies already s
 
 ### Tests for User Story 2
 
-- [ ] T008 [US2] Add stdio cases for future notes, attachments, and subtargets plus explicit existing requests for missing targets in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`; assert unverified/rejected outcomes and no vault mutations.
+- [x] T008 [US2] Add stdio cases for future notes, attachments, and subtargets plus explicit existing requests for missing targets in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`; assert unverified/rejected outcomes and no vault mutations.
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Implement explicit `future` intent handling so allowed, representable candidates return `unverified`, existing-target failures never fall back to future, and generation performs no writes in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
+- [x] T009 [US2] Implement explicit `future` intent handling so allowed, representable candidates return `unverified`, existing-target failures never fall back to future, and generation performs no writes in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
 
 **Checkpoint**: Future candidates are clearly distinguished from destination-validated links and no files are created or modified.
 
@@ -72,18 +72,18 @@ The existing Rust workspace, MCP crate, test harness, and dependencies already s
 
 ## Phase 5: User Story 3 - Choose link format and subtarget (Priority: P3)
 
-**Goal**: Support per-request format/output selection, Markdown labels, attachments, same-file shorthand, and embeds.
+**Goal**: Support per-request format/output selection, display labels in both formats, attachments, same-file shorthand, and embeds.
 
 **Independent Test**: Exercise omitted and explicit formats, custom and derived labels, note/attachment links and embeds, same-file subtargets, and invalid selector combinations; verify emitted syntax and destination status.
 
 ### Tests for User Story 3
 
-- [ ] T010 [US3] Add contract assertions for Wikilink/link defaults, format/output enums, Markdown label, and mutually exclusive subtarget inputs in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_link_generation.rs`.
-- [ ] T011 [US3] Add stdio cases for both formats, attachment targets, embeds, same-file shorthand, custom/derived Markdown labels, and simultaneous heading/block rejection in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`.
+- [x] T010 [US3] Add contract assertions for Wikilink/link defaults, format/output enums, Markdown label, and mutually exclusive subtarget inputs in `crates/obsidian-link-resolver-mcp/tests/contract/mcp_link_generation.rs`.
+- [x] T011 [US3] Add stdio cases for both formats, attachment targets, embeds, same-file shorthand, custom/derived Markdown labels, and simultaneous heading/block rejection in `crates/obsidian-link-resolver-mcp/tests/integration/mcp_link_generation.rs`.
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Implement format and output selection, vault-relative destinations, attachment handling, label derivation, same-file shorthand, and embed rendering in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
+- [x] T012 [US3] Implement format and output selection, vault-relative destinations, attachment handling, label derivation, same-file shorthand, and embed rendering in `crates/obsidian-link-resolver-mcp/src/link_generation.rs`.
 
 **Checkpoint**: All requested link forms are emitted faithfully, or rejected without claiming validation.
 
@@ -93,8 +93,14 @@ The existing Rust workspace, MCP crate, test harness, and dependencies already s
 
 **Purpose**: Verify performance and the complete MCP feature contract.
 
-- [ ] T013 Add a representative `generate_obsidian_link` warm-cache sample to `crates/obsidian-link-resolver-mcp/benches/mcp_warm.rs` and retain the existing 100 ms p50 gate.
-- [ ] T014 Run the MCP crate tests and warm benchmark from `specs/004-mcp-link-generation/quickstart.md`; confirm the existing resolver contract remains unchanged in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
+- [x] T013 Add a representative `generate_obsidian_link` warm-cache sample to `crates/obsidian-link-resolver-mcp/benches/mcp_warm.rs` and retain the existing 100 ms p50 gate.
+- [x] T014 Run the MCP crate tests and warm benchmark from `specs/004-mcp-link-generation/quickstart.md`; confirm the existing resolver contract remains unchanged in `crates/obsidian-link-resolver-mcp/src/mcp.rs`.
+
+---
+
+## Phase 7: Convergence
+
+- [x] T015 Make caller-supplied display labels work for Wikilink as well as Markdown output, render Wikilink aliases, add contract and integration coverage for both formats, and update the plan/contract/data-model wording per FR-009 and US3/AC6 (partial)
 
 ---
 

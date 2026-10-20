@@ -14,7 +14,7 @@ One MCP tool call asking for link text.
 | `same_file` | boolean | no | Defaults to false. When true, target must be the contextual note and a heading or block selector is required. |
 | `heading` | string | no | Optional note heading path; mutually exclusive with `block_id`. |
 | `block_id` | string | no | Optional block identifier; mutually exclusive with `heading`. |
-| `markdown_label` | string | no | Optional visible label for Markdown output; omitted labels are derived from the target and requested subtarget. |
+| `label` | string | no | Optional visible label for either format; omitted Markdown labels are derived from the target and requested subtarget, while Wikilinks use their target-derived display. |
 | `vault_root` | string | no | Optional selector that must match one startup-configured root. |
 
 ### Validation

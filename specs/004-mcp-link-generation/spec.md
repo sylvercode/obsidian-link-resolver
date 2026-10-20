@@ -15,6 +15,9 @@
 
 - Q: How should the generated Markdown link's visible text be chosen? → A: Callers may supply an optional custom label; when omitted, derive it from the target and requested subtarget.
 
+### Session 2026-10-19
+- Q: Which link formats may use an optional caller-supplied display label? → A: Both Wikilink and Markdown; when omitted, derive the label from the target and requested subtarget.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate a link to an existing destination (Priority: P1)
@@ -62,6 +65,7 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 3. **Given** a request containing both a heading and block selector, **When** the caller requests generation, **Then** the request is rejected as invalid rather than choosing one selector silently.
 4. **Given** a heading or block in the contextual source note, **When** the caller requests same-file shorthand, **Then** the generated link omits the note path and identifies the requested subtarget.
 5. **Given** a note or attachment target, **When** the caller requests embedded output, **Then** the generated text uses the embed syntax for the selected format and reports the applicable destination-validation result.
+6. **Given** a caller-supplied display label, **When** the caller requests either link format, **Then** the generated link uses that label as its visible text.
 
 ### Edge Cases
 
@@ -84,13 +88,13 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 - **FR-006**: The MCP MUST keep generation read-only: it returns link text and applicable validation details, and MUST NOT create or modify files, insert block IDs, or perform note edits.
 - **FR-007**: Source and target paths MUST remain within the vault locations allowed to the MCP at startup, including when a path does not yet exist or is affected by symlinks.
 - **FR-008**: Generated Wikilink and Markdown destinations MUST use vault-relative paths.
-- **FR-009**: For Markdown output, the MCP MUST provide link text suitable for insertion. Callers MAY supply an optional display label; when omitted, the MCP MUST derive the label from the target and requested subtarget.
+- **FR-009**: The MCP MUST provide link text suitable for insertion. For both Wikilink and Markdown output, callers MAY supply an optional display label; when omitted, the MCP MUST derive the label from the target and requested subtarget.
 - **FR-010**: Inputs that cannot be represented faithfully in the chosen format MUST produce a clear failure and MUST NOT be presented as validated links.
 - **FR-011**: The MCP MUST accept a per-request link-or-embed choice and support embedded output for note and attachment targets. Link discovery, document search, and note editing are outside the initial feature scope.
 
 ### Key Entities *(include if data involved)*
 
-- **Link Request**: The caller's source context, note or attachment target path, optional heading or block ID, requested format and link-or-embed choice, and existing-or-future intention.
+- **Link Request**: The caller's source context, note or attachment target path, optional heading or block ID and display label, requested format and link-or-embed choice, and existing-or-future intention.
 - **Destination**: A vault-relative note or attachment, optionally identified by a heading or block ID when the target is a note, that the caller wants the link to reference.
 - **Generation Result**: The returned link text and a clear distinction between destination validation, syntax checks, and validation failures.
 
@@ -113,5 +117,5 @@ A caller chooses Wikilink or Markdown for each request and may request a whole-n
 - Existing-target versus future-target intention is explicit, and validation failures never fall back to future-target acceptance.
 - A planned source file may be identified by its intended path, subject to the same allowed-vault boundary as existing files.
 - Duplicate subtargets are not claimed as exactly validated unless the resolver can distinguish the requested occurrence.
-- Callers may supply a custom Markdown label; when omitted, the label is derived from the target and requested subtarget. Other display and escaping details can be settled during planning without changing the read-only scope.
+- Callers may supply a custom display label for Wikilink or Markdown output; when omitted, the label is derived from the target and requested subtarget. Other display and escaping details can be settled during planning without changing the read-only scope.
 - Same-file shorthand, embedded output, and attachment targets are in scope; link discovery, document search, and note editing remain out of scope.

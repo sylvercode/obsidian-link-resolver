@@ -14,9 +14,10 @@ fn advertises_tool_schema_with_required_and_optional_arguments() {
     let tools = response["result"]["tools"]
         .as_array()
         .expect("tools/list should return a tool array");
-    assert_eq!(tools.len(), 1);
-    let tool = &tools[0];
-    assert_eq!(tool["name"], "resolve_obsidian_link");
+    let tool = tools
+        .iter()
+        .find(|tool| tool["name"] == "resolve_obsidian_link")
+        .expect("resolver tool should remain discoverable");
 
     let schema = &tool["inputSchema"];
     assert_eq!(schema["additionalProperties"], false);

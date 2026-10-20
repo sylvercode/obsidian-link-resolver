@@ -66,6 +66,7 @@ Decisions and evidence are recorded in [research.md](research.md). Key choices: 
 6. Reuse the startup allow-list and cached vault. Existing paths are canonicalized before containment checks. A planned source path is accepted only when its canonical existing prefix is inside the selected root and its unresolved tail contains no traversal; reject paths whose symlinks escape the root.
 7. Build the candidate using a focused renderer with explicit escaping/percent encoding. Round-trip it through the shared parser; reject unsupported names rather than returning misleading text.
 8. Support same-file shorthand only for a heading or block in the contextual note; support embed output only for note/attachment targets and preserve heading/block selectors only for notes.
+9. Support the optional `label` request property as caller-supplied visible text for both formats. Render Wikilink aliases as `[[target|label]]` (including embeds); when omitted, Wikilinks retain their normal target-derived display while Markdown labels are derived from the target and requested subtarget.
 
 ### Intended Source and Test Structure
 

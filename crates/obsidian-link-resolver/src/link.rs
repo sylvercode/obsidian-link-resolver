@@ -4,9 +4,19 @@
 //! in a canonical form. It supports both wikilink (`[[...]]`) and markdown-style (`[text](...)`) link formats,
 //! embeds, aliases, folder paths, headings, and block references.
 
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 
 use crate::vault::is_supported_link_reference_name;
+
+const MARKDOWN_DESTINATION_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'/')
+    .remove(b'#')
+    .remove(b'^')
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'~');
 
 /// Tuple form returned by target parsing: `(folder, note, heading_path, block_id)`.
 type ParsedTarget = (Option<String>, Option<String>, Vec<String>, Option<String>);
@@ -403,7 +413,24 @@ fn parse_target(target: &str) -> Result<ParsedTarget, LinkParseError> {
 ///
 /// The decoded string, or the original value if decode fails.
 fn percent_decode(input: &str) -> String {
-    urlencoding::decode(input)
+    percent_encoding::percent_decode_str(input)
+        .decode_utf8()
         .map(|value| value.into_owned())
         .unwrap_or_else(|_| input.to_string())
+}
+
+/// Percent-encode a Markdown link destination while preserving Obsidian delimiters.
+///
+/// Path separators and heading/block selector markers remain literal; all other characters
+/// outside the URL-unreserved set are percent-encoded as UTF-8 bytes.
+///
+/// # Parameters
+///
+/// - `destination`: Unescaped vault-relative destination and optional selector.
+///
+/// # Returns
+///
+/// The percent-encoded destination accepted by [`parse_link`].
+pub fn encode_markdown_destination(destination: &str) -> String {
+    utf8_percent_encode(destination, MARKDOWN_DESTINATION_ENCODE_SET).to_string()
 }

@@ -20,7 +20,7 @@ All fields are strict: reject unknown properties and invalid types.
 | `same_file` | boolean | no | Default `false`; when true, requires a same-note heading or block target. |
 | `heading` | string | no | Mutually exclusive with `block_id`; note targets only. |
 | `block_id` | string | no | Mutually exclusive with `heading`; note targets only. |
-| `markdown_label` | string | no | Optional Markdown visible text; derived from target/subtarget when omitted. |
+| `label` | string | no | Optional visible text for either format; when omitted, Markdown text is derived from target/subtarget and Wikilinks use their target-derived display. |
 | `vault_root` | string | no | Optional root, which must match a root configured at server startup. |
 
 ## Output
@@ -47,7 +47,7 @@ Argument deserialization errors remain MCP tool errors. Valid requests with miss
 - Note Wikilinks may omit `.md`; Markdown destinations retain the extension and percent-encode destination characters per Obsidian's internal-link documentation.
 - A heading or block selector is appended to the destination; headings and block IDs are mutually exclusive.
 - Same-file shorthand omits the note path only when the requested target is the contextual note.
-- Wikilinks use `[[target]]`; embeds prefix `!`. Markdown links use `[label](target)`; Markdown embeds use `![label](target)`.
+- Wikilinks use `[[target]]` or `[[target|label]]`; embeds prefix `!`. Markdown links use `[label](target)`; Markdown embeds use `![label](target)`. A supplied `label` is used in either format.
 - Attachment targets retain the full filename and use the existing resolver's supported-extension rules.
 - Any unfaithful escaping/encoding or unsupported name is rejected without claiming validation.
 
