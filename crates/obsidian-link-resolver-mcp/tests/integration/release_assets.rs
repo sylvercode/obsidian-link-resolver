@@ -11,6 +11,23 @@ const RELEASE_TARGETS: [&str; 5] = [
     "x86_64-pc-windows-gnu",
 ];
 
+/// A moved tag must not change the source commit used by a release run.
+#[test]
+fn release_checkouts_use_the_triggering_commit() {
+    let checkouts: Vec<_> = RELEASE_WORKFLOW
+        .split("- uses: actions/checkout@")
+        .skip(1)
+        .collect();
+    assert_eq!(checkouts.len(), 2, "both build jobs must check out source");
+    for checkout in checkouts {
+        let step = checkout.split("\n      - ").next().unwrap();
+        assert!(
+            step.contains("\n        with:\n          ref: ${{ github.sha }}"),
+            "each release checkout must use the immutable triggering commit"
+        );
+    }
+}
+
 /// Release validation must complete all feature gates before staging assets.
 #[test]
 fn release_gates_precede_component_asset_staging() {
