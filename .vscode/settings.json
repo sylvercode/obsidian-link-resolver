@@ -43,6 +43,7 @@
         "/^python3 --version$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "specify": true
     }
 }

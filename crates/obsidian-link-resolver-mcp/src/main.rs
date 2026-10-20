@@ -5,6 +5,7 @@ use rmcp::{transport::stdio, ServiceExt};
 use std::error::Error;
 use structured_logger::{json::new_writer, Builder};
 
+mod link_generation;
 mod mcp;
 
 /// Fixed log target routed to stderr when diagnostics are enabled.

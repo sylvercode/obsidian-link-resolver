@@ -1,7 +1,12 @@
 //! MCP tool adapter for the existing Obsidian link resolver.
 
+use crate::link_generation::{
+    render_candidate, select_generation_root, subtarget_is_unique, target_path_within_root,
+    DestinationValidation, GenerationResult, GenerationStatus, LinkGenerationRequest, LinkIntent,
+};
 use obsidian_link_resolver::cache::VaultCache;
 use obsidian_link_resolver::error_for_link;
+use obsidian_link_resolver::output::Status;
 use obsidian_link_resolver::resolve_with_vault;
 use rmcp::{
     handler::server::{
@@ -136,9 +141,168 @@ impl ResolverServer {
 
         self.resolve_request(request, request_seq, started).await
     }
+
+    /// Generate a syntax-checked Obsidian link candidate within an allowed vault.
+    ///
+    /// # Parameters
+    ///
+    /// - `request`: Strict destination, context, intent, and output settings.
+    ///
+    /// # Returns
+    ///
+    /// A structured generation result, or an MCP error for malformed required arguments.
+    #[tool(
+        name = "generate_obsidian_link",
+        description = "Generate Obsidian link text for an exact vault-relative note or supported attachment path. Choose intent as existing or future; future results are unverified and never create files. The source context and destination must remain inside a vault configured at startup. The default format is wikilink and the default output is link."
+    )]
+    async fn generate_obsidian_link(
+        &self,
+        Parameters(request): Parameters<LinkGenerationRequest>,
+    ) -> Result<CallToolResult, String> {
+        self.generate_request(request).await
+    }
 }
 
 impl ResolverServer {
+    /// Check request boundaries and return a future candidate without claiming validation.
+    ///
+    /// # Parameters
+    ///
+    /// - `request`: Deserialized generation arguments.
+    ///
+    /// # Returns
+    ///
+    /// A structured link-generation result or an MCP error for empty required values.
+    async fn generate_request(
+        &self,
+        request: LinkGenerationRequest,
+    ) -> Result<CallToolResult, String> {
+        if request.context_path.is_empty() || request.target_path.is_empty() {
+            return Err("context_path and target_path must not be empty".to_owned());
+        }
+        let root = match select_generation_root(
+            &request.context_path,
+            request.vault_root.as_deref(),
+            &self.allowed_vaults,
+        ) {
+            Ok(root) => root,
+            Err(reason) => {
+                return structured_generation_result(GenerationResult::rejected(
+                    request.format,
+                    request.output,
+                    reason,
+                ));
+            }
+        };
+        let target = match target_path_within_root(&root, &request.target_path) {
+            Ok(target) => target,
+            Err(reason) => {
+                return structured_generation_result(GenerationResult::rejected(
+                    request.format,
+                    request.output,
+                    reason,
+                ));
+            }
+        };
+        let generation = match self.cache.get_or_refresh_canonical(&root).await {
+            Ok(generation) => generation,
+            Err(reason) => {
+                return structured_generation_result(GenerationResult::rejected(
+                    request.format,
+                    request.output,
+                    reason,
+                ));
+            }
+        };
+        let relative_target = target
+            .strip_prefix(&root)
+            .map_err(|_| "target_path must remain inside the configured vault".to_owned())?;
+        let relative_target = relative_target
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        let context_absolute = if PathBuf::from(&request.context_path).is_absolute() {
+            PathBuf::from(&request.context_path)
+        } else {
+            std::env::current_dir()
+                .map_err(|_| "working directory could not be determined".to_owned())?
+                .join(&request.context_path)
+        };
+        let context_path = fs::canonicalize(&context_absolute).unwrap_or(context_absolute);
+        let context_relative = context_path.strip_prefix(&root).ok().map(|path| {
+            path.components()
+                .map(|part| part.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/")
+        });
+        let candidate =
+            match render_candidate(&request, &relative_target, context_relative.as_deref()) {
+                Ok(candidate) => candidate,
+                Err(reason) => {
+                    return structured_generation_result(rejected_generation_result(
+                        &request,
+                        Some(relative_target),
+                        reason,
+                        true,
+                        false,
+                    ));
+                }
+            };
+        if matches!(request.intent, LinkIntent::Future) {
+            return structured_generation_result(GenerationResult {
+                link_text: Some(candidate),
+                status: GenerationStatus::Unverified,
+                syntax_valid: true,
+                path_allowed: true,
+                destination_validation: DestinationValidation::Unverified,
+                target_path: Some(relative_target),
+                format: request.format,
+                output: request.output,
+                reason: Some("future destination has not been validated".to_owned()),
+            });
+        }
+
+        let resolution = resolve_with_vault(
+            &candidate,
+            &context_path.to_string_lossy(),
+            &generation.vault,
+            false,
+        );
+        let unique_subtarget = subtarget_is_unique(&target, &request);
+        let exact_match = resolution.status == Status::Resolved
+            && resolution.target_path.as_deref() == Some(relative_target.as_str())
+            && unique_subtarget;
+        if exact_match {
+            structured_generation_result(GenerationResult {
+                link_text: Some(candidate),
+                status: GenerationStatus::Validated,
+                syntax_valid: true,
+                path_allowed: true,
+                destination_validation: DestinationValidation::Validated,
+                target_path: Some(relative_target),
+                format: request.format,
+                output: request.output,
+                reason: None,
+            })
+        } else {
+            let reason = resolution.reason.unwrap_or_else(|| {
+                if !unique_subtarget {
+                    "requested subtarget is duplicated and cannot be validated exactly".to_owned()
+                } else {
+                    "generated link did not resolve to the exact requested destination".to_owned()
+                }
+            });
+            structured_generation_result(rejected_generation_result(
+                &request,
+                Some(relative_target),
+                reason,
+                true,
+                true,
+            ))
+        }
+    }
+
     /// Validate a request, select its vault generation, and serialize the resolver result.
     ///
     /// # Parameters
@@ -210,6 +374,53 @@ impl ResolverServer {
         log_request_completed(request_seq, resolver_status(&structured), started);
         Ok(CallToolResult::structured(structured))
     }
+}
+
+/// Build a rejected result while preserving independently known path and syntax state.
+///
+/// # Parameters
+///
+/// - `request`: Original output preferences.
+/// - `target_path`: Normalized destination when it was safely identified.
+/// - `reason`: Human-readable rejection reason.
+/// - `path_allowed`: Whether source and target passed the configured-root checks.
+/// - `syntax_valid`: Whether a candidate passed parser round-tripping.
+///
+/// # Returns
+///
+/// A structured rejected generation result.
+fn rejected_generation_result(
+    request: &LinkGenerationRequest,
+    target_path: Option<String>,
+    reason: String,
+    path_allowed: bool,
+    syntax_valid: bool,
+) -> GenerationResult {
+    GenerationResult {
+        link_text: None,
+        status: GenerationStatus::Rejected,
+        syntax_valid,
+        path_allowed,
+        destination_validation: DestinationValidation::Failed,
+        target_path,
+        format: request.format,
+        output: request.output,
+        reason: Some(reason),
+    }
+}
+
+/// Serialize a generation record into MCP structured content.
+///
+/// # Parameters
+///
+/// - `result`: Structured generation outcome to return.
+///
+/// # Returns
+///
+/// A successful MCP tool result containing the JSON record.
+fn structured_generation_result(result: GenerationResult) -> Result<CallToolResult, String> {
+    let structured = serde_json::to_value(result).map_err(|error| error.to_string())?;
+    Ok(CallToolResult::structured(structured))
 }
 
 /// Record a completed resolver response using only its fixed outcome category.

@@ -1,6 +1,6 @@
 use obsidian_link_resolver::vault::{
-    detect_root, enumerate_vault, resolve_name, select_root, NameResolutionError, NoteIndexEntry,
-    Vault, VaultSource,
+    detect_root, enumerate_vault, is_markdown_file_name, is_supported_linkable_name, resolve_name,
+    select_root, strip_markdown_extension, NameResolutionError, NoteIndexEntry, Vault, VaultSource,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -196,4 +196,24 @@ fn reports_ambiguous_and_vault_undetermined_cases() {
     fs::write(&context, "# Outside\n").expect("context file should be writable");
 
     assert!(detect_root(context.to_string_lossy().as_ref(), None).is_err());
+}
+
+#[test]
+fn shared_linkable_filename_helpers_follow_vault_rules() {
+    assert!(is_supported_linkable_name("Note.md"));
+    assert!(is_supported_linkable_name("diagram.PNG"));
+    assert!(is_supported_linkable_name("extensionless"));
+    assert!(!is_supported_linkable_name("archive.txt"));
+    assert!(!is_supported_linkable_name("bad*name.md"));
+
+    assert!(is_markdown_file_name("Note.md"));
+    assert!(is_markdown_file_name("Note.MD"));
+    assert!(!is_markdown_file_name("diagram.png"));
+    assert!(!is_markdown_file_name("README"));
+
+    assert_eq!(strip_markdown_extension("folder/Note.md"), "folder/Note");
+    assert_eq!(strip_markdown_extension("Note.MD"), "Note");
+    assert_eq!(strip_markdown_extension("Note.markdown"), "Note.markdown");
+    assert_eq!(strip_markdown_extension("Note"), "Note");
+    assert_eq!(strip_markdown_extension("📚"), "📚");
 }

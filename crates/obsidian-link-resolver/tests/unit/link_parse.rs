@@ -1,5 +1,5 @@
 use obsidian_link_resolver::error_for_link;
-use obsidian_link_resolver::link::{parse_link, LinkStyle};
+use obsidian_link_resolver::link::{encode_markdown_destination, parse_link, LinkStyle};
 use obsidian_link_resolver::output::Status;
 
 /// Cache-style errors preserve alias metadata and defer to parse failures for malformed links.
@@ -96,4 +96,25 @@ fn parses_wikilinks_markdown_links_and_rejects_invalid_sub_targets() {
     }
 
     assert!(parse_link("[[Note#Heading#^abc123]]").is_err());
+}
+
+#[test]
+fn markdown_percent_decoding_preserves_plus_and_invalid_sequences() {
+    for (destination, expected_name) in [
+        ("A+B.md", "A+B.md"),
+        ("Malformed%2Path.md", "Malformed%2Path.md"),
+        ("Invalid%FFUtf8.md", "Invalid%FFUtf8.md"),
+    ] {
+        let link = parse_link(&format!("[Display]({destination})"))
+            .expect("path should remain a valid link");
+        assert_eq!(link.note_name.as_deref(), Some(expected_name));
+    }
+}
+
+#[test]
+fn markdown_destination_encoding_preserves_obsidian_delimiters() {
+    assert_eq!(
+        encode_markdown_destination("a/b#c^d é?% -._~"),
+        "a/b#c^d%20%C3%A9%3F%25%20-._~"
+    );
 }
