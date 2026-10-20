@@ -1,6 +1,7 @@
 //! Request models and vault-boundary checks for generated Obsidian links.
 
 use obsidian_link_resolver::link::{encode_markdown_destination, parse_link, Link};
+use obsidian_link_resolver::note::scan_note;
 use obsidian_link_resolver::vault::{
     is_markdown_file_name, is_supported_linkable_name, strip_markdown_extension,
 };
@@ -287,14 +288,24 @@ pub(crate) fn render_candidate(
     {
         return Err("subtarget values must be non-empty and trimmed".to_owned());
     }
-    if request.label.as_ref().is_some_and(|label| {
-        label.is_empty()
-            || label
-                .chars()
-                .any(|character| matches!(character, '[' | ']' | '\n' | '\r'))
-            || label.trim() != label
-    }) {
+    if request
+        .label
+        .as_ref()
+        .is_some_and(|label| !is_representable_display_label(label))
+    {
         return Err("display label cannot be represented faithfully".to_owned());
+    }
+    if matches!(request.format, LinkFormat::Wikilink)
+        && (request
+            .heading
+            .as_deref()
+            .is_some_and(contains_wikilink_delimiter)
+            || request
+                .block_id
+                .as_deref()
+                .is_some_and(contains_wikilink_delimiter))
+    {
+        return Err("Wikilink subtarget contains a structural delimiter".to_owned());
     }
 
     let is_note = is_markdown_file_name(target_file_name);
@@ -329,7 +340,10 @@ pub(crate) fn render_candidate(
         }
         format!("#{}", segments.join("#"))
     } else if let Some(block_id) = request.block_id.as_deref() {
-        if block_id.starts_with('^') || block_id.contains('#') {
+        if block_id.starts_with('^')
+            || block_id.contains('#')
+            || block_id.chars().any(char::is_whitespace)
+        {
             return Err("block_id contains an unrepresentable character".to_owned());
         }
         format!("#^{block_id}")
@@ -359,6 +373,9 @@ pub(crate) fn render_candidate(
                 .label
                 .clone()
                 .unwrap_or_else(|| derive_markdown_label(target_path, &subtarget));
+            if !is_representable_display_label(&label) {
+                return Err("display label cannot be represented faithfully".to_owned());
+            }
             let embed_marker = if matches!(request.output, LinkOutput::Embed) {
                 "!"
             } else {
@@ -388,36 +405,47 @@ pub(crate) fn render_candidate(
 ///
 /// `true` when there is no subtarget or the requested selector occurs once.
 pub(crate) fn subtarget_is_unique(target_file: &Path, request: &LinkGenerationRequest) -> bool {
+    if request.heading.is_none() && request.block_id.is_none() {
+        return true;
+    }
     let Ok(contents) = fs::read_to_string(target_file) else {
         return false;
     };
+    let scan = scan_note(&contents);
     if let Some(heading) = request.heading.as_deref() {
         let requested_heading = heading.rsplit('#').next().unwrap_or(heading);
-        let matches = contents
-            .lines()
-            .filter(|line| {
-                let trimmed = line.trim_start();
-                let level = trimmed
-                    .chars()
-                    .take_while(|character| *character == '#')
-                    .count();
-                (1..=6).contains(&level)
-                    && trimmed[level..]
-                        .trim()
-                        .eq_ignore_ascii_case(requested_heading)
-            })
+        let matches = scan
+            .headings
+            .iter()
+            .filter(|heading| heading.text.eq_ignore_ascii_case(requested_heading))
             .count();
         matches == 1
     } else if let Some(block_id) = request.block_id.as_deref() {
-        let marker = format!("^{block_id}");
-        let matches = contents
-            .lines()
-            .filter(|line| line.trim_end().ends_with(&marker))
+        let matches = scan
+            .block_ids
+            .iter()
+            .filter(|reference| reference.id.eq_ignore_ascii_case(block_id))
             .count();
         matches == 1
     } else {
         true
     }
+}
+
+/// Check that a display label can be emitted without Markdown escaping.
+fn is_representable_display_label(label: &str) -> bool {
+    !label.is_empty()
+        && label.trim() == label
+        && !label
+            .chars()
+            .any(|character| matches!(character, '[' | ']' | '\\' | '\n' | '\r'))
+}
+
+/// Check for characters that can terminate or split a Wikilink selector.
+fn contains_wikilink_delimiter(value: &str) -> bool {
+    value
+        .chars()
+        .any(|character| matches!(character, '[' | ']' | '\n' | '\r'))
 }
 
 /// Compare a parsed candidate against the exact requested path and subtarget.

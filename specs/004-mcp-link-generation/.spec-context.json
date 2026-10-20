@@ -3,7 +3,7 @@
   "specName": "MCP Link Generation",
   "branch": "main",
   "currentStep": "implement",
-  "status": "implemented",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -208,6 +208,13 @@
       "kind": "complete",
       "by": "extension",
       "at": "2026-10-20T00:16:13.287Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-20T00:26:16.885Z"
     }
   ],
   "telemetryInstanceId": "7c0f14e7-7f5c-4f73-a822-2a4b5f07b774",

@@ -174,6 +174,18 @@ fn validates_existing_notes_headings_and_blocks_in_both_formats() {
         .expect("upper-case colliding target should be written");
     fs::write(root.join("notes/duplicate.md"), "# Lower collision\n")
         .expect("case-colliding target should be written");
+    let note_names = fs::read_dir(root.join("notes"))
+        .expect("notes directory should be readable")
+        .map(|entry| {
+            entry
+                .expect("note entry should be readable")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect::<Vec<_>>();
+    let filesystem_preserves_case_collisions = note_names.iter().any(|name| name == "Duplicate.md")
+        && note_names.iter().any(|name| name == "duplicate.md");
     let context_path = root.join("Context.md").to_string_lossy().into_owned();
     let mut client = StdioClient::with_vaults(vec![root.to_string_lossy().into_owned()]);
     assert!(client.initialize().get("result").is_some());
@@ -251,19 +263,21 @@ fn validates_existing_notes_headings_and_blocks_in_both_formats() {
         );
     }
 
-    let ambiguous = call_generation(
-        &mut client,
-        request_id,
-        json!({
-            "context_path": context_path,
-            "target_path": "notes/Duplicate.md",
-            "intent": "existing"
-        }),
-    );
-    assert_eq!(
-        ambiguous["result"]["structuredContent"]["status"], "rejected",
-        "case-insensitive resolver collision must not be validated: {ambiguous}"
-    );
+    if filesystem_preserves_case_collisions {
+        let ambiguous = call_generation(
+            &mut client,
+            request_id,
+            json!({
+                "context_path": context_path,
+                "target_path": "notes/Duplicate.md",
+                "intent": "existing"
+            }),
+        );
+        assert_eq!(
+            ambiguous["result"]["structuredContent"]["status"], "rejected",
+            "case-insensitive resolver collision must not be validated: {ambiguous}"
+        );
+    }
     let mismatched = call_generation(
         &mut client,
         request_id + 1,
@@ -387,6 +401,125 @@ fn keeps_future_targets_unverified_and_does_not_write_vault_files() {
     );
 }
 
+/// Verify syntax that cannot be represented without ambiguity is rejected for future links.
+#[test]
+fn rejects_unrepresentable_future_selectors_and_markdown_labels() {
+    let temporary_directory = tempfile::tempdir().expect("temporary directory should be created");
+    let root = temporary_directory.path().join("vault");
+    fs::create_dir_all(root.join(".obsidian")).expect("vault metadata should be created");
+    fs::write(root.join("Context.md"), "# Context\n").expect("context should be written");
+    let context_path = root.join("Context.md").to_string_lossy().into_owned();
+    let mut client = StdioClient::with_vaults(vec![root.to_string_lossy().into_owned()]);
+    assert!(client.initialize().get("result").is_some());
+    client.notify_initialized();
+
+    for (id, format, selectors) in [
+        (2, "wikilink", json!({"block_id": "planned block"})),
+        (3, "wikilink", json!({"heading": "Plan]]"})),
+        (4, "wikilink", json!({"block_id": "planned]]"})),
+        (5, "wikilink", json!({"heading": "Plan\nNext"})),
+        (6, "wikilink", json!({"block_id": "planned\nnext"})),
+        (7, "markdown", json!({"label": "Roadmap\\"})),
+        (8, "markdown", json!({"heading": "Plan]"})),
+    ] {
+        let mut arguments = json!({
+            "context_path": context_path,
+            "target_path": "notes/Planned.md",
+            "intent": "future",
+            "format": format
+        });
+        for (key, value) in selectors
+            .as_object()
+            .expect("selectors should be an object")
+        {
+            arguments[key] = value.clone();
+        }
+        let response = call_generation(&mut client, id, arguments);
+        assert_eq!(
+            response["result"]["structuredContent"]["status"], "rejected",
+            "unrepresentable request must be rejected: {response}"
+        );
+        assert_eq!(
+            response["result"]["structuredContent"]["syntax_valid"], false,
+            "unrepresentable request cannot claim valid syntax: {response}"
+        );
+    }
+}
+
+/// Verify selector uniqueness follows the resolver scanner's Markdown semantics.
+#[test]
+fn validates_subtargets_using_resolver_scanner_semantics() {
+    let temporary_directory = tempfile::tempdir().expect("temporary directory should be created");
+    let root = temporary_directory.path().join("vault");
+    fs::create_dir_all(root.join(".obsidian")).expect("vault metadata should be created");
+    fs::create_dir_all(root.join("notes")).expect("notes directory should be created");
+    fs::write(root.join("Context.md"), "# Context\n").expect("context should be written");
+    fs::write(
+        root.join("notes/Fenced.md"),
+        "# Plan\n\n```markdown\n# Plan\n^block\n```\n\n^block\n",
+    )
+    .expect("fenced note should be written");
+    fs::write(root.join("notes/Closed Heading.md"), "# Unique #\n")
+        .expect("closing-hash heading note should be written");
+    fs::write(root.join("notes/Duplicate.md"), "# Plan\n\n# Plan #\n")
+        .expect("duplicate heading note should be written");
+    fs::write(root.join("notes/Blocks.md"), "# Blocks\n\n^ID\n\n^id\n")
+        .expect("duplicate block note should be written");
+    let context_path = root.join("Context.md").to_string_lossy().into_owned();
+    let mut client = StdioClient::with_vaults(vec![root.to_string_lossy().into_owned()]);
+    assert!(client.initialize().get("result").is_some());
+    client.notify_initialized();
+
+    let fenced_selectors = call_generation(
+        &mut client,
+        2,
+        json!({
+            "context_path": context_path,
+            "target_path": "notes/Fenced.md",
+            "intent": "existing",
+            "heading": "Plan"
+        }),
+    );
+    assert_eq!(
+        fenced_selectors["result"]["structuredContent"]["status"], "validated",
+        "fenced examples should not count as selectors: {fenced_selectors}"
+    );
+
+    let closing_hash_heading = call_generation(
+        &mut client,
+        3,
+        json!({
+            "context_path": context_path,
+            "target_path": "notes/Closed Heading.md",
+            "intent": "existing",
+            "heading": "Unique"
+        }),
+    );
+    assert_eq!(
+        closing_hash_heading["result"]["structuredContent"]["status"], "validated",
+        "a unique heading with closing hashes should normalize: {closing_hash_heading}"
+    );
+
+    for (id, target_path, selector) in [
+        (4, "notes/Duplicate.md", json!({"heading": "Plan"})),
+        (5, "notes/Blocks.md", json!({"block_id": "ID"})),
+    ] {
+        let mut arguments = json!({
+            "context_path": context_path,
+            "target_path": target_path,
+            "intent": "existing"
+        });
+        for (key, value) in selector.as_object().expect("selector should be an object") {
+            arguments[key] = value.clone();
+        }
+        let response = call_generation(&mut client, id, arguments);
+        assert_eq!(
+            response["result"]["structuredContent"]["status"], "rejected",
+            "duplicate resolver selectors must not be validated: {response}"
+        );
+    }
+}
+
 /// Verify attachments, embeds, same-file shorthand, and display labels round-trip exactly.
 #[test]
 fn generates_attachments_embeds_same_file_links_and_display_labels() {
@@ -405,9 +538,16 @@ fn generates_attachments_embeds_same_file_links_and_display_labels() {
         "# Plan\n\n## Plan Section\n\nPlan body.\n",
     )
     .expect("target note should be written");
-    fs::write(root.join("assets/diagram.png"), "attachment").expect("attachment should be written");
-    fs::write(root.join("assets/cover image.png"), "attachment")
-        .expect("spaced attachment should be written");
+    fs::write(
+        root.join("assets/diagram.png"),
+        [0x89, b'P', b'N', b'G', 0x00],
+    )
+    .expect("binary attachment should be written");
+    fs::write(
+        root.join("assets/cover image.png"),
+        [0x89, b'P', b'N', b'G', 0x00],
+    )
+    .expect("spaced attachment should be written");
     let context_path = root.join("Context.md").to_string_lossy().into_owned();
     let mut client = StdioClient::with_vaults(vec![root.to_string_lossy().into_owned()]);
     assert!(client.initialize().get("result").is_some());
