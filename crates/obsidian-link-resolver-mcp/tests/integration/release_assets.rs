@@ -51,15 +51,15 @@ fn release_maps_all_targets_to_distinct_component_assets() {
         ),
         (
             RELEASE_TARGETS[2],
-            r#"cp target/x86_64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-x86_64""#,
-            r#"cp target/x86_64-apple-darwin/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-x86_64""#,
-            r#"cp target/x86_64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-x86_64.dylib""#,
+            r#"cp "target/${TARGET}/release/obsidian-link-resolver" "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-${ARCH}""#,
+            r#"cp "target/${TARGET}/release/obsidian-link-resolver-mcp" "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-${ARCH}""#,
+            r#"cp "target/${TARGET}/release/libobsidian_link_resolver.dylib" "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-${ARCH}.dylib""#,
         ),
         (
             RELEASE_TARGETS[3],
-            r#"cp target/aarch64-apple-darwin/release/obsidian-link-resolver "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-aarch64""#,
-            r#"cp target/aarch64-apple-darwin/release/obsidian-link-resolver-mcp "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-aarch64""#,
-            r#"cp target/aarch64-apple-darwin/release/libobsidian_link_resolver.dylib "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-aarch64.dylib""#,
+            r#"cp "target/${TARGET}/release/obsidian-link-resolver" "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-${ARCH}""#,
+            r#"cp "target/${TARGET}/release/obsidian-link-resolver-mcp" "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-${ARCH}""#,
+            r#"cp "target/${TARGET}/release/libobsidian_link_resolver.dylib" "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-${ARCH}.dylib""#,
         ),
         (
             RELEASE_TARGETS[4],
@@ -80,6 +80,30 @@ fn release_maps_all_targets_to_distinct_component_assets() {
                 "release workflow is missing mapping for {target}: {mapping}"
             );
         }
+    }
+
+    for (target, runner, arch) in [
+        (RELEASE_TARGETS[2], "macos-15-intel", "x86_64"),
+        (RELEASE_TARGETS[3], "macos-15", "aarch64"),
+    ] {
+        let matrix_entry =
+            format!("target: {target}\n            runner: {runner}\n            arch: {arch}");
+        assert!(
+            RELEASE_WORKFLOW.contains(&matrix_entry),
+            "release workflow has an invalid native runner mapping for {target}"
+        );
+    }
+
+    for required in [
+        "cargo build --workspace --release --target ${{ matrix.target }}",
+        "actions/download-artifact@v4",
+        "merge-multiple: true",
+        "needs: [release, build-macos]",
+    ] {
+        assert!(
+            RELEASE_WORKFLOW.contains(required),
+            "release workflow is missing native asset pipeline requirement: {required}"
+        );
     }
 
     for artifact in [
