@@ -14,7 +14,12 @@ const RELEASE_TARGETS: [&str; 5] = [
 /// A moved tag must not change the source commit used by a release run.
 #[test]
 fn release_checkouts_use_the_triggering_commit() {
-    let checkouts: Vec<_> = RELEASE_WORKFLOW
+    assert_release_checkouts_use_the_triggering_commit(RELEASE_WORKFLOW);
+}
+
+fn assert_release_checkouts_use_the_triggering_commit(workflow: &str) {
+    let workflow = workflow.replace("\r\n", "\n");
+    let checkouts: Vec<_> = workflow
         .split("- uses: actions/checkout@")
         .skip(1)
         .collect();
@@ -53,6 +58,11 @@ fn release_gates_precede_component_asset_staging() {
 /// The release maps every supported target to distinct CLI, MCP, and FFI assets.
 #[test]
 fn release_maps_all_targets_to_distinct_component_assets() {
+    assert_release_maps_all_targets_to_distinct_component_assets(RELEASE_WORKFLOW);
+}
+
+fn assert_release_maps_all_targets_to_distinct_component_assets(workflow: &str) {
+    let workflow = workflow.replace("\r\n", "\n");
     let expected_mappings = [
         (
             RELEASE_TARGETS[0],
@@ -88,12 +98,12 @@ fn release_maps_all_targets_to_distinct_component_assets() {
 
     for (target, cli_mapping, mcp_mapping, ffi_mapping) in expected_mappings {
         assert!(
-            RELEASE_WORKFLOW.contains(target),
+            workflow.contains(target),
             "release workflow is missing target {target}"
         );
         for mapping in [cli_mapping, mcp_mapping, ffi_mapping] {
             assert!(
-                RELEASE_WORKFLOW.contains(mapping),
+                workflow.contains(mapping),
                 "release workflow is missing mapping for {target}: {mapping}"
             );
         }
@@ -106,7 +116,7 @@ fn release_maps_all_targets_to_distinct_component_assets() {
         let matrix_entry =
             format!("target: {target}\n            runner: {runner}\n            arch: {arch}");
         assert!(
-            RELEASE_WORKFLOW.contains(&matrix_entry),
+            workflow.contains(&matrix_entry),
             "release workflow has an invalid native runner mapping for {target}"
         );
     }
@@ -118,7 +128,7 @@ fn release_maps_all_targets_to_distinct_component_assets() {
         "needs: [release, build-macos]",
     ] {
         assert!(
-            RELEASE_WORKFLOW.contains(required),
+            workflow.contains(required),
             "release workflow is missing native asset pipeline requirement: {required}"
         );
     }
@@ -128,8 +138,19 @@ fn release_maps_all_targets_to_distinct_component_assets() {
         "obsidian_link_resolver-${RELEASE_TAG}.h",
     ] {
         assert!(
-            RELEASE_WORKFLOW.contains(artifact),
+            workflow.contains(artifact),
             "release workflow is missing published artifact {artifact}"
         );
+    }
+}
+
+/// Workflow contracts must hold regardless of the checkout's line endings.
+#[test]
+fn release_contract_checks_accept_lf_and_crlf() {
+    let lf = RELEASE_WORKFLOW.replace("\r\n", "\n");
+    let crlf = lf.replace('\n', "\r\n");
+    for workflow in [&lf, &crlf] {
+        assert_release_checkouts_use_the_triggering_commit(workflow);
+        assert_release_maps_all_targets_to_distinct_component_assets(workflow);
     }
 }
