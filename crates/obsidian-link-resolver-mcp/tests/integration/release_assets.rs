@@ -172,9 +172,9 @@ fn windows_workflows_use_native_msvc() {
     }
 }
 
-/// Artifact uploads in CI and releases must use the supported v4 action.
+/// Artifact uploads in CI and releases must use the supported v7 action.
 #[test]
-fn artifact_uploads_use_v4() {
+fn artifact_uploads_use_v7() {
     for workflow in [
         include_str!("../../../../.github/workflows/ci.yml"),
         RELEASE_WORKFLOW,
@@ -185,7 +185,7 @@ fn artifact_uploads_use_v4() {
             .map(|(_, version)| version)
             .collect();
         assert!(!uploads.is_empty(), "workflow must retain its artifacts");
-        assert!(uploads.iter().all(|version| *version == "v4"));
+        assert!(uploads.iter().all(|version| *version == "v7"));
     }
 }
 

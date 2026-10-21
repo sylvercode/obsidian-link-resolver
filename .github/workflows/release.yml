@@ -45,7 +45,7 @@ jobs:
           cargo build --workspace --release --target aarch64-unknown-linux-gnu
       - name: Retain MCP benchmark reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mcp-benchmark-reports-${{ github.ref_name }}
           if-no-files-found: warn
@@ -70,7 +70,7 @@ jobs:
           cp crates/obsidian-link-resolver/include/obsidian_link_resolver.h "dist/obsidian_link_resolver-${RELEASE_TAG}.h"
           cp specs/002-mcp-wrapper/contracts/mcp-contract.json dist/mcp-contract.json
       - name: Upload Linux release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-linux
           path: dist/
@@ -98,7 +98,7 @@ jobs:
           cp target/x86_64-pc-windows-msvc/release/obsidian-link-resolver.exe "dist/obsidian-link-resolver-${RELEASE_TAG}-windows-x86_64.exe"
           cp target/x86_64-pc-windows-msvc/release/obsidian-link-resolver-mcp.exe "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-windows-x86_64.exe"
           cp target/x86_64-pc-windows-msvc/release/obsidian_link_resolver.dll "dist/libobsidian_link_resolver-${RELEASE_TAG}-windows-x86_64.dll"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-assets-windows
           path: dist/
@@ -137,7 +137,7 @@ jobs:
           cp "target/${TARGET}/release/obsidian-link-resolver" "dist/obsidian-link-resolver-${RELEASE_TAG}-darwin-${ARCH}"
           cp "target/${TARGET}/release/obsidian-link-resolver-mcp" "dist/obsidian-link-resolver-mcp-${RELEASE_TAG}-darwin-${ARCH}"
           cp "target/${TARGET}/release/libobsidian_link_resolver.dylib" "dist/libobsidian_link_resolver-${RELEASE_TAG}-darwin-${ARCH}.dylib"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ matrix.arch }}
           path: dist/
