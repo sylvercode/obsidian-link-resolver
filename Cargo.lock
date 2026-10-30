@@ -781,7 +781,7 @@ dependencies = [
 
 [[package]]
 name = "obsidian-link-resolver"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "cbindgen",
  "criterion",
@@ -798,7 +798,7 @@ dependencies = [
 
 [[package]]
 name = "obsidian-link-resolver-cli"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -810,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "obsidian-link-resolver-mcp"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "clap",
  "log",

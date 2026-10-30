@@ -15,14 +15,14 @@ use rmcp::{
         wrapper::Parameters,
     },
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, ServerCapabilities,
-        ServerConfig,
+        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
+        ServerCapabilities, ServerConfig,
     },
     schemars::JsonSchema,
     service::RequestContext,
     tool, tool_handler, tool_router, RoleServer, ServerHandler,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -31,6 +31,28 @@ use std::time::Instant;
 
 /// Fixed target used for allow-listed operational diagnostics.
 const DIAGNOSTICS_TARGET: &str = "obsidian_link_resolver_mcp::diagnostics";
+
+/// Stable server name advertised in the MCP handshake.
+const SERVER_NAME: &str = "obsidian-link-resolver-mcp";
+
+/// Semantic version of this MCP server build.
+const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Server version and startup-configured vault roots returned by `get_server_info`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct ServerInfo {
+    /// Semantic version of the MCP server build (`MAJOR.MINOR.PATCH`, optional pre-release/build suffix). Sourced from the crate's `CARGO_PKG_VERSION`; identical to the handshake `serverInfo.version`.
+    version: String,
+    /// Ordered as supplied at startup, after canonicalization and de-duplication. Never empty.
+    vaults: Vec<ConfiguredVault>,
+}
+
+/// One distinct vault root accepted at server startup.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct ConfiguredVault {
+    /// Canonical absolute path exactly as returned by the operating system (`fs::canonicalize`): symlinks and `.`/`..` resolved; Windows extended-length prefix `\\?\` preserved; no trailing-separator or case rewriting.
+    path: String,
+}
 
 /// Process-local sequence assigned to each tool request.
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -84,7 +106,10 @@ pub(crate) struct ResolverServer {
 }
 
 impl ResolverServer {
-    /// Create a resolver server with the vault roots it is permitted to access.
+    /// Create a resolver server with canonical, distinct vault roots in startup order.
+    ///
+    /// Duplicate roots that canonicalize to the same path are retained only at their first
+    /// occurrence.
     ///
     /// # Parameters
     ///
@@ -97,19 +122,19 @@ impl ResolverServer {
         if allowed_vaults.is_empty() {
             return Err("at least one allowed vault root is required".to_owned());
         }
-        let allowed_vaults = allowed_vaults
-            .iter()
-            .map(|root| {
-                let canonical_root = fs::canonicalize(root)
-                    .map_err(|_| "an allowed vault root could not be accessed".to_owned())?;
-                if !canonical_root.is_dir() {
-                    return Err("an allowed vault root must be a directory".to_owned());
-                }
-                Ok(canonical_root)
-            })
-            .collect::<Result<Vec<_>, String>>()?;
+        let mut canonical_vaults = Vec::with_capacity(allowed_vaults.len());
+        for root in allowed_vaults {
+            let canonical_root = fs::canonicalize(root)
+                .map_err(|_| "an allowed vault root could not be accessed".to_owned())?;
+            if !canonical_root.is_dir() {
+                return Err("an allowed vault root must be a directory".to_owned());
+            }
+            if !canonical_vaults.contains(&canonical_root) {
+                canonical_vaults.push(canonical_root);
+            }
+        }
         Ok(Self {
-            allowed_vaults,
+            allowed_vaults: canonical_vaults,
             cache: Arc::new(VaultCache::new()),
             tool_router: Self::tool_router(),
         })
@@ -118,6 +143,34 @@ impl ResolverServer {
 
 #[tool_router]
 impl ResolverServer {
+    /// Return the server version and canonical vault roots configured at startup.
+    ///
+    /// This tool takes no arguments and ignores any supplied argument object. It reads only
+    /// immutable in-memory configuration and does not access the cache or filesystem.
+    ///
+    /// # Returns
+    ///
+    /// A structured result containing `version` and the ordered `vaults` list.
+    #[tool(
+        name = "get_server_info",
+        description = "Return the running server version and the vault roots configured at startup as canonical paths. Takes no arguments. Call it first to learn which vaults the link tools can access."
+    )]
+    async fn get_server_info(&self) -> Result<CallToolResult, String> {
+        let info = ServerInfo {
+            version: SERVER_VERSION.to_owned(),
+            vaults: self
+                .allowed_vaults
+                .iter()
+                .map(|root| ConfiguredVault {
+                    path: root.to_string_lossy().into_owned(),
+                })
+                .collect(),
+        };
+        Ok(CallToolResult::structured(
+            serde_json::to_value(info).map_err(|error| error.to_string())?,
+        ))
+    }
+
     /// Resolve an Obsidian link using the existing resolver semantics.
     ///
     /// # Parameters
@@ -555,9 +608,10 @@ impl ServerHandler for ResolverServer {
             .into_call_tool_result()
     }
 
-    /// Return the server capabilities advertised during MCP initialization.
+    /// Return capabilities, server identity, and instructions advertised during initialization.
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new(SERVER_NAME, SERVER_VERSION))
             .with_instructions("Resolve Obsidian links.")
     }
 }

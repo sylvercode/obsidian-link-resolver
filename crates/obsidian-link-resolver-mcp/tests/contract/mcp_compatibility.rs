@@ -15,19 +15,8 @@ fn contract_artifact_matches_workspace_and_resolver_outcomes() {
             .expect("MCP contract artifact should exist"),
     )
     .expect("MCP contract artifact should be JSON");
-    let manifest = fs::read_to_string(root.join("Cargo.toml")).expect("workspace manifest exists");
-    let workspace_version = manifest
-        .split("[workspace.package]")
-        .nth(1)
-        .and_then(|section| {
-            section.lines().find_map(|line| {
-                line.trim()
-                    .strip_prefix("version = \"")
-                    .and_then(|value| value.strip_suffix('\"'))
-            })
-        })
-        .expect("workspace package version should be declared");
-    assert_eq!(contract["contract_version"], workspace_version);
+    let package_version = env!("CARGO_PKG_VERSION");
+    assert_eq!(contract["contract_version"], package_version);
 
     let result_schema: Value = serde_json::from_slice(
         &fs::read(root.join("specs/001-link-resolver/contracts/result.schema.json"))

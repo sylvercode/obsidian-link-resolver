@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "contract_version": "2.0.0",
+    "contract_version": "2.1.0",
     "tool": {
         "name": "resolve_obsidian_link",
         "description": "Resolve an Obsidian link from its containing note using the existing resolver.",

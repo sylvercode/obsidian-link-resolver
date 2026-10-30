@@ -10,6 +10,8 @@ mod mcp_diagnostics;
 mod mcp_link_generation;
 #[path = "integration/mcp_resolver_parity.rs"]
 mod mcp_resolver_parity;
+#[path = "integration/mcp_server_info.rs"]
+mod mcp_server_info;
 #[path = "integration/mcp_stdio.rs"]
 mod mcp_stdio;
 #[path = "integration/release_assets.rs"]
