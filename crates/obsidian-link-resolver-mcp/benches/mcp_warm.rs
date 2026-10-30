@@ -85,6 +85,18 @@ impl McpProcess {
         )
     }
 
+    /// Call the server information tool and return its JSON-RPC response.
+    fn call_server_info(&mut self, id: usize) -> Value {
+        self.request(
+            id as u64,
+            "tools/call",
+            json!({
+                "name": "get_server_info",
+                "arguments": {}
+            }),
+        )
+    }
+
     /// Write one JSON-RPC request and wait for the matching response line.
     fn request(&mut self, id: u64, method: &str, params: Value) -> Value {
         self.write(&json!({
@@ -160,11 +172,25 @@ fn p50(samples: &mut [Duration]) -> Duration {
 fn main() {
     let (vault_root, context_path, link) = benchmark_vault();
     let mut process = McpProcess::start(&vault_root);
-    let warmup = process.call_tool(2, &context_path, link);
+    let started = Instant::now();
+    let first_server_info = process.call_server_info(2);
+    let server_info_first_call = started.elapsed();
+    assert_eq!(first_server_info["result"]["isError"], false);
+
+    let warmup = process.call_tool(3, &context_path, link);
     assert_eq!(warmup["result"]["structuredContent"]["status"], "resolved");
 
+    let mut server_info_samples = Vec::with_capacity(SAMPLE_COUNT);
+    for request_id in 4..4 + SAMPLE_COUNT {
+        let started = Instant::now();
+        let result = process.call_server_info(request_id);
+        server_info_samples.push(started.elapsed());
+        assert_eq!(result["result"]["isError"], false);
+    }
+    let server_info_median = p50(&mut server_info_samples);
+
     let mut samples = Vec::with_capacity(SAMPLE_COUNT);
-    for request_id in 3..3 + SAMPLE_COUNT {
+    for request_id in 4 + SAMPLE_COUNT..4 + SAMPLE_COUNT * 2 {
         let started = Instant::now();
         let result = process.call_tool(request_id, &context_path, link);
         samples.push(started.elapsed());
@@ -172,13 +198,13 @@ fn main() {
     }
     let median = p50(&mut samples);
 
-    let generation_warmup = process.call_generation(3 + SAMPLE_COUNT, &context_path);
+    let generation_warmup = process.call_generation(4 + SAMPLE_COUNT * 2, &context_path);
     assert_eq!(
         generation_warmup["result"]["structuredContent"]["status"],
         "validated"
     );
     let mut generation_samples = Vec::with_capacity(SAMPLE_COUNT);
-    for request_id in 4 + SAMPLE_COUNT..4 + SAMPLE_COUNT * 2 {
+    for request_id in 5 + SAMPLE_COUNT * 2..5 + SAMPLE_COUNT * 3 {
         let started = Instant::now();
         let result = process.call_generation(request_id, &context_path);
         generation_samples.push(started.elapsed());
@@ -194,10 +220,20 @@ fn main() {
         "architecture": std::env::consts::ARCH,
         "fixture_version": "bench-vault-v1",
         "sample_count": SAMPLE_COUNT,
+        "server_info_first_call_ms": server_info_first_call.as_secs_f64() * 1000.0,
+        "server_info_p50_ms": server_info_median.as_secs_f64() * 1000.0,
         "p50_ms": median.as_secs_f64() * 1000.0,
         "generation_p50_ms": generation_median.as_secs_f64() * 1000.0
     });
     println!("{report}");
+    assert!(
+        server_info_first_call <= Duration::from_millis(100),
+        "server_info first call exceeded 100 ms: {report}"
+    );
+    assert!(
+        server_info_median <= Duration::from_millis(50),
+        "server_info p50 exceeded 50 ms: {report}"
+    );
     assert!(
         median <= Duration::from_millis(100),
         "warm MCP p50 exceeded 100 ms: {report}"
