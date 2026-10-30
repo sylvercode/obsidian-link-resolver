@@ -8,6 +8,16 @@
 
 **Input**: User description: "add a tool to the mcp to know what are the configured vault and the current version"
 
+## Clarifications
+
+### Session 2026-10-29
+
+- Q: When a caller passes unexpected arguments to the info tool, should the tool ignore them or reject the call? → A: Ignore any supplied arguments and return the normal response.
+- Q: How should each configured vault path be presented on Windows, where the resolved form can carry a `\\?\` prefix? → A: Return the raw canonical form exactly as the OS resolves it (may include `\\?\` on Windows); no post-processing.
+- Q: Should each vault in the response be a plain path string or a small object? → A: A list of objects, each with a `path` field only for now (extensible without breaking changes).
+- Q: What server name should the MCP handshake report? → A: `obsidian-link-resolver-mcp`.
+- Q: What should the new MCP tool be named? → A: `get_server_info`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Discover the configured vaults (Priority: P1)
@@ -20,7 +30,7 @@ An agent connected to the MCP needs to know which vault locations the server was
 
 **Acceptance Scenarios**:
 
-1. **Given** the server was started with a single vault, **When** the caller invokes the info tool, **Then** the response lists exactly one vault entry whose location is the absolute, resolved path of that vault.
+1. **Given** the server was started with a single vault, **When** the caller invokes the info tool, **Then** the response lists exactly one vault entry whose location is the canonical path of that vault exactly as resolved by the operating system.
 2. **Given** the server was started with multiple vaults, **When** the caller invokes the info tool, **Then** the response lists every configured vault in the order they were supplied at startup, with no omissions or duplicates.
 3. **Given** the caller passes no arguments, **When** it invokes the info tool, **Then** the tool succeeds; the tool requires no input.
 
@@ -51,7 +61,7 @@ An MCP client that lists connected servers (for example, a chat client's server 
 
 **Acceptance Scenarios**:
 
-1. **Given** a client completes the MCP handshake, **When** it reads the server information, **Then** it contains a server name and a version identical to the version returned by the info tool.
+1. **Given** a client completes the MCP handshake, **When** it reads the server information, **Then** it contains the server name `obsidian-link-resolver-mcp` and a version identical to the version returned by the info tool.
 
 ---
 
@@ -60,27 +70,28 @@ An MCP client that lists connected servers (for example, a chat client's server 
 - A configured vault directory is removed or becomes inaccessible after startup: the tool still reports the vault as configured; it reports startup configuration, not live health.
 - The same vault is supplied more than once at startup (including via different spellings that resolve to the same location): the tool reports each distinct resolved location once.
 - The tool is called before any link tool has been used (no vault has been indexed yet): it responds without triggering vault indexing and without noticeable delay.
-- Vault paths contain non-ASCII characters or spaces: they are returned faithfully and unaltered apart from being resolved to absolute form.
-- The tool is called with unexpected arguments: the call either ignores them or fails with a clear message; it never returns partial or misleading information.
+- Vault paths contain non-ASCII characters or spaces: they are returned faithfully and unaltered apart from being resolved to canonical form.
+- On Windows the canonical form may carry an extended-length prefix (`\\?\`): it is returned as-is; the tool performs no cosmetic rewriting of resolved paths.
+- The tool is called with unexpected arguments: the arguments are ignored and the normal, complete response is returned; the call never fails or returns partial information because of extra arguments.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The MCP MUST expose a dedicated tool that returns server information and requires no input parameters.
-- **FR-002**: The response MUST include the list of vaults the server was configured with at startup, each as an absolute, resolved location, in the order supplied at startup, with duplicates (after resolution) reported once.
+- **FR-001**: The MCP MUST expose a dedicated tool named `get_server_info` that returns server information and requires no input parameters; any arguments supplied by the caller MUST be ignored and MUST NOT cause the call to fail.
+- **FR-002**: The response MUST include the list of vaults the server was configured with at startup, each as the canonical path exactly as resolved by the operating system (absolute, symlinks and relative segments resolved, no cosmetic rewriting such as stripping a Windows `\\?\` prefix), in the order supplied at startup, with duplicates (after resolution) reported once.
 - **FR-003**: The response MUST include the running server's version as a semantic version string.
 - **FR-004**: The tool MUST be read-only: it MUST NOT create, modify, or index vault content, and MUST NOT change server state.
 - **FR-005**: The response MUST be deterministic for a given server process: repeated calls return identical content, and no timestamps or other non-deterministic fields are included.
-- **FR-006**: The response MUST be structured (machine-readable) and compact, with short, stable field names, so that agents can parse it without free-text interpretation.
+- **FR-006**: The response MUST be structured (machine-readable) and compact, with short, stable field names, so that agents can parse it without free-text interpretation. The vault list MUST be an ordered list of objects, each carrying a `path` field holding the canonical path; no other vault fields are included in this feature, and future additions MUST be made by adding fields to these objects rather than changing their shape.
 - **FR-007**: The tool's description MUST tell callers what the tool returns and that it takes no arguments, so agents can select it without trial and error.
-- **FR-008**: The server's standard MCP handshake information MUST include the server name and the same version string returned by the tool.
+- **FR-008**: The server's standard MCP handshake information MUST include the server name `obsidian-link-resolver-mcp` and the same version string returned by the tool.
 - **FR-009**: Adding the tool MUST NOT change the behavior, input, or output of the existing link resolution and link generation tools.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Server Info**: The information returned by the tool: the server version and the list of configured vaults.
-- **Configured Vault**: A vault location accepted at startup, represented by its absolute, resolved path.
+- **Server Info**: The information returned by the `get_server_info` tool: the server version and the list of configured vaults.
+- **Configured Vault**: A vault location accepted at startup, represented as an object with a single `path` field holding its canonical path exactly as resolved by the operating system.
 
 ## Success Criteria *(mandatory)*
 
