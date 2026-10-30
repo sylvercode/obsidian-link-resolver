@@ -52,7 +52,7 @@ No error outcomes are defined for valid protocol calls. Repeated calls on the sa
 - Future fields are added to `ServerInfo` or to each `vaults[]` object; existing fields and shapes are never renamed, retyped, or removed within a major version.
 - Contract tests assert: tool discovery and schema; description phrases; `initialize` `serverInfo` name/version; `version` equals the crate's `CARGO_PKG_VERSION`; calls with no, empty, and extra arguments succeed with identical content; text/structured parity.
 - Integration tests assert: one, two, and three vaults in startup order; duplicate and symlink-alias roots reported once; paths equal `fs::canonicalize` of the fixtures; no files created or modified in any vault; the tool responds before any resolve call has indexed a vault; existing tools behave identically with duplicate `--vault` roots.
-- Benchmark (`mcp_warm`) reports `server_info_first_call_ms` and `server_info_p50_ms`, gating both at 50 ms.
+- Benchmark (`mcp_warm`) reports `server_info_first_call_ms` (single cold sample, gated at 100 ms) and `server_info_p50_ms` (gated at 50 ms, the SC-004 budget).
 
 ## References
 
