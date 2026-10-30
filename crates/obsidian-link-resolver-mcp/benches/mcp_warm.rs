@@ -227,8 +227,8 @@ fn main() {
     });
     println!("{report}");
     assert!(
-        server_info_first_call <= Duration::from_millis(100),
-        "server_info first call exceeded 100 ms: {report}"
+        server_info_first_call < Duration::from_millis(50),
+        "server_info first call must be under 50 ms: {report}"
     );
     assert!(
         server_info_median <= Duration::from_millis(50),
