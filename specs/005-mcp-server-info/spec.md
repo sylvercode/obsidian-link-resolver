@@ -1,6 +1,6 @@
 # Feature Specification: MCP Server Info Tool
 
-**Feature Branch**: `005-mcp-server-info` (feature directory; no branch was created)
+**Feature Branch**: `005-mcp-server-info`
 
 **Created**: 2026-10-29
 

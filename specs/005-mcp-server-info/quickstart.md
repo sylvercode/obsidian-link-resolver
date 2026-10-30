@@ -19,7 +19,7 @@ cargo test -p obsidian-link-resolver-mcp
 Expected coverage (see [contracts/mcp-server-info.md](contracts/mcp-server-info.md) and [data-model.md](data-model.md)):
 
 - `tests/contract/mcp_server_info.rs`: `get_server_info` is listed with the empty-object schema and a description that mentions the version, startup-configured vaults, and that no arguments are needed; `initialize` reports `serverInfo.name == "obsidian-link-resolver-mcp"` and a version equal to the tool's `version` and to `CARGO_PKG_VERSION`; calls with omitted, empty, and extra arguments all succeed with identical structured content; the text content block equals the structured content.
-- `tests/integration/mcp_server_info.rs`: one, two, and three vaults appear in startup order with `fs::canonicalize` paths; a vault passed twice (and via a symlink alias where symlinks are available) appears once; a directory snapshot of each vault is unchanged after the call; the tool answers before any `resolve_obsidian_link` call.
+- `tests/integration/mcp_server_info.rs`: one, two, and three vaults appear in startup order with `fs::canonicalize` paths; a vault passed twice (and via a symlink alias where symlinks are available) appears once; a directory snapshot of each vault is unchanged after the call; the tool answers before any `resolve_obsidian_link` call; `resolve_obsidian_link` and `generate_obsidian_link` return identical results whether a vault is passed once or twice.
 
 Run the warm benchmark to guard the 50 ms p50 budget and the first-call measurement:
 
@@ -27,7 +27,7 @@ Run the warm benchmark to guard the 50 ms p50 budget and the first-call measurem
 cargo bench -p obsidian-link-resolver-mcp --bench mcp_warm
 ```
 
-The printed JSON report must include `server_info_first_call_ms` and `server_info_p50_ms`, and the benchmark fails if `server_info_p50_ms` exceeds 50 ms. Existing `p50_ms` and `generation_p50_ms` gates remain at 100 ms.
+The printed JSON report must include `server_info_first_call_ms` and `server_info_p50_ms`, and the benchmark fails if either exceeds 50 ms. Existing `p50_ms` and `generation_p50_ms` gates remain at 100 ms.
 
 Confirm the existing suites and lints still pass unchanged:
 

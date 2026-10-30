@@ -1,6 +1,6 @@
 # Implementation Plan: MCP Server Info Tool
 
-**Branch**: `005-mcp-server-info` (feature directory; current git branch is `006-mcp-server-info`) | **Date**: 2026-10-29 | **Spec**: [spec.md](spec.md)
+**Branch**: `005-mcp-server-info` | **Date**: 2026-10-29 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/005-mcp-server-info/spec.md`
 
@@ -64,7 +64,7 @@ Decisions and evidence are recorded in [research.md](research.md). Key findings:
 4. In `ResolverServer::new`, de-duplicate canonical roots while preserving first-occurrence order, so `allowed_vaults` is already the exact list the tool reports. This is behavior-neutral for `select_allowed_vault` / `select_generation_root` (membership and deepest-prefix selection return the same path with or without duplicates).
 5. Change `get_info` to `ServerConfig::new(...).with_server_info(Implementation::new("obsidian-link-resolver-mcp", env!("CARGO_PKG_VERSION"))).with_instructions("Resolve Obsidian links.")`; the instructions string stays unchanged so `mcp_tool_metadata` contract assertions still hold.
 6. Tool description states what is returned and that no arguments are required, e.g. "Return the running server version and the vault roots configured at startup as canonical paths. Takes no arguments. Call it first to learn which vaults the link tools can access."
-7. Extend `benches/mcp_warm.rs` with a `get_server_info` sample set reported as `server_info_p50_ms` (gate: 50 ms) and a `server_info_first_call_ms` measurement taken before the resolve warm-up, to evidence SC-004's "before any vault is indexed" clause.
+7. Extend `benches/mcp_warm.rs` with a `get_server_info` sample set reported as `server_info_p50_ms` (gate: 50 ms) and a `server_info_first_call_ms` measurement taken before the resolve warm-up, also gated at 50 ms, to satisfy SC-004's "before any vault is indexed" clause.
 8. No change to `specs/002-mcp-wrapper/contracts/mcp-contract.json`, `MIGRATION.md`, the CLI crate, or the resolver library.
 
 ### Intended Source and Test Structure
